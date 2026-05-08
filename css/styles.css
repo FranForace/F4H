@@ -1,0 +1,179 @@
+﻿:root{
+  --bg:#0f0f0f;
+  --bg-card:#1a1a1a;
+  --bg-elevated:#222;
+  --bg-input:#141414;
+  --border:#2e2e2e;
+  --border-hover:#444;
+  --text:#f0f0ee;
+  --text-2:#888;
+  --text-3:#555;
+  --accent:#c8a96e;
+  --accent-dim:#2a2318;
+  --red:#e24b4a;
+  --red-bg:#2a1414;
+  --amber:#d4872a;
+  --amber-bg:#2a1e0a;
+  --green:#4a9a3a;
+  --green-bg:#0f2010;
+  --radius:10px;
+  --radius-sm:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:var(--text);background:var(--bg);min-height:100vh}
+.app{max-width:880px;margin:0 auto;padding:1.25rem}
+
+/* ── Header ── */
+.header{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.header-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+.header-sub{font-size:11px;color:var(--text-2)}
+.header-tc{margin-left:auto;font-size:11px;color:var(--text-2);background:var(--bg-elevated);padding:3px 10px;border-radius:20px;border:1px solid var(--border)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:2px;margin-bottom:1.5rem;background:var(--bg-elevated);border-radius:var(--radius);padding:3px;flex-wrap:wrap}
+.tab{padding:6px 12px;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text-2);border-radius:var(--radius-sm);transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text);background:var(--bg-card)}
+.tab.on{background:var(--bg-card);color:var(--text);font-weight:500;border:1px solid var(--border)}
+
+/* ── Stabs ── */
+.stabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.stab{padding:4px 13px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .15s}
+.stab:hover{border-color:var(--border-hover);color:var(--text)}
+.stab.on{background:var(--accent);color:#111;border-color:transparent;font-weight:500}
+
+/* ── Cards ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
+.card-blue{background:var(--bg-card);border:1.5px solid var(--accent);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
+.card-inner{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem}
+.card-tattoo{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .15s}
+.card-tattoo:hover{border-color:var(--border-hover)}
+.card-tattoo.active{border-color:var(--accent)}
+
+/* ── Metrics ── */
+.metric{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:1rem;border:1px solid var(--border)}
+.ml{font-size:11px;color:var(--text-2);margin-bottom:3px}
+.mv{font-size:20px;font-weight:600;color:var(--text)}
+.ms{font-size:11px;color:var(--text-3);margin-top:2px}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.25rem}
+
+/* ── Titles ── */
+.ct{font-size:13px;font-weight:600;margin-bottom:.85rem;color:var(--text)}
+
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:var(--text-2);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px}
+td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg-elevated)}
+tr.al td:first-child{border-left:2px solid var(--red)}
+.total-row td{font-weight:600;background:var(--bg-elevated);border-top:1px solid var(--border)}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.b-ok{background:var(--green-bg);color:var(--green)}
+.b-low{background:var(--amber-bg);color:var(--amber)}
+.b-crit{background:var(--red-bg);color:var(--red)}
+.b-prac{background:var(--accent-dim);color:var(--accent)}
+.b-curso{background:var(--amber-bg);color:var(--amber)}
+.b-fin{background:var(--green-bg);color:var(--green)}
+.b-pend{background:var(--bg-elevated);color:var(--text-2)}
+.tag-in{background:var(--green-bg);color:var(--green);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
+.tag-out{background:var(--red-bg);color:var(--red);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
+
+/* ── Score buttons ── */
+.sc-btn{padding:4px 9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text-2);margin-right:3px;min-width:30px;transition:all .1s}
+.sc-btn:hover{border-color:var(--border-hover);color:var(--text)}
+.sc-btn.on-red{background:var(--red);color:#fff;border-color:transparent}
+.sc-btn.on-amber{background:var(--amber);color:#111;border-color:transparent}
+.sc-btn.on-green{background:var(--green);color:#fff;border-color:transparent}
+.sc-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sc-lbl{font-size:11px;color:var(--text-2);font-weight:500;width:120px;flex-shrink:0}
+.sc-dim-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem;margin-bottom:.5rem}
+.sc-dim-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:5px}
+
+/* ── Progress bars ── */
+.progress-bar{height:5px;border-radius:3px;background:var(--bg-elevated);border:1px solid var(--border);margin:4px 0;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s}
+.pf-red{background:var(--red)}
+.pf-amber{background:var(--amber)}
+.pf-green{background:var(--green)}
+
+/* ── Forms ── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fl{font-size:11px;color:var(--text-2);font-weight:500}
+input,select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg-input);color:var(--text);font-family:inherit;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+select option{background:var(--bg-card)}
+textarea{resize:vertical;min-height:80px}
+
+/* ── Buttons ── */
+.btn{padding:7px 14px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;transition:all .15s}
+.btn:hover{background:var(--bg-elevated);border-color:var(--border-hover)}
+.btn-p{background:var(--accent);color:#111;border-color:transparent;font-weight:500}
+.btn-p:hover{opacity:.88}
+.btn-sm{padding:3px 9px;font-size:11px}
+.btn-xs{padding:2px 7px;font-size:10px;border-radius:4px}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text-2)}
+.btn-ghost:hover{color:var(--text)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red-bg)}
+
+/* ── Layout helpers ── */
+.sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.empty{text-align:center;padding:2rem;color:var(--text-3);font-size:12px}
+.ok{font-size:11px;color:var(--green)}
+.err{font-size:11px;color:var(--red)}
+.hint{font-size:11px;color:var(--text-3)}
+
+/* ── Kit rows ── */
+.kit-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.kit-row:last-child{border-bottom:none}
+
+/* ── Score pills ── */
+.sp{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:600}
+.sp-hi{background:var(--green-bg);color:var(--green)}
+.sp-md{background:var(--amber-bg);color:var(--amber)}
+.sp-lo{background:var(--red-bg);color:var(--red)}
+
+/* ── Cost bar ── */
+.cost-bar{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;margin:1rem 0}
+.cost-total{font-size:22px;font-weight:700;color:var(--accent)}
+
+/* ── Aguja chips ── */
+.aguja-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.aguja-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);user-select:none;transition:all .15s}
+.aguja-chip:hover{border-color:var(--border-hover);color:var(--text)}
+.aguja-chip.on{background:var(--text);color:var(--bg);border-color:transparent}
+.aguja-chip.prac{border-color:var(--accent);color:var(--accent)}
+.aguja-chip.prac.on{background:var(--accent);color:#111}
+
+/* ── Inject banner ── */
+.inject-banner{background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--green);display:none;align-items:center;gap:8px}
+
+/* ── Edit hints ── */
+.edit-hint{font-size:11px;color:var(--accent);background:var(--accent-dim);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:.85rem;border:1px solid rgba(200,169,110,0.2)}
+
+/* ── Tattoo detail ── */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.detail-item{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem}
+.detail-lbl{font-size:10px;color:var(--text-2);margin-bottom:2px}
+.detail-val{font-size:13px;font-weight:500;color:var(--text)}
+
+/* ── Break-even bar ── */
+.be-bar{height:6px;border-radius:3px;background:var(--bg-elevated);border:1px solid var(--border);margin:6px 0;overflow:hidden}
+.be-fill{height:100%;border-radius:3px;transition:width .4s}
+.be-fill.over{background:var(--green)}
+.be-fill.under{background:var(--red)}
+
+/* ── Margin colors ── */
+.margin-pos{color:var(--green);font-weight:600}
+.margin-neg{color:var(--red);font-weight:600}
+.margin-zero{color:var(--text-2)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
