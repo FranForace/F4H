@@ -5,10 +5,17 @@ function renderActivos(){
   const totM=acts.reduce((a,p)=>a+amortMensual(p),0);
   const totS=acts.reduce((a,p)=>a+amortSesion(p),0);
   document.getElementById('t-act').innerHTML=`
-    <div class="g4">
-      <div class="metric"><div class="ml">Valor total</div><div class="mv" style="font-size:15px">${ars(totC)}</div></div>
-      <div class="metric"><div class="ml">Deprec./mes</div><div class="mv" style="font-size:15px">${ars(totM)}</div></div>
-      <div class="metric"><div class="ml">Deprec./sesión</div><div class="mv" style="font-size:15px">${ars(totS)}</div><div class="ms">a ${S.spm} ses/mes</div></div>
+    <div class="page-hdr">
+      <div>
+        <div class="page-hdr-lbl">Equipamiento</div>
+        <div class="page-hdr-title">Activos</div>
+        <div class="page-hdr-sub">${acts.length} activos &middot; depreciaci&oacute;n ${ars(totS)}/sesi&oacute;n</div>
+      </div>
+    </div>
+    <div class="mini-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="mini-metric"><div class="mm-lbl">Valor total</div><div class="mm-val" style="font-size:16px">${ars(totC)}</div></div>
+      <div class="mini-metric"><div class="mm-lbl">Deprec./mes</div><div class="mm-val" style="font-size:16px">${ars(totM)}</div></div>
+      <div class="mini-metric"><div class="mm-lbl">Deprec./sesi&oacute;n</div><div class="mm-val" style="font-size:16px">${ars(totS)}</div></div>
     </div>
     <div class="card" style="padding:0;overflow:hidden"><table>
       <thead><tr><th>Activo</th><th>Sub.</th><th>Costo ARS</th><th>Mon.</th><th>Vida útil</th><th>Amort./mes</th><th>Amort./ses.</th><th>Editar</th></tr></thead>

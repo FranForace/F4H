@@ -24,11 +24,12 @@
     if(p)bySes[key].items.push(p.nom);
   });
   const sortedCats=Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total);
-  el.innerHTML='<div class="g4">'+
-    '<div class="metric"><div class="ml">Total egresos</div><div class="mv" style="color:var(--red);font-size:17px">'+ars(totalEg)+'</div><div class="ms">insumos consumidos</div></div>'+
-    '<div class="metric"><div class="ml">Total entradas</div><div class="mv" style="color:var(--green);font-size:17px">'+ars(totalEnt)+'</div><div class="ms">inversión en stock</div></div>'+
-    '<div class="metric"><div class="ml">Movimientos</div><div class="mv">'+salidas.length+'</div><div class="ms">salidas registradas</div></div>'+
-    '<div class="metric"><div class="ml">Balance</div><div class="mv '+(totalEnt-totalEg>=0?'margin-pos':'margin-neg')+'" style="font-size:16px">'+ars(totalEnt-totalEg)+'</div><div class="ms">entradas − egresos</div></div>'+
+  el.innerHTML='<div class="page-hdr"><div><div class="page-hdr-lbl">Finanzas</div><div class="page-hdr-title">Egresos</div><div class="page-hdr-sub">'+salidas.length+' salidas registradas</div></div></div>'+
+    '<div class="mini-grid">'+
+    '<div class="mini-metric"><div class="mm-lbl">Total egresos</div><div class="mm-val" style="color:var(--red);font-size:16px">'+ars(totalEg)+'</div></div>'+
+    '<div class="mini-metric"><div class="mm-lbl">Total entradas</div><div class="mm-val" style="color:var(--green);font-size:16px">'+ars(totalEnt)+'</div></div>'+
+    '<div class="mini-metric"><div class="mm-lbl">Movimientos</div><div class="mm-val">'+salidas.length+'</div></div>'+
+    '<div class="mini-metric"><div class="mm-lbl">Balance</div><div class="mm-val '+(totalEnt-totalEg>=0?'margin-pos':'margin-neg')+'" style="font-size:16px">'+ars(totalEnt-totalEg)+'</div></div>'+
     '</div>'+
     '<div class="card"><div class="ct">Egresos por categoría</div>'+
     sortedCats.map(function(entry){var cat=entry[0];var data=entry[1];var pct=totalEg>0?Math.round((data.total/totalEg)*100):0;return'<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">'+cat+'</span><span>'+ars(data.total)+' <span class="hint">('+pct+'%)</span></span></div><div class="progress-bar"><div class="progress-fill pf-red" style="width:'+pct+'%"></div></div></div>';}).join('')+

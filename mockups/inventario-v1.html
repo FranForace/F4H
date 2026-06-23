@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F4H — Inventario Mockup v1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f0f;
+      --bg-card:     #1a1a1a;
+      --bg-elevated: #222222;
+      --border:      #2e2e2e;
+      --border-2:    #282828;
+      --text:        #f0f0ee;
+      --text-2:      #888888;
+      --text-3:      #555555;
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.12);
+      --red:         #e24b4a;
+      --amber:       #d4872a;
+      --green:       #4a9a3a;
+      --blue:        #4a8fd4;
+      --nav-bg:      #0a0908;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 76px;
+      border-bottom: 1px solid #2a2520;
+      position: sticky; top: 0;
+      background: var(--nav-bg); z-index: 10;
+    }
+    .nav-logo { height: 52px; width: auto; filter: invert(1); opacity: 0.9; }
+    .nav-tabs  { display: flex; gap: 4px; }
+    .nav-tab   { padding: 8px 16px; font-size: 13px; font-weight: 500; color: #888; border-radius: 7px; cursor: pointer; }
+    .nav-tab:hover { color: #f0f0ee; background: #222; }
+    .nav-tab.active { color: var(--accent); background: rgba(200,169,110,0.12); }
+    .nav-right { font-size: 13px; color: #555; }
+
+    /* ── LAYOUT ── */
+    .side {
+      position: fixed; top: 76px; bottom: 0; width: 205px;
+      overflow: hidden; pointer-events: none;
+    }
+    .side-left  { left: 0; }
+    .side-right { right: 0; }
+    .side img   { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .side::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+    .side-left::after  { background: linear-gradient(to right, transparent 0%, var(--bg) 100%); }
+    .side-right::after { background: linear-gradient(to left,  transparent 0%, var(--bg) 100%); }
+    /* Hannya: invertida para dark mode (bg negro, trazo blanco) */
+    .side-right img { filter: invert(1); opacity: 0.55; }
+    .side-left  img { opacity: 0.75; }
+
+    .outer { padding: 0 210px; }
+
+    .page { padding: 44px 48px 80px; max-width: 1280px; margin: 0 auto; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { margin-bottom: 32px; }
+    .page-label  { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; }
+    .page-title  { font-size: 36px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .page-subtitle { margin-top: 5px; font-size: 14px; color: var(--text-2); }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; gap: 12px;
+    }
+    .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .filter-group { display: flex; gap: 4px; }
+    .pill {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border-radius: 99px; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--text-2);
+      cursor: pointer; letter-spacing: 0.02em; transition: all 0.15s;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--text); }
+    .pill.active        { background: var(--accent); border-color: var(--accent); color: #1a1200; font-weight: 700; }
+    .pill.active-red    { background: var(--red);   border-color: var(--red);   color: #fff; }
+    .pill.active-amber  { background: var(--amber); border-color: var(--amber); color: #fff; }
+    .pill.active-green  { background: var(--green); border-color: var(--green); color: #fff; }
+
+    .filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+    .toolbar-right { display: flex; align-items: center; gap: 12px; }
+    .count-badge {
+      font-size: 12px; font-weight: 600; color: var(--text-2);
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 5px 12px; border-radius: 8px;
+    }
+    .btn-add {
+      padding: 8px 18px; font-size: 13px; font-weight: 700;
+      background: var(--accent); color: #1a1200; border: none;
+      border-radius: 9px; cursor: pointer; letter-spacing: 0.02em;
+    }
+
+    /* ── EDIT PANEL ── */
+    .edit-panel {
+      background: var(--bg-card);
+      border: 1.5px solid var(--accent);
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+    .edit-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 18px;
+    }
+    .edit-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 14px; margin-bottom: 18px;
+    }
+    .edit-field { display: flex; flex-direction: column; gap: 5px; }
+    .edit-field.span2 { grid-column: span 2; }
+    .edit-label { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: 0.05em; text-transform: uppercase; }
+    .edit-input {
+      padding: 9px 12px; font-size: 14px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      background: var(--bg-elevated); color: var(--text);
+      outline: none; transition: border-color 0.15s;
+    }
+    .edit-input:focus { border-color: var(--accent); }
+    .edit-input.highlight { border-color: var(--blue); }
+    .edit-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-save   { padding: 9px 22px; font-size: 13px; font-weight: 700; background: var(--accent); color: #1a1200; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-cancel { padding: 9px 16px; font-size: 13px; font-weight: 500; background: transparent; color: var(--text-2); border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; }
+
+    /* ── TABLE CARD ── */
+    .table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+      padding: 13px 18px; text-align: left;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    th:last-child { text-align: right; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-2);
+      transition: background 0.12s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover      { background: var(--bg-elevated); }
+    tbody tr.row-alert  { background: rgba(226,75,74,0.06); }
+    tbody tr.row-editing{ background: rgba(200,169,110,0.07); }
+
+    td { padding: 14px 18px; font-size: 14px; color: var(--text); vertical-align: middle; }
+    td:last-child { text-align: right; }
+
+    .prod-name { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 3px; }
+    .prod-meta { font-size: 11px; color: var(--text-3); }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 10px; font-weight: 700; padding: 3px 9px;
+      border-radius: 5px; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .badge-ok   { background: rgba(74,154,58,0.15);  color: var(--green); }
+    .badge-low  { background: rgba(212,135,42,0.15); color: var(--amber); }
+    .badge-crit { background: rgba(226,75,74,0.15);  color: var(--red); }
+    .badge-prac { background: rgba(74,143,212,0.15); color: var(--blue); }
+
+    .stock-val  { font-weight: 700; color: var(--text); }
+    .stock-unit { font-size: 11px; color: var(--text-3); margin-left: 3px; }
+    .min-val    { color: var(--text-2); }
+
+    .cxu-val { font-weight: 700; color: var(--accent); }
+
+    .btn-edit {
+      padding: 6px 13px; font-size: 12px; font-weight: 600;
+      background: transparent; color: var(--text-3);
+      border: 1.5px solid var(--border); border-radius: 7px;
+      cursor: pointer; transition: all 0.12s;
+    }
+    .btn-edit:hover  { border-color: var(--accent); color: var(--accent); }
+    .btn-edit.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ── HINT ── */
+    .table-hint { padding: 10px 20px; font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); }
+
+    .mockup-label { position: fixed; bottom: 14px; right: 18px; font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <img src="../logo-v2.png" alt="F4H" class="nav-logo">
+    <div class="nav-tabs">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab">Tatuajes</span>
+      <span class="nav-tab active">Inventario</span>
+      <span class="nav-tab">Activos</span>
+      <span class="nav-tab">Sesiones</span>
+      <span class="nav-tab">+ Nuevo</span>
+      <span class="nav-tab">Egresos</span>
+      <span class="nav-tab">Movimientos</span>
+      <span class="nav-tab">Config</span>
+    </div>
+    <span class="nav-right">TC: $1.400</span>
+  </nav>
+
+  <!-- SIDE IMAGES -->
+  <div class="side side-left">
+    <img src="assets/fuego.jpg" alt="">
+  </div>
+  <div class="side side-right">
+    <img src="assets/hannya.jpg" alt="">
+  </div>
+
+  <!-- CONTENT -->
+  <div class="outer">
+    <div class="page">
+
+      <!-- HEADER -->
+      <div class="page-header">
+        <div class="page-label">Gestión de stock</div>
+        <div class="page-title">Inventario</div>
+        <div class="page-subtitle">28 productos · 3 alertas activas</div>
+      </div>
+
+      <!-- TOOLBAR: filtros + botón agregar -->
+      <div class="toolbar">
+        <div class="filters">
+          <!-- Filtro categoría -->
+          <div class="filter-group">
+            <span class="pill active">Todos</span>
+            <span class="pill">Activos</span>
+            <span class="pill">Descartables</span>
+            <span class="pill">Consumibles</span>
+            <span class="pill">Agujas</span>
+          </div>
+          <div class="filter-sep"></div>
+          <!-- Filtro estado -->
+          <div class="filter-group">
+            <span class="pill">OK</span>
+            <span class="pill active-amber">Bajo</span>
+            <span class="pill active-red">Crítico</span>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <span class="count-badge">28 productos</span>
+          <button class="btn-add">+ Agregar</button>
+        </div>
+      </div>
+
+      <!-- EDIT PANEL (inline, aparece al editar) -->
+      <div class="edit-panel">
+        <div class="edit-title">✏ Editando: Tinta Dynamic Black</div>
+        <div class="edit-grid">
+          <div class="edit-field span2">
+            <span class="edit-label">Nombre</span>
+            <input class="edit-input" value="Tinta Dynamic Black">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Subcategoría</span>
+            <input class="edit-input" value="Tinta">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Moneda</span>
+            <input class="edit-input" value="ARS">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Costo unitario</span>
+            <input class="edit-input" value="4200">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Usos por unidad ←</span>
+            <input class="edit-input highlight" value="10">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Stock mínimo</span>
+            <input class="edit-input" value="2">
+          </div>
+          <div class="edit-field">
+            <span class="edit-label">Vida útil (meses)</span>
+            <input class="edit-input" value="24">
+          </div>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-save">Guardar</button>
+          <button class="btn-cancel">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Stock</th>
+              <th>Mín.</th>
+              <th>Estado</th>
+              <th>Costo / uso</th>
+              <th>Usos / un.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- Fila editando -->
+            <tr class="row-editing">
+              <td><div class="prod-name">Tinta Dynamic Black</div><div class="prod-meta">Consumible · Tinta</div></td>
+              <td><span class="stock-val">1</span><span class="stock-unit">un.</span></td>
+              <td class="min-val">2</td>
+              <td><span class="badge badge-crit">Crítico</span></td>
+              <td class="cxu-val">$420</td>
+              <td>10</td>
+              <td><button class="btn-edit active">✏ Editando</button></td>
+            </tr>
+
+            <!-- Fila alerta -->
+            <tr class="row-alert">
+              <td><div class="prod-name">Papel Stencil</div><div class="prod-meta">Descartable · Papel</div></td>
+              <td><span class="stock-val">3</span><span class="stock-unit">un.</span></td>
+              <td>5</td>
+              <td><span class="badge badge-low">Bajo</span></td>
+              <td class="cxu-val">$180</td>
+              <td>1</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+            <!-- Fila normal -->
+            <tr>
+              <td><div class="prod-name">Guantes Nitrilo</div><div class="prod-meta">Descartable · Guantes</div></td>
+              <td><span class="stock-val">8</span><span class="stock-unit">un.</span></td>
+              <td>10</td>
+              <td><span class="badge badge-low">Bajo</span></td>
+              <td class="cxu-val">$45</td>
+              <td>1</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+            <tr>
+              <td><div class="prod-name">RL 7</div><div class="prod-meta">Aguja · Round Liner <span class="badge badge-prac" style="margin-left:6px">práctica</span></div></td>
+              <td><span class="stock-val">24</span><span class="stock-unit">un.</span></td>
+              <td>5</td>
+              <td><span class="badge badge-ok">OK</span></td>
+              <td class="cxu-val">$280</td>
+              <td>1</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+            <tr>
+              <td><div class="prod-name">Stencil Stuff</div><div class="prod-meta">Consumible · Transfer</div></td>
+              <td><span class="stock-val">2</span><span class="stock-unit">un.</span></td>
+              <td>1</td>
+              <td><span class="badge badge-ok">OK</span></td>
+              <td class="cxu-val">$310</td>
+              <td>8</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+            <tr>
+              <td><div class="prod-name">Pen Garage</div><div class="prod-meta">Activo · Máquina</div></td>
+              <td><span class="stock-val">1</span><span class="stock-unit">un.</span></td>
+              <td>—</td>
+              <td><span class="badge badge-ok">OK</span></td>
+              <td class="cxu-val">$185</td>
+              <td>—</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+            <tr>
+              <td><div class="prod-name">Green Soap</div><div class="prod-meta">Consumible · Limpieza</div></td>
+              <td><span class="stock-val">3</span><span class="stock-unit">un.</span></td>
+              <td>1</td>
+              <td><span class="badge badge-ok">OK</span></td>
+              <td class="cxu-val">$95</td>
+              <td>20</td>
+              <td><button class="btn-edit">✏ Editar</button></td>
+            </tr>
+
+          </tbody>
+        </table>
+        <div class="table-hint">Stock → usá Movimientos para mantener historial.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockup-label">MOCKUP v1 · F4H Inventario</div>
+
+</body>
+</html>

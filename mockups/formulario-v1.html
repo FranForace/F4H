@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F4H — Formulario / Config Mockup v1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f0f;
+      --bg-card:     #1a1a1a;
+      --bg-elevated: #222222;
+      --border:      #2e2e2e;
+      --border-2:    #282828;
+      --text:        #f0f0ee;
+      --text-2:      #888888;
+      --text-3:      #555555;
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.12);
+      --accent-border: rgba(200,169,110,0.3);
+      --red:         #e24b4a;
+      --amber:       #d4872a;
+      --green:       #4a9a3a;
+      --blue:        #4a8fd4;
+      --nav-bg:      #0a0908;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 76px;
+      border-bottom: 1px solid #1e1e1e;
+      position: sticky; top: 0; background: var(--nav-bg); z-index: 10;
+    }
+    .nav-logo { height: 52px; width: auto; filter: invert(1); opacity: 0.9; }
+    .nav-tabs  { display: flex; gap: 4px; }
+    .nav-tab   { padding: 8px 16px; font-size: 13px; font-weight: 500; color: #666; border-radius: 7px; cursor: pointer; }
+    .nav-tab:hover  { color: var(--text); background: #1a1a1a; }
+    .nav-tab.active { color: var(--accent); background: var(--accent-dim); }
+    .nav-right { font-size: 13px; color: #444; }
+
+    /* ── SIDE IMAGES ── */
+    .side {
+      position: fixed; top: 76px; bottom: 0; width: 205px;
+      overflow: hidden; pointer-events: none;
+    }
+    .side-left  { left: 0; }
+    .side-right { right: 0; }
+    .side img   { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .side::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+    .side-left::after  { background: linear-gradient(to right, rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%); }
+    .side-right::after { background: linear-gradient(to left,  rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%); }
+    .side-right img { filter: invert(1); opacity: 0.55; }
+    .side-left  img { opacity: 0.75; }
+
+    /* ── OUTER ── */
+    .outer { padding: 0 210px; }
+    .page  { padding: 36px 48px 80px; max-width: 1280px; margin: 0 auto; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { margin-bottom: 28px; }
+    .page-label    { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; }
+    .page-title    { font-size: 36px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .page-subtitle { margin-top: 4px; font-size: 14px; color: var(--text-2); }
+
+    /* ── SUB-TABS ── */
+    .subtabs { display: flex; gap: 4px; margin-bottom: 32px; border-bottom: 1px solid var(--border); }
+    .stab {
+      padding: 9px 20px; font-size: 13px; font-weight: 600; color: var(--text-3);
+      border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .stab:hover  { color: var(--text-2); }
+    .stab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── SELECTOR DE TIPO (+ Nuevo) ── */
+    .type-selector { display: flex; gap: 10px; margin-bottom: 32px; }
+    .type-btn {
+      flex: 1; padding: 16px 12px; border-radius: 12px; cursor: pointer;
+      border: 1.5px solid var(--border); background: var(--bg-card);
+      text-align: center; transition: all 0.15s;
+    }
+    .type-btn:hover  { border-color: #3e3e3e; background: #1e1e1e; }
+    .type-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+    .type-btn .tb-icon { font-size: 22px; margin-bottom: 6px; }
+    .type-btn .tb-name { font-size: 13px; font-weight: 700; color: var(--text); }
+    .type-btn .tb-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .type-btn.active .tb-name { color: var(--accent); }
+
+    /* ── LAYOUT FORMULARIO ── */
+    .form-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ── FORM CARD ── */
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .form-card-header {
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .form-card-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+    .form-card-body  { padding: 22px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── FIELD GROUPS ── */
+    .field-group { display: flex; flex-direction: column; gap: 14px; }
+    .field-row   { display: grid; gap: 14px; }
+    .field-row-2 { grid-template-columns: 1fr 1fr; }
+    .field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+    .field input,
+    .field select,
+    .field textarea {
+      padding: 9px 12px;
+      background: var(--bg-elevated);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-3); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .field select { appearance: none; cursor: pointer; }
+    .field-hint { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+    /* Separator visual entre secciones */
+    .form-separator { border: none; border-top: 1px solid var(--border-2); margin: 2px 0; }
+
+    /* ── SIDEBAR DEL FORM ── */
+    .form-sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Preview card (resumen antes de guardar) */
+    .preview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .preview-header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3);
+    }
+    .preview-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .preview-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .preview-row .pk { font-size: 12px; color: var(--text-2); }
+    .preview-row .pv { font-size: 13px; font-weight: 600; color: var(--text); }
+    .preview-row .pv.accent { color: var(--accent); }
+    .preview-row .pv.green  { color: var(--green); }
+    .preview-row .pv.dim    { color: var(--text-3); }
+    .preview-sep { border: none; border-top: 1px dashed var(--border); }
+
+    /* Acciones */
+    .form-actions { display: flex; flex-direction: column; gap: 8px; }
+    .btn-save {
+      width: 100%; padding: 12px; font-size: 14px; font-weight: 800;
+      background: var(--accent); color: #1a1200;
+      border: none; border-radius: 10px; cursor: pointer; letter-spacing: 0.01em;
+    }
+    .btn-cancel {
+      width: 100%; padding: 10px; font-size: 13px; font-weight: 600;
+      background: transparent; color: var(--text-3);
+      border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer;
+    }
+    .btn-cancel:hover { border-color: #3e3e3e; color: var(--text-2); }
+
+    /* ═══════════════════════════════════
+       CONFIG
+    ═══════════════════════════════════ */
+    .config-layout { display: flex; flex-direction: column; gap: 18px; }
+
+    .config-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .config-header {
+      padding: 16px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .config-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+    .config-body  { padding: 20px 24px; }
+
+    .config-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .config-field { display: flex; flex-direction: column; gap: 6px; }
+    .config-field label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+    .config-field .cf-val {
+      padding: 10px 14px;
+      background: var(--bg-elevated);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .config-field .cf-val input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-size: 15px; font-weight: 700; font-family: inherit;
+      width: 100%;
+    }
+    .config-field .cf-hint { font-size: 11px; color: var(--text-3); }
+    .btn-cfg-save {
+      padding: 8px 18px; font-size: 12px; font-weight: 700;
+      background: var(--accent); color: #1a1200;
+      border: none; border-radius: 7px; cursor: pointer;
+    }
+
+    /* Kit base list */
+    .kit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .kit-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px; color: var(--text-2);
+      cursor: pointer;
+    }
+    .kit-item.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+    .kit-item .ki-qty { font-weight: 700; }
+    .ki-check { width: 14px; height: 14px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+    .kit-item.active .ki-check { background: var(--accent); color: #1a1200; }
+    .kit-item:not(.active) .ki-check { border: 1.5px solid var(--text-3); }
+
+    /* Backup / Datos */
+    .backup-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-backup {
+      padding: 9px 18px; font-size: 12px; font-weight: 600;
+      background: var(--bg-elevated); color: var(--text-2);
+      border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-backup:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-backup.danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* Storage bar */
+    .storage-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+    .storage-bar-track { flex: 1; height: 4px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+    .storage-bar-fill  { height: 100%; border-radius: 99px; background: var(--accent); }
+    .storage-label { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+
+    /* TC visual */
+    .tc-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; background: rgba(74,154,58,0.1); border-radius: 6px;
+      font-size: 11px; color: var(--green); font-weight: 600;
+    }
+
+    .mockup-label { position: fixed; bottom: 14px; right: 18px; font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; }
+
+    /* PANEL SWITCH — show/hide sections for demo */
+    #panel-form   { display: block; }
+    #panel-config { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <img src="../logo-v2.png" alt="F4H" class="nav-logo">
+    <div class="nav-tabs">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab">Tatuajes</span>
+      <span class="nav-tab">Inventario</span>
+      <span class="nav-tab">Activos</span>
+      <span class="nav-tab">Sesiones</span>
+      <span class="nav-tab active">+ Nuevo</span>
+      <span class="nav-tab">Egresos</span>
+      <span class="nav-tab">Movimientos</span>
+      <span class="nav-tab">Config</span>
+    </div>
+    <span class="nav-right">TC: $1.400</span>
+  </nav>
+
+  <!-- SIDE IMAGES -->
+  <div class="side side-left"><img src="assets/fuego.jpg" alt=""></div>
+  <div class="side side-right"><img src="assets/hannya.jpg" alt=""></div>
+
+  <!-- CONTENT -->
+  <div class="outer">
+    <div class="page">
+
+      <!-- PAGE HEADER -->
+      <div class="page-header">
+        <div class="page-label">Sistema</div>
+        <div class="page-title">+ Nuevo registro</div>
+        <div class="page-subtitle">Seleccioná el tipo y completá los datos</div>
+      </div>
+
+      <!-- SUB-TABS (demo switch) -->
+      <div class="subtabs">
+        <span class="stab active" onclick="showPanel('form', this)">+ Nuevo registro</span>
+        <span class="stab"        onclick="showPanel('config', this)">Configuración</span>
+      </div>
+
+      <!-- ══════════════════════════════
+           PANEL: + NUEVO REGISTRO
+      ══════════════════════════════ -->
+      <div id="panel-form">
+
+        <!-- Selector de tipo -->
+        <div class="type-selector">
+          <div class="type-btn active">
+            <div class="tb-icon">🖋</div>
+            <div class="tb-name">Tatuaje</div>
+            <div class="tb-desc">Nuevo proyecto</div>
+          </div>
+          <div class="type-btn">
+            <div class="tb-icon">📋</div>
+            <div class="tb-name">Sesión</div>
+            <div class="tb-desc">Registro técnico</div>
+          </div>
+          <div class="type-btn">
+            <div class="tb-icon">📦</div>
+            <div class="tb-name">Producto</div>
+            <div class="tb-desc">Entrada de stock</div>
+          </div>
+          <div class="type-btn">
+            <div class="tb-icon">💸</div>
+            <div class="tb-name">Egreso</div>
+            <div class="tb-desc">Gasto / salida</div>
+          </div>
+        </div>
+
+        <!-- Form + Sidebar -->
+        <div class="form-layout">
+
+          <!-- FORMULARIO: Nuevo tatuaje -->
+          <div>
+            <!-- Sección: Identificación -->
+            <div class="form-card" style="margin-bottom:14px">
+              <div class="form-card-header">
+                <span class="form-card-title">Identificación del proyecto</span>
+              </div>
+              <div class="form-card-body">
+                <div class="field-row field-row-2">
+                  <div class="field">
+                    <label>N° de referencia</label>
+                    <input type="text" placeholder="Ej: BOTELLA, HANNYA...">
+                    <span class="field-hint">Se usa en IDs y listados</span>
+                  </div>
+                  <div class="field">
+                    <label>Estado inicial</label>
+                    <select>
+                      <option>Pendiente</option>
+                      <option>En curso</option>
+                      <option>Finalizado</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row field-row-2">
+                  <div class="field">
+                    <label>Cliente</label>
+                    <input type="text" placeholder="Nombre del cliente">
+                  </div>
+                  <div class="field">
+                    <label>Nombre del diseño</label>
+                    <input type="text" placeholder="Ej: Botella americana">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección: Características -->
+            <div class="form-card" style="margin-bottom:14px">
+              <div class="form-card-header">
+                <span class="form-card-title">Características</span>
+              </div>
+              <div class="form-card-body">
+                <div class="field-row field-row-3">
+                  <div class="field">
+                    <label>Zona del cuerpo</label>
+                    <input type="text" placeholder="Ej: Antebrazo">
+                  </div>
+                  <div class="field">
+                    <label>Tamaño</label>
+                    <select>
+                      <option>Pequeño</option>
+                      <option>A5</option>
+                      <option selected>A4</option>
+                      <option>A3</option>
+                      <option>Grande</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Estilo</label>
+                    <select>
+                      <option>Tradicional</option>
+                      <option>Americano</option>
+                      <option>Japonés</option>
+                      <option>Realismo</option>
+                      <option>Geométrico</option>
+                      <option>Blackwork</option>
+                      <option>Otro</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row field-row-2">
+                  <div class="field">
+                    <label>Precio acordado (ARS)</label>
+                    <input type="number" placeholder="0">
+                  </div>
+                  <div class="field">
+                    <label>URL de referencia (foto)</label>
+                    <input type="text" placeholder="https://...">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección: Notas -->
+            <div class="form-card">
+              <div class="form-card-header">
+                <span class="form-card-title">Notas del proyecto</span>
+              </div>
+              <div class="form-card-body">
+                <div class="field">
+                  <label>Notas</label>
+                  <textarea placeholder="Indicaciones del cliente, referencias de estilo, detalles técnicos..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SIDEBAR -->
+          <div class="form-sidebar">
+            <!-- Resumen previo al guardado -->
+            <div class="preview-card">
+              <div class="preview-header">Resumen</div>
+              <div class="preview-body">
+                <div class="preview-row">
+                  <span class="pk">Cliente</span>
+                  <span class="pv dim">—</span>
+                </div>
+                <div class="preview-row">
+                  <span class="pk">Diseño</span>
+                  <span class="pv dim">—</span>
+                </div>
+                <div class="preview-row">
+                  <span class="pk">Estilo</span>
+                  <span class="pv dim">—</span>
+                </div>
+                <div class="preview-row">
+                  <span class="pk">Zona · Tamaño</span>
+                  <span class="pv dim">—</span>
+                </div>
+                <hr class="preview-sep">
+                <div class="preview-row">
+                  <span class="pk">Precio acordado</span>
+                  <span class="pv accent">—</span>
+                </div>
+                <div class="preview-row">
+                  <span class="pk">Costo estimado</span>
+                  <span class="pv dim">se calcula en sesiones</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="form-actions">
+              <button class="btn-save">Guardar tatuaje</button>
+              <button class="btn-cancel">Cancelar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           PANEL: CONFIGURACIÓN
+      ══════════════════════════════ -->
+      <div id="panel-config">
+        <div class="config-layout">
+
+          <!-- Parámetros del sistema -->
+          <div class="config-card">
+            <div class="config-header">
+              <span class="config-title">Parámetros del sistema</span>
+              <button class="btn-cfg-save">Guardar cambios</button>
+            </div>
+            <div class="config-body">
+              <div class="config-row">
+                <div class="config-field">
+                  <label>Tipo de cambio (TC)</label>
+                  <div class="cf-val">
+                    $ <input type="number" value="1400">
+                    <span class="tc-badge">▲ ARS/USD</span>
+                  </div>
+                  <span class="cf-hint">Afecta costos de activos en USD</span>
+                </div>
+                <div class="config-field">
+                  <label>Sesiones por mes (SPM)</label>
+                  <div class="cf-val">
+                    <input type="number" value="8">
+                    <span style="font-size:12px; color:var(--text-3)">ses/mes</span>
+                  </div>
+                  <span class="cf-hint">Divisor de amortización mensual</span>
+                </div>
+                <div class="config-field">
+                  <label>Amortización / sesión</label>
+                  <div class="cf-val" style="cursor:default; color:var(--text-3)">
+                    <span style="font-size:13px">$412 / ses.</span>
+                    <span style="font-size:10px; color:var(--text-3)">calculado</span>
+                  </div>
+                  <span class="cf-hint">Basado en activos cargados</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kit base -->
+          <div class="config-card">
+            <div class="config-header">
+              <span class="config-title">Kit base por sesión</span>
+              <span style="font-size:12px; color:var(--text-3)">Se descuenta automáticamente al registrar una sesión</span>
+            </div>
+            <div class="config-body">
+              <div class="kit-grid">
+                <div class="kit-item active">
+                  <div class="ki-check">✓</div>
+                  <span>Guantes Nitrilo</span>
+                  <span class="ki-qty">×1</span>
+                </div>
+                <div class="kit-item active">
+                  <div class="ki-check">✓</div>
+                  <span>Cups</span>
+                  <span class="ki-qty">×6</span>
+                </div>
+                <div class="kit-item active">
+                  <div class="ki-check">✓</div>
+                  <span>Papel Stencil</span>
+                  <span class="ki-qty">×2</span>
+                </div>
+                <div class="kit-item active">
+                  <div class="ki-check">✓</div>
+                  <span>Compresas</span>
+                  <span class="ki-qty">×3</span>
+                </div>
+                <div class="kit-item active">
+                  <div class="ki-check">✓</div>
+                  <span>Film Pen</span>
+                  <span class="ki-qty">×1</span>
+                </div>
+                <div class="kit-item">
+                  <div class="ki-check"></div>
+                  <span>Grip</span>
+                  <span class="ki-qty">×1</span>
+                </div>
+                <div class="kit-item">
+                  <div class="ki-check"></div>
+                  <span>Papel Cocina</span>
+                  <span class="ki-qty">×1</span>
+                </div>
+                <div class="kit-item">
+                  <div class="ki-check"></div>
+                  <span>Guantes Latex</span>
+                  <span class="ki-qty">×1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Datos y backup -->
+          <div class="config-card">
+            <div class="config-header">
+              <span class="config-title">Datos y backup</span>
+            </div>
+            <div class="config-body">
+              <div class="backup-row">
+                <button class="btn-backup">⬇ Exportar JSON</button>
+                <button class="btn-backup">⬆ Importar JSON</button>
+                <button class="btn-backup">📋 Copiar al portapapeles</button>
+                <button class="btn-backup danger">⚠ Resetear sistema</button>
+              </div>
+              <div class="storage-row">
+                <span class="storage-label">localStorage</span>
+                <div class="storage-bar-track">
+                  <div class="storage-bar-fill" style="width: 14%"></div>
+                </div>
+                <span class="storage-label">~68 KB / 5 MB (14%)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockup-label">MOCKUP v1 · F4H Formulario / Config</div>
+
+  <script>
+    function showPanel(name, tab) {
+      document.getElementById('panel-form').style.display   = name === 'form'   ? 'block' : 'none';
+      document.getElementById('panel-config').style.display = name === 'config' ? 'block' : 'none';
+      document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector('.nav-tab.active').classList.remove('active');
+      document.querySelectorAll('.nav-tab').forEach(t => {
+        if (name === 'config' && t.textContent === 'Config') t.classList.add('active');
+        if (name === 'form'   && t.textContent === '+ Nuevo') t.classList.add('active');
+      });
+    }
+  </script>
+
+</body>
+</html>

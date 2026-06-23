@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F4H — Tatuajes Mockup v1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f0f;
+      --bg-card:     #1a1a1a;
+      --bg-elevated: #222222;
+      --border:      #2e2e2e;
+      --border-2:    #282828;
+      --text:        #f0f0ee;
+      --text-2:      #888888;
+      --text-3:      #555555;
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.12);
+      --red:         #e24b4a;
+      --amber:       #d4872a;
+      --green:       #4a9a3a;
+      --blue:        #4a8fd4;
+      --nav-bg:      #0a0908;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 76px;
+      border-bottom: 1px solid #1e1e1e;
+      position: sticky; top: 0; background: var(--nav-bg); z-index: 10;
+    }
+    .nav-logo { height: 52px; width: auto; filter: invert(1); opacity: 0.9; }
+    .nav-tabs  { display: flex; gap: 4px; }
+    .nav-tab   { padding: 8px 16px; font-size: 13px; font-weight: 500; color: #666; border-radius: 7px; cursor: pointer; }
+    .nav-tab:hover  { color: var(--text); background: #1a1a1a; }
+    .nav-tab.active { color: var(--accent); background: var(--accent-dim); }
+    .nav-right { font-size: 13px; color: #444; }
+
+    /* ── SIDE IMAGES ── */
+    .side {
+      position: fixed; top: 76px; bottom: 0; width: 205px;
+      overflow: hidden; pointer-events: none;
+    }
+    .side-left  { left: 0; }
+    .side-right { right: 0; }
+    .side img   { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .side::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+    .side-left::after  { background: linear-gradient(to right, rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%); }
+    .side-right::after { background: linear-gradient(to left,  rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%); }
+    .side-right img { filter: invert(1); opacity: 0.55; }
+    .side-left  img { opacity: 0.75; }
+
+    /* ── OUTER ── */
+    .outer { padding: 0 210px; }
+    .page  { padding: 36px 48px 80px; max-width: 1280px; margin: 0 auto; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; }
+    .page-header-left .page-label   { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; }
+    .page-header-left .page-title   { font-size: 36px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .page-header-left .page-subtitle{ margin-top: 4px; font-size: 14px; color: var(--text-2); }
+    .btn-nuevo {
+      padding: 10px 22px; font-size: 13px; font-weight: 700;
+      background: var(--accent); color: #1a1200;
+      border: none; border-radius: 10px; cursor: pointer;
+    }
+
+    /* ── SUB-TABS ── */
+    .subtabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .stab {
+      padding: 9px 20px; font-size: 13px; font-weight: 600; color: var(--text-3);
+      border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .stab:hover  { color: var(--text-2); }
+    .stab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── MASTER / DETAIL SPLIT ── */
+    .split-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── LISTA (master) ── */
+    .project-list { display: flex; flex-direction: column; gap: 8px; }
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .project-card:hover  { border-color: #3e3e3e; background: #1e1e1e; }
+    .project-card.active { border-color: var(--accent); background: rgba(200,169,110,0.06); }
+
+    .pc-top  { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .pc-num  { font-size: 10px; color: var(--text-3); font-weight: 600; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .pc-name { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.2; }
+    .pc-client { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .pc-meta { display: flex; gap: 10px; font-size: 11px; color: var(--text-3); margin-top: 8px; flex-wrap: wrap; }
+    .pc-meta span { display: flex; align-items: center; gap: 3px; }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 10px; font-weight: 700; padding: 3px 8px;
+      border-radius: 5px; letter-spacing: 0.05em; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .badge-curso   { background: rgba(74,143,212,0.15); color: var(--blue); }
+    .badge-fin     { background: rgba(74,154,58,0.15);  color: var(--green); }
+    .badge-pend    { background: rgba(212,135,42,0.15); color: var(--amber); }
+    .badge-prac    { background: rgba(74,143,212,0.12); color: var(--blue); }
+
+    .margin-pos { color: var(--green); font-weight: 700; }
+    .margin-neg { color: var(--red);   font-weight: 700; }
+
+    /* ── DETAIL PANEL ── */
+    .detail-panel { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Header del detalle */
+    .detail-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+    }
+    .dh-content { flex: 1; padding: 24px 28px; min-width: 0; }
+    .dh-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .dh-num     { font-size: 11px; color: var(--text-3); font-weight: 600; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .dh-name    { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+    .dh-client  { font-size: 14px; color: var(--text-2); margin-top: 4px; }
+    .dh-meta    { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+    .dh-actions { display: flex; gap: 8px; }
+    .btn-action {
+      padding: 7px 16px; font-size: 12px; font-weight: 600;
+      background: transparent; color: var(--text-2);
+      border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer;
+    }
+    .btn-action:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { border-color: rgba(226,75,74,0.3); color: rgba(226,75,74,0.7); }
+    .btn-danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* Foto del tatuaje */
+    .dh-photo {
+      width: 210px; flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      background: var(--bg-elevated);
+      display: flex; flex-direction: column;
+    }
+    .dh-photo-label {
+      position: absolute; top: 10px; left: 10px; z-index: 2;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      background: rgba(15,15,15,0.75); color: var(--accent);
+      padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(4px);
+    }
+    .dh-photo img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    /* Placeholder cuando no hay foto */
+    .dh-photo-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px;
+      padding: 24px; text-align: center;
+      border: 1.5px dashed var(--border); margin: 12px; border-radius: 8px;
+    }
+    .dh-photo-empty .icon { font-size: 28px; opacity: 0.3; }
+    .dh-photo-empty p    { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+    .btn-add-photo {
+      padding: 6px 12px; font-size: 11px; font-weight: 600;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid rgba(200,169,110,0.2); border-radius: 6px; cursor: pointer;
+    }
+
+    /* Grid de métricas del detalle */
+    .dh-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+    .dm-item { }
+    .dm-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
+    .dm-val   { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+    .dm-val.accent  { color: var(--accent); }
+    .dm-val.green   { color: var(--green); }
+    .dm-val.red     { color: var(--red); }
+
+    /* Barra costo vs precio */
+    .cost-bar-wrap { }
+    .cost-bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 5px; }
+    .cost-bar-track { height: 5px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+    .cost-bar-fill  { height: 100%; border-radius: 99px; background: var(--green); }
+
+    /* Notas */
+    .dh-notes {
+      margin-top: 14px; padding: 12px 14px;
+      background: var(--bg-elevated); border-radius: 8px;
+      font-size: 13px; color: var(--text-2); line-height: 1.5;
+      border-left: 2px solid var(--accent);
+    }
+
+    /* ── SESIONES VINCULADAS ── */
+    .sessions-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .sessions-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+    }
+    .sessions-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+    .btn-add-ses {
+      padding: 6px 14px; font-size: 12px; font-weight: 700;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid rgba(200,169,110,0.25); border-radius: 7px; cursor: pointer;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--border-2); }
+    th {
+      padding: 11px 14px; text-align: left;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-3);
+    }
+    tbody tr { border-bottom: 1px solid var(--border-2); transition: background 0.12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-elevated); }
+    td { padding: 12px 14px; font-size: 13px; color: var(--text); vertical-align: middle; }
+
+    .score-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 22px; border-radius: 5px;
+      font-size: 11px; font-weight: 700;
+    }
+    .sp-green { background: rgba(74,154,58,0.2);  color: var(--green); }
+    .sp-amber { background: rgba(212,135,42,0.2); color: var(--amber); }
+    .sp-red   { background: rgba(226,75,74,0.2);  color: var(--red); }
+
+    tfoot tr { border-top: 2px solid var(--border); }
+    tfoot td { font-weight: 700; color: var(--accent); padding: 12px 14px; font-size: 13px; }
+
+    .btn-xs {
+      padding: 4px 10px; font-size: 11px; font-weight: 600;
+      background: transparent; color: var(--text-3);
+      border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
+    }
+    .btn-xs:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── ESTILOS en la card de stats ── */
+    .style-badge {
+      display: inline-flex; padding: 2px 8px;
+      background: var(--accent-dim); color: var(--accent);
+      border-radius: 4px; font-size: 11px; font-weight: 600;
+    }
+
+    .mockup-label { position: fixed; bottom: 14px; right: 18px; font-size: 10px; color: var(--text-3); letter-spacing: 0.08em; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <img src="../logo-v2.png" alt="F4H" class="nav-logo">
+    <div class="nav-tabs">
+      <span class="nav-tab">Dashboard</span>
+      <span class="nav-tab active">Tatuajes</span>
+      <span class="nav-tab">Inventario</span>
+      <span class="nav-tab">Activos</span>
+      <span class="nav-tab">Sesiones</span>
+      <span class="nav-tab">+ Nuevo</span>
+      <span class="nav-tab">Egresos</span>
+      <span class="nav-tab">Movimientos</span>
+      <span class="nav-tab">Config</span>
+    </div>
+    <span class="nav-right">TC: $1.400</span>
+  </nav>
+
+  <!-- SIDE IMAGES -->
+  <div class="side side-left"><img src="assets/fuego.jpg" alt=""></div>
+  <div class="side side-right"><img src="assets/hannya.jpg" alt=""></div>
+
+  <!-- CONTENT -->
+  <div class="outer">
+    <div class="page">
+
+      <!-- HEADER -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-label">Proyectos</div>
+          <div class="page-title">Tatuajes</div>
+          <div class="page-subtitle">5 proyectos · 2 en curso · 3 finalizados</div>
+        </div>
+        <button class="btn-nuevo">+ Nuevo tatuaje</button>
+      </div>
+
+      <!-- SUB-TABS -->
+      <div class="subtabs">
+        <span class="stab active">Lista (5)</span>
+        <span class="stab">Estadísticas</span>
+      </div>
+
+      <!-- MASTER / DETAIL -->
+      <div class="split-layout">
+
+        <!-- MASTER: lista de proyectos -->
+        <div class="project-list">
+
+          <div class="project-card active">
+            <div class="pc-top">
+              <div>
+                <div class="pc-num">#2 · BOTELLA</div>
+                <div class="pc-name">Botella americana</div>
+                <div class="pc-client">Facundo M.</div>
+              </div>
+              <span class="badge badge-curso">En curso</span>
+            </div>
+            <div class="pc-meta">
+              <span>🖋 2 sesiones</span>
+              <span>Antebrazo · A4</span>
+              <span class="style-badge">Tradicional</span>
+            </div>
+            <div class="pc-meta" style="margin-top:6px">
+              <span>Costo: $18.400</span>
+              <span class="margin-pos">+$31.600</span>
+            </div>
+          </div>
+
+          <div class="project-card">
+            <div class="pc-top">
+              <div>
+                <div class="pc-num">#1 · FANTASMA</div>
+                <div class="pc-name">Fantasma americano</div>
+                <div class="pc-client">Lucas P.</div>
+              </div>
+              <span class="badge badge-fin">Finalizado</span>
+            </div>
+            <div class="pc-meta">
+              <span>🖋 3 sesiones</span>
+              <span>Muslo · Grande</span>
+              <span class="style-badge">Americano</span>
+            </div>
+            <div class="pc-meta" style="margin-top:6px">
+              <span>Costo: $27.600</span>
+              <span class="margin-pos">+$52.400</span>
+            </div>
+          </div>
+
+          <div class="project-card">
+            <div class="pc-top">
+              <div>
+                <div class="pc-num">#3 · HANNYA</div>
+                <div class="pc-name">Hannya con daga</div>
+                <div class="pc-client">Martina R.</div>
+              </div>
+              <span class="badge badge-pend">Pendiente</span>
+            </div>
+            <div class="pc-meta">
+              <span>🖋 0 sesiones</span>
+              <span>Espalda</span>
+              <span class="style-badge">Japonés</span>
+            </div>
+            <div class="pc-meta" style="margin-top:6px">
+              <span>Precio: $120.000</span>
+              <span style="color:var(--text-3)">Sin inicio</span>
+            </div>
+          </div>
+
+          <div class="project-card">
+            <div class="pc-top">
+              <div>
+                <div class="pc-num">#4 · SERPIENTE</div>
+                <div class="pc-name">Serpiente geométrica</div>
+                <div class="pc-client">Ana G.</div>
+              </div>
+              <span class="badge badge-fin">Finalizado</span>
+            </div>
+            <div class="pc-meta">
+              <span>🖋 1 sesión</span>
+              <span>Tobillo · Pequeño</span>
+              <span class="style-badge">Geométrico</span>
+            </div>
+            <div class="pc-meta" style="margin-top:6px">
+              <span>Costo: $9.200</span>
+              <span class="margin-pos">+$20.800</span>
+            </div>
+          </div>
+
+          <div class="project-card">
+            <div class="pc-top">
+              <div>
+                <div class="pc-num">#5 · LOBO</div>
+                <div class="pc-name">Lobo realista</div>
+                <div class="pc-client">Diego T.</div>
+              </div>
+              <span class="badge badge-curso">En curso</span>
+            </div>
+            <div class="pc-meta">
+              <span>🖋 1 sesión</span>
+              <span>Pecho · A3</span>
+              <span class="style-badge">Realismo</span>
+            </div>
+            <div class="pc-meta" style="margin-top:6px">
+              <span>Costo: $11.800</span>
+              <span class="margin-neg">-$3.800</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- DETAIL PANEL -->
+        <div class="detail-panel">
+
+          <!-- Header del proyecto -->
+          <div class="detail-header">
+
+            <!-- Texto + métricas (izquierda) -->
+            <div class="dh-content">
+              <div class="dh-top">
+                <div>
+                  <div class="dh-num">#2 · BOTELLA · FACUNDO M.</div>
+                  <div class="dh-name">Botella americana</div>
+                  <div class="dh-client">Antebrazo · A4 · Tradicional</div>
+                  <div class="dh-meta" style="margin-top:8px"><span class="badge badge-curso">En curso</span></div>
+                </div>
+                <div class="dh-actions">
+                  <button class="btn-action">✏ Editar</button>
+                  <button class="btn-action btn-danger">Eliminar</button>
+                </div>
+              </div>
+
+              <!-- Métricas del proyecto -->
+              <div class="dh-metrics">
+                <div class="dm-item">
+                  <div class="dm-label">Precio acordado</div>
+                  <div class="dm-val accent">$50.000</div>
+                </div>
+                <div class="dm-item">
+                  <div class="dm-label">Costo acumulado</div>
+                  <div class="dm-val">$18.400</div>
+                </div>
+                <div class="dm-item">
+                  <div class="dm-label">Margen</div>
+                  <div class="dm-val green">+$31.600</div>
+                </div>
+                <div class="dm-item">
+                  <div class="dm-label">Horas totales</div>
+                  <div class="dm-val">4.5 hrs</div>
+                </div>
+              </div>
+
+              <!-- Barra costo vs precio -->
+              <div class="cost-bar-wrap">
+                <div class="cost-bar-labels">
+                  <span>Costo vs precio: 37%</span>
+                  <span>2 sesiones completadas</span>
+                </div>
+                <div class="cost-bar-track">
+                  <div class="cost-bar-fill" style="width: 37%"></div>
+                </div>
+              </div>
+
+              <!-- Notas -->
+              <div class="dh-notes">
+                Cliente quiere tonos tierra en el relleno. Línea americana clásica, sin degradado. Referencia: sailor jerry.
+              </div>
+            </div>
+
+            <!-- Foto del tatuaje (derecha) -->
+            <!-- Estado: SIN foto → mostrar placeholder -->
+            <div class="dh-photo">
+              <div class="dh-photo-empty">
+                <div class="icon">🖼</div>
+                <p>Sin imagen cargada</p>
+                <button class="btn-add-photo">+ Agregar URL</button>
+              </div>
+            </div>
+
+            <!-- Estado: CON foto → descomentar esto y comentar el placeholder de arriba
+            <div class="dh-photo">
+              <div class="dh-photo-label">Referencia</div>
+              <img src="URL_DE_LA_FOTO_AQUI" alt="Foto tatuaje">
+            </div>
+            -->
+
+          </div>
+
+          <!-- Sesiones vinculadas -->
+          <div class="sessions-card">
+            <div class="sessions-header">
+              <span class="sessions-title">Sesiones vinculadas</span>
+              <button class="btn-add-ses">+ Nueva sesión</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Zona</th>
+                  <th>Aguja</th>
+                  <th>Línea</th>
+                  <th>Rell.</th>
+                  <th>Téc.</th>
+                  <th>Dis.</th>
+                  <th>Con.</th>
+                  <th>Global</th>
+                  <th>Costo</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>21/04/26</td>
+                  <td>Contorno</td>
+                  <td style="color:var(--text-3); font-size:12px">RL 7</td>
+                  <td><span class="score-pill sp-green">8</span></td>
+                  <td><span class="score-pill sp-amber">—</span></td>
+                  <td><span class="score-pill sp-green">7</span></td>
+                  <td><span class="score-pill sp-amber">6</span></td>
+                  <td><span class="score-pill sp-green">9</span></td>
+                  <td><span class="score-pill sp-green">7.5</span></td>
+                  <td style="color:var(--accent); font-weight:600">$9.200</td>
+                  <td><button class="btn-xs">✏</button></td>
+                </tr>
+                <tr>
+                  <td>05/05/26</td>
+                  <td>Relleno</td>
+                  <td style="color:var(--text-3); font-size:12px">Magnum 7</td>
+                  <td><span class="score-pill sp-green">8</span></td>
+                  <td><span class="score-pill sp-green">7</span></td>
+                  <td><span class="score-pill sp-green">7</span></td>
+                  <td><span class="score-pill sp-amber">6</span></td>
+                  <td><span class="score-pill sp-green">9</span></td>
+                  <td><span class="score-pill sp-green">7.4</span></td>
+                  <td style="color:var(--accent); font-weight:600">$9.200</td>
+                  <td><button class="btn-xs">✏</button></td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="9">Total acumulado</td>
+                  <td>$18.400</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup-label">MOCKUP v1 · F4H Tatuajes</div>
+
+</body>
+</html>

@@ -1,9 +1,16 @@
 ﻿// ─── Sesiones ────────────────────────────────────────────────────────────────
 function renderSes(){
   document.getElementById('t-ses').innerHTML=`
-    <div class="stabs">
-      <button class="stab ${sesView==='nueva'?'on':''}" onclick="setSesView('nueva')">Nueva sesión</button>
-      <button class="stab ${sesView==='bit'?'on':''}" onclick="setSesView('bit')">Bitácora (${S.sesiones.length})</button>
+    <div class="page-hdr">
+      <div>
+        <div class="page-hdr-lbl">T&eacute;cnica</div>
+        <div class="page-hdr-title">Sesiones</div>
+        <div class="page-hdr-sub">${S.sesiones.length} sesiones registradas</div>
+      </div>
+    </div>
+    <div class="subtab-row">
+      <button class="subtab ${sesView==='nueva'?'on':''}" onclick="setSesView('nueva')">Nueva sesi&oacute;n</button>
+      <button class="subtab ${sesView==='bit'?'on':''}" onclick="setSesView('bit')">Bit&aacute;cora (${S.sesiones.length})</button>
     </div>
     ${sesView==='nueva'?buildNuevaSes():sesView==='edit'&&editSesionId?buildEditSes(editSesionId):buildBitacora()}`;
   if(sesView==='nueva')applyScores();
@@ -209,11 +216,11 @@ function buildBitacora(){
   const n=S.sesiones.length;
   const avgGlobal=(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1);
   const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):'—';};
-  return`<div class="g4">
-    <div class="metric"><div class="ml">Sesiones</div><div class="mv">${n}</div></div>
-    <div class="metric"><div class="ml">Score global</div><div class="mv">${avgGlobal}</div></div>
-    <div class="metric"><div class="ml">Línea</div><div class="mv">${avgDim('sL')}</div></div>
-    <div class="metric"><div class="ml">Relleno</div><div class="mv">${avgDim('sR')}</div></div>
+  return`<div class="mini-grid">
+    <div class="mini-metric"><div class="mm-lbl">Sesiones</div><div class="mm-val">${n}</div></div>
+    <div class="mini-metric"><div class="mm-lbl">Score global</div><div class="mm-val" style="color:var(--accent)">${avgGlobal}</div></div>
+    <div class="mini-metric"><div class="mm-lbl">L&iacute;nea</div><div class="mm-val">${avgDim('sL')}</div></div>
+    <div class="mini-metric"><div class="mm-lbl">Relleno</div><div class="mm-val">${avgDim('sR')}</div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden"><table>
     <thead><tr><th>Fecha</th><th>Zona</th><th>Proyecto</th><th>Aguja princ.</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
@@ -286,7 +293,7 @@ function saveSes(){
   nExtras.forEach(e=>{if(e.pid&&e.qty>0){const _ep=S.productos.find(x=>x.id===e.pid);S.movimientos.push({id:'M'+Date.now()+'x'+e.pid,fecha,pid:e.pid,tipo:'salida',qty:e.qty,ref:sesId+' (extra)',costoAlMomento:_ep?Math.round(cuARS(_ep)):0});}});
   if(agujaId){const ap=S.productos.find(x=>x.id===agujaId);if(ap&&!ap.practica)S.movimientos.push({id:'M'+Date.now()+'ag',fecha,pid:agujaId,tipo:'salida',qty:1,ref:sesId+' (aguja)',costoAlMomento:Math.round(cuARS(ap))});}
   persist();msg('ses-msg','Sesión guardada','ok');
-  nExtras=[];nScores={D:3,T:3,E:3};nTestedIds=new Set();
+  nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();
   setTimeout(()=>setSesView('bit'),1000);
 }
 

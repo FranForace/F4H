@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F4H — Dashboard Mockup v3</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f0f;
+      --bg-card:     #1a1a1a;
+      --bg-elevated: #222222;
+      --border:      #2e2e2e;
+      --text:        #f0f0ee;
+      --text-2:      #888888;
+      --text-3:      #555555;
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.12);
+      --red:         #e24b4a;
+      --amber:       #d4872a;
+      --green:       #4a9a3a;
+      --nav-bg:      #0a0908;
+      --nav-border:  #1e1e1e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 76px;
+      border-bottom: 1px solid var(--nav-border);
+      position: sticky;
+      top: 0;
+      background: var(--nav-bg);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .nav-logo {
+      height: 52px;
+      width: auto;
+      filter: invert(1);
+      opacity: 0.9;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .nav-tab {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      border-radius: 7px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+    .nav-tab:hover { color: #f0f0ee; background: #222; }
+    .nav-tab.active {
+      color: var(--accent);
+      background: rgba(200,169,110,0.12);
+    }
+    .nav-right {
+      font-size: 13px;
+      color: #555;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── OUTER FRAME ── */
+    .outer {
+      padding: 0 210px;
+    }
+
+    /* ── SIDE PANELS: fixed, altura completa ── */
+    .side {
+      position: fixed;
+      top: 76px;
+      bottom: 0;
+      width: 205px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .side-left  { left: 0; }
+    .side-right { right: 0; }
+
+    .side img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Difuminado fuerte hacia el centro (look que te gustaba) */
+    .side::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .side-left::after {
+      background: linear-gradient(to right, rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%);
+    }
+    .side-right::after {
+      background: linear-gradient(to left, rgba(15,15,15,0) 0%, rgba(15,15,15,1) 100%);
+    }
+
+    .side-right img { filter: invert(1); opacity: 0.55; }
+    .side-left  img { opacity: 0.75; }
+
+    /* ── PAGE ── */
+    .page {
+      padding: 44px 48px 80px;
+      min-width: 0;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      min-height: 260px;
+    }
+    .page-header-left .page-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .page-header-left .page-title {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .page-header-left .page-subtitle {
+      margin-top: 6px;
+      font-size: 14px;
+      color: var(--text-2);
+    }
+    /* Logo centrado absoluto en el header */
+    .logo-signature-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      height: 420px;
+      width: auto;
+      filter: invert(1) sepia(0.4) saturate(1.8) hue-rotate(350deg) brightness(0.9);
+      opacity: 0.75;
+      pointer-events: none;
+    }
+
+    /* ── HERO METRICS ── */
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .metric-hero {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 26px 26px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+      opacity: 0.7;
+    }
+    .metric-hero.positive::before { background: var(--green); }
+    .metric-hero.negative::before { background: var(--red); }
+
+    .metric-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .metric-value {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .metric-value.accent   { color: var(--accent); }
+    .metric-value.positive { color: var(--green); }
+    .metric-value.negative { color: var(--red); }
+    .metric-sub {
+      margin-top: 9px;
+      font-size: 14px;
+      color: var(--text-2);
+    }
+    .metric-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 10px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .metric-badge.ok   { background: rgba(74,154,58,0.15); color: var(--green); }
+    .metric-badge.warn { background: rgba(212,135,42,0.15); color: var(--amber); }
+
+    /* ── MINI METRICS ── */
+    .mini-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .metric-mini {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .metric-mini .label {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 4px;
+    }
+    .metric-mini .value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .metric-mini .detail {
+      font-size: 13px;
+      color: var(--text-3);
+      text-align: right;
+    }
+
+    /* ── BREAK-EVEN ── */
+    .breakeven-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-2);
+    }
+    .card-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .card-status.ok   { background: rgba(45,122,58,0.1);  color: var(--green); }
+    .card-status.warn { background: rgba(184,115,10,0.1); color: var(--amber); }
+
+    .be-numbers {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 12px;
+    }
+    .be-num-item .be-label { font-size: 13px; color: var(--text-2); margin-bottom: 3px; }
+    .be-num-item .be-val   { font-size: 24px; font-weight: 700; color: var(--text); }
+
+    .be-track {
+      height: 5px;
+      background: var(--bg);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 7px;
+    }
+    .be-fill { height: 100%; border-radius: 99px; }
+    .be-fill.ok   { background: var(--green); }
+    .be-fill.warn { background: var(--amber); }
+
+    .be-hint { font-size: 11px; color: var(--text-2); }
+
+    /* ── BOTTOM GRID ── */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* ── MAPA TÉCNICO ── */
+    .mapa-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 26px;
+    }
+    .dim-row { margin-bottom: 13px; }
+    .dim-row:last-child { margin-bottom: 0; }
+    .dim-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .dim-name  { font-size: 14px; color: var(--text-2); }
+    .dim-score { font-size: 15px; font-weight: 700; color: var(--text); }
+    .dim-track {
+      height: 4px;
+      background: var(--bg);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .dim-fill { height: 100%; border-radius: 99px; }
+    .dim-fill.green { background: var(--green); }
+    .dim-fill.amber { background: var(--amber); }
+    .dim-fill.red   { background: var(--red); }
+
+    /* ── RIGHT COL ── */
+    .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+    .alerts-card, .cxu-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 22px;
+      flex: 1;
+    }
+
+    .alert-row, .cxu-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .alert-row:last-child, .cxu-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .alert-row:first-child, .cxu-row:first-child { padding-top: 0; }
+
+    .alert-name { color: var(--text); font-weight: 500; }
+    .alert-detail { color: var(--text-2); font-size: 12px; margin-top: 2px; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge.red   { background: rgba(226,75,74,0.15);  color: var(--red); }
+    .badge.amber { background: rgba(212,135,42,0.15); color: var(--amber); }
+
+    .cxu-rank { width: 22px; font-size: 12px; font-weight: 700; color: var(--text-3); margin-right: 12px; flex-shrink: 0; }
+    .cxu-name { color: var(--text); flex: 1; }
+    .cxu-val  { color: var(--accent); font-weight: 700; font-size: 14px; }
+
+    /* ── MOCKUP LABEL ── */
+    .mockup-label {
+      position: fixed;
+      bottom: 14px;
+      right: 18px;
+      font-size: 10px;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <img src="../logo-v2.png" alt="F4H" class="nav-logo">
+    <div class="nav-tabs">
+      <span class="nav-tab active">Dashboard</span>
+      <span class="nav-tab">Tatuajes</span>
+      <span class="nav-tab">Inventario</span>
+      <span class="nav-tab">Activos</span>
+      <span class="nav-tab">Sesiones</span>
+      <span class="nav-tab">+ Nuevo</span>
+      <span class="nav-tab">Egresos</span>
+      <span class="nav-tab">Movimientos</span>
+      <span class="nav-tab">Config</span>
+    </div>
+    <span class="nav-right">TC: $1.400</span>
+  </nav>
+
+  <!-- OUTER LAYOUT -->
+  <div class="outer">
+
+    <!-- SIDE LEFT: fuego -->
+    <div class="side side-left">
+      <img src="assets/fuego.jpg" alt="">
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="page">
+
+      <!-- HEADER -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-label">Resumen general</div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Junio 2026 · 8 sesiones/mes configuradas</div>
+        </div>
+        <img src="../logo-v2.png" alt="F4H" class="logo-signature-center">
+      </div>
+
+      <!-- HERO METRICS -->
+      <div class="hero-metrics">
+        <div class="metric-hero">
+          <div class="metric-eyebrow">Sesiones totales</div>
+          <div class="metric-value accent">24</div>
+          <div class="metric-sub">Score global promedio</div>
+          <div class="metric-badge ok">7.4 / 10</div>
+        </div>
+        <div class="metric-hero positive">
+          <div class="metric-eyebrow">Ganancia acumulada</div>
+          <div class="metric-value positive">$184.500</div>
+          <div class="metric-sub">Tatuajes cerrados</div>
+          <div class="metric-badge ok">3 finalizados</div>
+        </div>
+      </div>
+
+      <!-- MINI METRICS -->
+      <div class="mini-metrics">
+        <div class="metric-mini">
+          <div>
+            <div class="label">Tatuajes activos</div>
+            <div class="value">2</div>
+          </div>
+          <div class="detail">En curso</div>
+        </div>
+        <div class="metric-mini">
+          <div>
+            <div class="label">Amortización / sesión</div>
+            <div class="value">$3.200</div>
+          </div>
+          <div class="detail">Costo mín: $4.800</div>
+        </div>
+      </div>
+
+      <!-- BREAK-EVEN -->
+      <div class="breakeven-card">
+        <div class="card-header">
+          <span class="card-title">Break-even mensual</span>
+          <span class="card-status ok">✓ Cubierto</span>
+        </div>
+        <div class="be-numbers">
+          <div class="be-num-item">
+            <div class="be-label">Depreciación mensual</div>
+            <div class="be-val">$25.600</div>
+          </div>
+          <div class="be-num-item">
+            <div class="be-label">Sesiones necesarias</div>
+            <div class="be-val">6</div>
+          </div>
+          <div class="be-num-item">
+            <div class="be-label">Sesiones configuradas</div>
+            <div class="be-val">8</div>
+          </div>
+        </div>
+        <div class="be-track">
+          <div class="be-fill ok" style="width:100%"></div>
+        </div>
+        <div class="be-hint">Con 8 sesiones/mes cubrís los activos con margen de 2 sesiones.</div>
+      </div>
+
+      <!-- BOTTOM GRID -->
+      <div class="bottom-grid">
+
+        <!-- MAPA TÉCNICO -->
+        <div class="mapa-card">
+          <div class="card-header">
+            <span class="card-title">Mapa de desarrollo técnico</span>
+          </div>
+          <div class="dim-row">
+            <div class="dim-top"><span class="dim-name">Calidad de línea</span><span class="dim-score">8.1 / 10</span></div>
+            <div class="dim-track"><div class="dim-fill green" style="width:81%"></div></div>
+          </div>
+          <div class="dim-row">
+            <div class="dim-top"><span class="dim-name">Solidez del relleno</span><span class="dim-score">7.3 / 10</span></div>
+            <div class="dim-track"><div class="dim-fill green" style="width:73%"></div></div>
+          </div>
+          <div class="dim-row">
+            <div class="dim-top"><span class="dim-name">Técnica</span><span class="dim-score">6.5 / 10</span></div>
+            <div class="dim-track"><div class="dim-fill amber" style="width:65%"></div></div>
+          </div>
+          <div class="dim-row">
+            <div class="dim-top"><span class="dim-name">Diseño</span><span class="dim-score">5.8 / 10</span></div>
+            <div class="dim-track"><div class="dim-fill amber" style="width:58%"></div></div>
+          </div>
+          <div class="dim-row">
+            <div class="dim-top"><span class="dim-name">Conformidad</span><span class="dim-score">8.9 / 10</span></div>
+            <div class="dim-track"><div class="dim-fill green" style="width:89%"></div></div>
+          </div>
+        </div>
+
+        <!-- RIGHT COL -->
+        <div class="right-col">
+          <div class="alerts-card">
+            <div class="card-header">
+              <span class="card-title">Alertas de stock</span>
+            </div>
+            <div class="alert-row">
+              <div><div class="alert-name">Tinta Dynamic Black</div><div class="alert-detail">Stock: 1 · Mín: 2</div></div>
+              <span class="badge red">Crítico</span>
+            </div>
+            <div class="alert-row">
+              <div><div class="alert-name">Papel Stencil</div><div class="alert-detail">Stock: 3 · Mín: 5</div></div>
+              <span class="badge amber">Bajo</span>
+            </div>
+            <div class="alert-row">
+              <div><div class="alert-name">Guantes Nitrilo</div><div class="alert-detail">Stock: 8 · Mín: 10</div></div>
+              <span class="badge amber">Bajo</span>
+            </div>
+          </div>
+          <div class="cxu-card">
+            <div class="card-header">
+              <span class="card-title">Costo por uso — top insumos</span>
+            </div>
+            <div class="cxu-row"><span class="cxu-rank">1</span><span class="cxu-name">Tinta Dynamic Black</span><span class="cxu-val">$420</span></div>
+            <div class="cxu-row"><span class="cxu-rank">2</span><span class="cxu-name">Stencil Stuff</span><span class="cxu-val">$310</span></div>
+            <div class="cxu-row"><span class="cxu-rank">3</span><span class="cxu-name">RL 7</span><span class="cxu-val">$280</span></div>
+            <div class="cxu-row"><span class="cxu-rank">4</span><span class="cxu-name">Papel Stencil</span><span class="cxu-val">$180</span></div>
+            <div class="cxu-row"><span class="cxu-rank">5</span><span class="cxu-name">Green Soap</span><span class="cxu-val">$95</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SIDE RIGHT: hannya -->
+    <div class="side side-right">
+      <img src="assets/hannya.jpg" alt="">
+    </div>
+
+  </div>
+
+  <div class="mockup-label">MOCKUP v3 · F4H Dashboard</div>
+
+</body>
+</html>
