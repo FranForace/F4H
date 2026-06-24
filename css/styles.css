@@ -61,17 +61,6 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:var(--t
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
 .card-blue{background:var(--bg-card);border:1.5px solid var(--accent);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
 .card-inner{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem}
-.card-tattoo{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .15s}
-.card-tattoo:hover{border-color:var(--border-hover)}
-.card-tattoo.active{border-color:var(--accent)}
-
-/* ── Metrics ── */
-.metric{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:1rem;border:1px solid var(--border)}
-.ml{font-size:11px;color:var(--text-2);margin-bottom:3px}
-.mv{font-size:20px;font-weight:600;color:var(--text)}
-.ms{font-size:11px;color:var(--text-3);margin-top:2px}
-.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem}
-.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.25rem}
 
 /* ── Titles ── */
 .ct{font-size:13px;font-weight:600;margin-bottom:.85rem;color:var(--text)}
@@ -103,8 +92,6 @@ tr.al td:first-child{border-left:2px solid var(--red)}
 .sc-btn.on-red{background:var(--red);color:#fff;border-color:transparent}
 .sc-btn.on-amber{background:var(--amber);color:#111;border-color:transparent}
 .sc-btn.on-green{background:var(--green);color:#fff;border-color:transparent}
-.sc-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.sc-lbl{font-size:11px;color:var(--text-2);font-weight:500;width:120px;flex-shrink:0}
 .sc-dim-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem;margin-bottom:.5rem}
 .sc-dim-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:5px}
 
@@ -164,9 +151,6 @@ textarea{resize:vertical;min-height:80px}
 .aguja-chip.on{background:var(--text);color:var(--bg);border-color:transparent}
 .aguja-chip.prac{border-color:var(--accent);color:var(--accent)}
 .aguja-chip.prac.on{background:var(--accent);color:#111}
-
-/* ── Inject banner (legacy, kept for JS refs) ── */
-.inject-banner-old{display:none}
 
 /* ── Edit hints ── */
 .edit-hint{font-size:11px;color:var(--accent);background:var(--accent-dim);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:.85rem;border:1px solid rgba(200,169,110,0.2)}
