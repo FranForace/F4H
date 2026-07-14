@@ -245,27 +245,60 @@ textarea{resize:vertical;min-height:80px}
 
 <div id="t-egresos" style="display:none"></div>
 <div id="t-new" style="display:none">
-  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Catálogo</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">+ Nuevo producto</div><div style="font-size:14px;color:var(--text-2)">Registrá un nuevo insumo, activo, aguja o descartable</div></div>
-  <div class="card">
-    <div class="ct">Datos del producto</div>
-    <div class="fgrid">
-      <div class="fg" style="grid-column:1/-1"><label class="fl">Nombre</label><input id="np-nom" placeholder="Ej: Cartucho #12 Curved Mag"></div>
-      <div class="fg"><label class="fl">Categoría</label><select id="np-cat" onchange="toggleNewFields()"><option>Activo</option><option>Descartable</option><option>Consumible</option><option>Aguja</option></select></div>
-      <div class="fg"><label class="fl">Subcategoría</label><input id="np-sub"></div>
-      <div class="fg"><label class="fl">Unidad</label><select id="np-um"><option>Unidad</option><option>Caja (100u)</option><option>Caja (50u)</option><option>Onza</option><option>ml</option><option>Uso</option></select></div>
-      <div class="fg"><label class="fl">Moneda</label><select id="np-mon"><option value="ARS">ARS $</option><option value="USD">USD u$s</option></select></div>
-      <div class="fg"><label class="fl">Costo unitario</label><input id="np-cu" type="number" min="0" step="0.01" value="0"></div>
-      <div class="fg" id="tipo-consumo-field"><label class="fl">Tipo de consumo</label><select id="np-tipo" onchange="toggleNewFields()"><option value="UNIDAD">Unidad</option><option value="SESION">Sesión (rinde X ses.)</option><option value="VARIABLE">Variable (tinta)</option><option value="LONGITUD">Longitud (metros)</option></select></div>
-      <div class="fg"><label class="fl" id="np-upu-label">Usos por unidad</label><input id="np-upu" type="number" min="1" value="1"></div>
-      <div class="fg"><label class="fl">Stock actual</label><input id="np-si" type="number" min="0" value="1"></div>
-      <div class="fg"><label class="fl">Stock mínimo</label><input id="np-sm" type="number" min="0" value="1"></div>
-      <div class="fg" id="vum-field"><label class="fl">Vida útil (meses)</label><input id="np-vum" type="number" min="1" value="24"></div>
-      <div class="fg" id="prac-field" style="display:none;grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="np-prac" style="width:auto"> Aguja de práctica (no descuenta stock)</label></div>
+  <div style="padding:28px 0 24px;margin-bottom:24px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">+ Nuevo registro</div><div style="font-size:14px;color:var(--text-2)">Seleccioná el tipo y completá los datos</div></div>
+  <div style="display:flex;gap:10px;margin-bottom:28px">
+    <div onclick="tattooView='nuevo';go('tattoos')" style="flex:1;padding:16px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg-card);text-align:center;cursor:pointer" onmouseover="this.style.borderColor='rgba(200,169,110,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-size:20px;margin-bottom:6px">🖋</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Tatuaje</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:2px">Nuevo proyecto</div>
     </div>
-    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
-      <button class="btn btn-p" onclick="addProd()">Guardar</button>
-      <button class="btn" onclick="clearNewForm()">Limpiar</button>
-      <span id="np-msg"></span>
+    <div onclick="go('ses')" style="flex:1;padding:16px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg-card);text-align:center;cursor:pointer" onmouseover="this.style.borderColor='rgba(200,169,110,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-size:20px;margin-bottom:6px">📋</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Sesión</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:2px">Registro técnico</div>
+    </div>
+    <div style="flex:1;padding:16px 12px;border-radius:12px;border:1.5px solid var(--accent);background:rgba(200,169,110,.06);text-align:center;cursor:default">
+      <div style="font-size:20px;margin-bottom:6px">📦</div>
+      <div style="font-size:13px;font-weight:700;color:var(--accent)">Producto</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:2px">Entrada de stock</div>
+    </div>
+    <div onclick="go('egresos')" style="flex:1;padding:16px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg-card);text-align:center;cursor:pointer" onmouseover="this.style.borderColor='rgba(200,169,110,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-size:20px;margin-bottom:6px">💸</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Egreso</div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:2px">Gasto / salida</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Datos del producto</span></div>
+      <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="grid-column:1/-1"><label class="fl">Nombre</label><input id="np-nom" placeholder="Ej: Cartucho #12 Curved Mag"></div>
+        <div><label class="fl">Categoría</label><select id="np-cat" onchange="toggleNewFields()"><option>Activo</option><option>Descartable</option><option>Consumible</option><option>Aguja</option></select></div>
+        <div><label class="fl">Subcategoría</label><input id="np-sub"></div>
+        <div><label class="fl">Unidad</label><select id="np-um"><option>Unidad</option><option>Caja (100u)</option><option>Caja (50u)</option><option>Onza</option><option>ml</option><option>Uso</option></select></div>
+        <div><label class="fl">Moneda</label><select id="np-mon"><option value="ARS">ARS $</option><option value="USD">USD u$s</option></select></div>
+        <div><label class="fl">Costo unitario</label><input id="np-cu" type="number" min="0" step="0.01" value="0"></div>
+        <div id="tipo-consumo-field"><label class="fl">Tipo de consumo</label><select id="np-tipo" onchange="toggleNewFields()"><option value="UNIDAD">Unidad</option><option value="SESION">Sesión (rinde X ses.)</option><option value="VARIABLE">Variable (tinta)</option><option value="LONGITUD">Longitud (metros)</option></select></div>
+        <div><label class="fl" id="np-upu-label">Usos por unidad</label><input id="np-upu" type="number" min="1" value="1"></div>
+        <div><label class="fl">Stock actual</label><input id="np-si" type="number" min="0" value="1"></div>
+        <div><label class="fl">Stock mínimo</label><input id="np-sm" type="number" min="0" value="1"></div>
+        <div id="vum-field"><label class="fl">Vida útil (meses)</label><input id="np-vum" type="number" min="1" value="24"></div>
+        <div id="prac-field" style="display:none;grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="np-prac" style="width:auto"> Aguja de práctica (no descuenta stock)</label></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Acciones</div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-p" style="width:100%;padding:12px;font-size:14px;font-weight:800" onclick="addProd()">Guardar producto</button>
+          <button class="btn" style="width:100%;padding:10px" onclick="clearNewForm()">Limpiar campos</button>
+          <span id="np-msg" style="font-size:12px;text-align:center;display:block"></span>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;font-size:12px;color:var(--text-3);line-height:1.6">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px">Tip</div>
+        Para <span style="color:var(--accent);font-weight:600">Activos</span>: definí vida útil para calcular amortización por sesión.
+      </div>
     </div>
   </div>
 </div>
@@ -300,39 +333,57 @@ textarea{resize:vertical;min-height:80px}
 
 <div id="t-cfg" style="display:none">
   <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Configuración</div><div style="font-size:14px;color:var(--text-2)">Parámetros globales, kits de insumos y gestión de datos</div></div>
-  <div class="card">
-    <div class="ct">Parámetros</div>
-    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
-      <div>
-        <div class="fl" style="margin-bottom:4px">Tipo de cambio</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="hint">USD 1 =</span><input id="tc-val" type="number" min="1" step="1" style="width:100px"><span class="hint">ARS</span>
-          <button class="btn btn-sm" onclick="saveTc()">Actualizar</button><span id="tc-msg"></span>
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Parámetros del sistema</span></div>
+      <div style="padding:20px 24px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px">Tipo de cambio</div>
+          <div style="display:flex;align-items:center;gap:8px;background:var(--bg-elevated);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px">
+            <span style="font-size:12px;color:var(--text-3)">USD 1 =</span>
+            <input id="tc-val" type="number" min="1" step="1" style="background:none;border:none;outline:none;color:var(--text);font-size:15px;font-weight:700;font-family:inherit;width:80px">
+            <span style="font-size:12px;color:var(--text-3)">ARS</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center"><button class="btn btn-sm" onclick="saveTc()">Actualizar</button><span id="tc-msg" style="font-size:11px"></span></div>
         </div>
-      </div>
-      <div>
-        <div class="fl" style="margin-bottom:4px">Sesiones por mes</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input id="spm-val" type="number" min="1" step="1" style="width:70px"><span class="hint">ses/mes</span>
-          <button class="btn btn-sm" onclick="saveSpm()">Actualizar</button><span id="spm-msg"></span>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px">Sesiones por mes</div>
+          <div style="display:flex;align-items:center;gap:8px;background:var(--bg-elevated);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px">
+            <input id="spm-val" type="number" min="1" step="1" style="background:none;border:none;outline:none;color:var(--text);font-size:15px;font-weight:700;font-family:inherit;width:60px">
+            <span style="font-size:12px;color:var(--text-3)">ses/mes</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center"><button class="btn btn-sm" onclick="saveSpm()">Actualizar</button><span id="spm-msg" style="font-size:11px"></span></div>
         </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px">Amortización / sesión</div>
+          <div style="background:var(--bg-elevated);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px">
+            <span id="cfg-amort-display" style="font-size:15px;font-weight:700;color:var(--text)">--</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px">Activos totales / vida útil × ses/mes</div>
+        </div>
+      </div></div>
+    </div>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Kits de insumos</span></div>
+      <div style="padding:20px 24px" id="kit-cfg-body"></div>
+    </div>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="padding:16px 24px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Datos y backup</span></div>
+      <div style="padding:20px 24px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="exportJSON()">Exportar JSON</button>
+          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="importJSON()">Importar JSON</button>
+          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="importJSONMerge()">Importar (merge)</button>
+          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="if(confirm('Borrar TODO el historial?'))resetAll()">Reset</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(this)">
+        <input type="file" id="import-file-merge" accept=".json" style="display:none" onchange="handleImportMerge(this)">
+        <div style="font-size:12px;color:var(--text-3);line-height:1.6">Datos guardados en este navegador. Exportá JSON para backup. "Importar (merge)" agrega tatuajes y sesiones sin pisar el estado actual.</div>
       </div>
     </div>
-    <div class="hint" style="margin-top:10px">Amort./sesión actual: <strong id="cfg-amort-display">—</strong></div>
-  </div>
-  <div class="card"><div class="ct">Kits de insumos</div><div id="kit-cfg-body"></div></div>
-  <div class="card"><div class="ct">Datos</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="exportJSON()">Exportar JSON</button>
-      <button class="btn btn-sm" onclick="importJSON()">Importar JSON</button>
-      <button class="btn btn-sm" onclick="importJSONMerge()">Importar (merge)</button>
-      <button class="btn btn-sm btn-danger" onclick="if(confirm('¿Borrar TODO?'))resetAll()">Reset</button>
-    </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(this)">
-    <input type="file" id="import-file-merge" accept=".json" style="display:none" onchange="handleImportMerge(this)">
-    <p class="hint" style="margin-top:6px">Datos guardados en este navegador. Exportá JSON para backup. "Importar (merge)" agrega tatuajes y sesiones sin pisar el estado actual.</p>
   </div>
 </div>
+
 
 </div>
 
@@ -569,45 +620,33 @@ function renderTattoos(){
   const el=document.getElementById('t-tattoos');
   const finCount=S.tatuajes.filter(t=>t.estado==='Finalizado').length;
   const curCount=S.tatuajes.filter(t=>t.estado==='En curso').length;
+  const isSplit=tattooView==='lista'||tattooView==='detalle';
   el.innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Proyectos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Tatuajes</div><div style="font-size:14px;color:var(--text-2)">${S.tatuajes.length} registrado${S.tatuajes.length!==1?'s':''} · ${curCount} en curso · ${finCount} finalizado${finCount!==1?'s':''}</div></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+    <div style="padding:28px 0 24px;margin-bottom:24px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Proyectos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Tatuajes</div><div style="font-size:14px;color:var(--text-2)">${S.tatuajes.length} registrado${S.tatuajes.length!==1?'s':''} \xB7 ${curCount} en curso \xB7 ${finCount} finalizado${finCount!==1?'s':''}</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-        <button class="stab ${tattooView==='lista'?'on':''}" onclick="tattooView='lista';renderTattoos()">Lista (${S.tatuajes.length})</button>
-        <button class="stab ${tattooView==='stats'?'on':''}" onclick="tattooView='stats';renderTattoos()">Estadísticas</button>
+        <button class="stab ${isSplit?'on':''}" onclick="tattooView='lista';selectedTattooId=null;renderTattoos()">Lista (${S.tatuajes.length})</button>
+        <button class="stab ${tattooView==='stats'?'on':''}" onclick="tattooView='stats';renderTattoos()">Estad\xEDsticas</button>
       </div>
       <button class="btn btn-sm btn-p" onclick="tattooView='nuevo';renderTattoos()">+ Nuevo tatuaje</button>
     </div>
-    ${tattooView==='nuevo'?buildNuevoTattoo():tattooView==='stats'?buildStatsTattoos():tattooView==='detalle'&&selectedTattooId?buildDetalleTattoo(selectedTattooId):buildListaTattoos()}`;
+    ${isSplit?('<div style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">'+buildListaTattoos()+(selectedTattooId?buildDetalleTattoo(selectedTattooId):'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 28px;text-align:center;color:var(--text-3);font-size:14px">Seleccion\xE1 un proyecto de la lista.</div>')+'</div>'):tattooView==='nuevo'?buildNuevoTattoo():buildStatsTattoos()}`;
 }
 
 function buildListaTattoos(){
-  if(!S.tatuajes.length)return`<div class="empty" style="padding:2.5rem">Ningún tatuaje registrado todavía.<br>Creá el primero con "+ Nuevo tatuaje".</div>`;
-  return S.tatuajes.map(t=>{
-    const sess=tattooSesiones(t.id);
-    const costo=tattooCosto(t.id);
+  if(!S.tatuajes.length)return'<div class="empty" style="padding:2.5rem">Ning\xFAn tatuaje registrado todav\xEDa.</div>';
+  return '<div style="display:flex;flex-direction:column;gap:8px">'+S.tatuajes.map(t=>{
+    const sess=tattooSesiones(t.id);const costo=tattooCosto(t.id);
     const margen=t.precio?(t.precio-costo):null;
-    return`<div class="card-tattoo${selectedTattooId===t.id?' active':''}" onclick="selectedTattooId='${t.id}';tattooView='detalle';renderTattoos()">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
-        <div>
-          <span style="font-size:11px;color:#aaa;font-weight:500">#${t.num} · ${t.cliente}</span><br>
-          <span style="font-size:15px;font-weight:600">${t.diseno}</span>
-        </div>
-        <div style="text-align:right">
-          ${estadoBadge(t.estado)}
-          ${t.precio?`<div style="font-size:12px;margin-top:4px;color:#888">Precio: ${ars(t.precio)}</div>`:''}
-        </div>
-      </div>
-      <div style="display:flex;gap:12px;font-size:11px;color:#888;flex-wrap:wrap">
-        <span>${sess.length} sesión(es)</span>
-        ${t.estilo?`<span class="badge b-prac">${t.estilo}</span>`:''}
-        ${t.zona?`<span>${t.zona}</span>`:''}
-        ${t.tamano?`<span>${t.tamano}</span>`:''}
-        <span>Costo acum: ${ars(costo)}</span>
-        ${margen!=null?`<span class="${margen>=0?'margin-pos':'margin-neg'}">Margen: ${margen>=0?'+':''}${ars(margen)}</span>`:''}
-      </div>
-    </div>`;
-  }).join('');
+    const isAct=selectedTattooId===t.id;
+    return '<div onclick="selectedTattooId=\''+t.id+'\';tattooView=\'detalle\';renderTattoos()" style="background:var(--bg-card);border:1px solid '+(isAct?'var(--accent)':'var(--border)')+';border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s'+(isAct?';background:rgba(200,169,110,.06)':'')+'">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">#'+t.num+' \xB7 '+t.cliente+'</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">'+t.diseno+'</div>'
+      +'<div style="margin-bottom:8px">'+estadoBadge(t.estado)+'</div>'
+      +'<div style="display:flex;gap:8px;font-size:11px;color:var(--text-3);flex-wrap:wrap"><span>'+sess.length+' ses.</span>'+(t.zona?'<span>'+t.zona+'</span>':'')+(t.tamano?'<span>'+t.tamano+'</span>':'')+(t.estilo?'<span>'+t.estilo+'</span>':'')+'</div>'
+      +(margen!=null?'<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px"><span style="color:var(--text-3)">Margen</span><span style="font-weight:700;color:'+(margen>=0?'var(--green)':'var(--red)')+'">'+( margen>=0?'+':'')+ars(margen)+'</span></div>':'')
+    +'</div>';
+  }).join('')+'</div>';
 }
 
 function buildNuevoTattoo(){
@@ -648,62 +687,46 @@ function buildNuevoTattoo(){
 
 function buildDetalleTattoo(tid){
   const t=S.tatuajes.find(x=>x.id===tid);if(!t)return'';
-  const sess=tattooSesiones(tid);
-  const costo=tattooCosto(tid);
+  const sess=tattooSesiones(tid);const costo=tattooCosto(tid);
   const margen=t.precio?(t.precio-costo):null;
   const pct=t.precio?Math.min(100,Math.round((costo/t.precio)*100)):null;
-
-  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-    <button class="btn btn-sm" onclick="tattooView='lista';selectedTattooId=null;renderTattoos()">← Volver</button>
-    <div style="display:flex;gap:6px">
-      <button class="btn btn-sm" onclick="editTattoo('${tid}')">✏ Editar</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteTattoo('${tid}')">Eliminar</button>
-    </div>
-  </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1rem">
-      <div>
-        <div class="hint">#${t.num} · ${t.cliente}</div>
-        <div style="font-size:18px;font-weight:600;margin:2px 0;color:var(--text)">${t.diseno}</div>
-        ${t.zona?`<div class="hint">${t.zona}${t.tamano?' · '+t.tamano:''}</div>`:''}
-      </div>
-      ${estadoBadge(t.estado)}
-    </div>
-    <div class="detail-grid">
-      <div class="detail-item"><div class="detail-lbl">Precio acordado</div><div class="detail-val">${t.precio?ars(t.precio):'—'}</div></div>
-      <div class="detail-item"><div class="detail-lbl">Costo acumulado</div><div class="detail-val">${ars(costo)}</div></div>
-      <div class="detail-item"><div class="detail-lbl">Margen</div><div class="detail-val ${margen!=null?(margen>=0?'margin-pos':'margin-neg'):'margin-zero'}">${margen!=null?(margen>=0?'+':'')+ars(margen):'sin precio'}</div></div>
-      <div class="detail-item"><div class="detail-lbl">Sesiones</div><div class="detail-val">${sess.length}</div></div>
-      <div class="detail-item"><div class="detail-lbl">Tiempo total</div><div class="detail-val">${tattooHrs(t.id).toFixed(2)} hrs</div></div>
-      <div class="detail-item" style="grid-column:1/-1"><div class="detail-lbl">Estilo</div><div class="detail-val">${t.estilo||'— Sin definir'}</div></div>
-    </div>
-    ${pct!=null?`<div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Costo vs precio: ${pct}%</div>
-    <div class="be-bar"><div class="be-fill ${pct<=100?'over':'under'}" style="width:${Math.min(pct,100)}%"></div></div>`:'' }
-    ${t.fotoUrl?`<div style="margin-top:10px"><a href="${t.fotoUrl}" target="_blank" style="font-size:12px;color:#378ADD">Ver referencia →</a></div>`:''}
-    ${t.notas?`<div style="margin-top:10px;font-size:12px;color:#666;background:#f5f5f3;padding:8px 10px;border-radius:8px">${t.notas}</div>`:''}
-  </div>
-
-  <div class="card">
-    <div class="sec-head">
-      <div class="ct" style="margin:0">Sesiones vinculadas</div>
-      <button class="btn btn-sm" onclick="go('ses')">+ Nueva sesión</button>
-    </div>
-    ${sess.length?`<table>
-      <thead><tr><th>Fecha</th><th>Zona</th><th>Máquina</th><th>Aguja</th><th>Línea</th><th>Relleno</th><th>Tec.</th><th>Dis.</th><th>Con.</th><th>Global</th><th>Costo</th><th>Notas</th><th></th></tr></thead>
-      <tbody>${sess.map(s=>{
-        const ag=S.productos.find(p=>p.id===s.agujaId);
-        return`<tr><td>${fdate(s.fecha)}</td><td>${s.zona||'—'}</td><td class="hint">${s.maquina||'—'}</td>
-          <td class="hint">${ag?ag.nom:'—'}</td>
-          <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
-          <td>${scorePill(globalScore(s))}</td>
-          <td>${ars(sesionCosto(s))}</td>
-          <td style="font-size:11px;color:var(--text-2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notas||'—'}</td>
-          <td><button class="btn btn-xs btn-ghost" onclick="editSesFromTattoo('${s.id}')">✏</button></td>
-        </tr>`;
-      }).join('')}</tbody>
-      <tfoot><tr class="total-row"><td colspan="7">Total</td><td>${ars(costo)}</td><td></td></tr></tfoot>
-    </table>`:`<div class="empty">Sin sesiones vinculadas aún.<br>Al crear una sesión, seleccioná este tatuaje en el campo correspondiente.</div>`}
-  </div>`;
+  const sesTbl=sess.length
+    ?'<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Zona</th><th>M\xE1q.</th><th>Aguja</th><th>L</th><th>R</th><th>T</th><th>D</th><th>C</th><th>Global</th><th>Costo</th><th></th></tr></thead><tbody>'
+      +sess.map(s=>{const ag=S.productos.find(p=>p.id===s.agujaId);
+        return'<tr><td>'+fdate(s.fecha)+'</td><td>'+(s.zona||'--')+'</td><td class="hint">'+(s.maquina||'--')+'</td><td class="hint">'+(ag?ag.nom:'--')+'</td>'
+          +'<td>'+scorePill(s.sL)+'</td><td>'+scorePill(s.sR)+'</td><td>'+scorePill(s.sT)+'</td><td>'+scorePill(s.sD)+'</td><td>'+scorePill(s.sC)+'</td>'
+          +'<td>'+scorePill(globalScore(s))+'</td><td>'+ars(sesionCosto(s))+'</td>'
+          +'<td><button class="btn btn-xs btn-ghost" onclick="editSesFromTattoo(\''+s.id+'\')">✏</button></td></tr>';
+      }).join('')+'</tbody><tfoot><tr class="total-row"><td colspan="10">Total</td><td>'+ars(costo)+'</td><td></td></tr></tfoot></table></div>'
+    :'<div class="empty">Sin sesiones a\xFAn. Al crear una sesi\xF3n, seleccion\xE1 este tatuaje.</div>';
+  return '<div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px"><div style="padding:22px 24px 16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:16px"><div>'
+          +'<div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">#'+t.num+' \xB7 '+t.cliente+'</div>'
+          +'<div style="font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.02em;margin-bottom:4px">'+t.diseno+'</div>'
+          +(t.zona?'<div style="font-size:13px;color:var(--text-2)">'+t.zona+(t.tamano?' \xB7 '+t.tamano:'')+'</div>':'')
+        +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'
+          +estadoBadge(t.estado)
+          +'<div style="display:flex;gap:6px">'
+            +'<button class="btn btn-xs" onclick="editTattoo(\''+tid+'\')">Editar</button>'
+            +'<button class="btn btn-xs btn-danger" onclick="deleteTattoo(\''+tid+'\')">Eliminar</button>'
+          +'</div></div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+        +'<div style="background:var(--bg-elevated);border-radius:10px;padding:12px 14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Precio</div><div style="font-size:20px;font-weight:800;color:var(--text)">'+(t.precio?ars(t.precio):'--')+'</div></div>'
+        +'<div style="background:var(--bg-elevated);border-radius:10px;padding:12px 14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Costo</div><div style="font-size:20px;font-weight:800;color:var(--text)">'+ars(costo)+'</div></div>'
+        +'<div style="background:var(--bg-elevated);border-radius:10px;padding:12px 14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Margen</div><div style="font-size:20px;font-weight:800;color:'+(margen!=null?(margen>=0?'var(--green)':'var(--red)'):'var(--text-3)')+'">'+( margen!=null?(margen>=0?'+':'')+ars(margen):'--')+'</div></div>'
+        +'<div style="background:var(--bg-elevated);border-radius:10px;padding:12px 14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Sesiones</div><div style="font-size:20px;font-weight:800;color:var(--text)">'+sess.length+'</div></div>'
+      +'</div>'
+      +(pct!=null?'<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Costo vs precio: '+pct+'%</div><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(pct<=80?'var(--green)':pct<=100?'var(--amber)':'var(--red)')+'"></div></div></div>':'')
+      +(t.estilo?'<div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Estilo: <span style="color:var(--text-2);font-weight:600">'+t.estilo+'</span></div>':'')
+      +(t.notas?'<div style="padding:10px 12px;background:var(--bg-elevated);border-left:2px solid var(--accent);border-radius:0 8px 8px 0;font-size:13px;color:var(--text-2);line-height:1.5;margin-bottom:10px">'+t.notas+'</div>':'')
+      +(t.fotoUrl?'<a href="'+t.fotoUrl+'" target="_blank" style="font-size:12px;color:var(--accent);display:block;margin-top:8px">Ver referencia →</a>':'')
+    +'</div></div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:700;color:var(--text)">Sesiones vinculadas</div>'
+        +'<button class="btn btn-sm" onclick="go(\'ses\')">+ Nueva sesi\xF3n</button></div>'
+      +sesTbl
+    +'</div></div>';
 }
 
 
@@ -847,7 +870,7 @@ function renderInv(){
   const editCard=editingId?buildEditCard(S.productos.find(x=>x.id===editingId)):'';
   const totalAlerts=S.productos.filter(p=>status(p)!=='ok').length;
   document.getElementById('t-inv').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Inventario</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos · ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Inventario</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos \xB7 ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
     ${editCard}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
@@ -855,25 +878,26 @@ function renderInv(){
         ${['Activo','Descartable','Consumible','Aguja'].map(c=>`<button class="stab${fCat.includes(c)?' on':''}" onclick="toggleFCat('${c}')">${c}s</button>`).join('')}
         <button class="stab${fSt==='ok'?' on':''}" onclick="fSt='ok';fCat=[];renderInv()">OK</button>
         <button class="stab${fSt==='low'?' on':''}" onclick="fSt='low';fCat=[];renderInv()">Bajo</button>
-        <button class="stab${fSt==='critical'?' on':''}" onclick="fSt='critical';fCat=[];renderInv()">Crítico</button>
+        <button class="stab${fSt==='critical'?' on':''}" onclick="fSt='critical';fCat=[];renderInv()">Cr\xEDtico</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="hint">${prods.length} producto${prods.length!==1?'s':''}</span>
         <button class="btn btn-sm btn-p" onclick="go('new')">+ Agregar</button>
       </div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden"><table>
-      <thead><tr><th>Producto</th><th>Stock</th><th>Mín.</th><th>Estado</th><th>Costo/uso</th><th>Usos/un.</th><th></th></tr></thead>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden"><table>
+      <thead><tr><th>Producto</th><th>Stock</th><th>M\xEDn.</th><th>Estado</th><th>Costo/uso</th><th>Usos/un.</th><th></th></tr></thead>
       <tbody>${prods.map(p=>{const st=status(p);const isEd=p.id===editingId;
-        return`<tr${st!=='ok'?' class="al"':''}${isEd?' style="background:var(--accent-dim)"':''}>
-          <td><strong>${p.nom}</strong>${p.practica?' <span class="badge b-prac">práctica</span>':''}<br><span class="hint">${p.cat} · ${p.sub}</span></td>
-          <td>${stockOf(p.id)} <span class="hint">${p.um}</span></td><td>${p.sm}</td><td>${badge(st)}</td>
-          <td>${p.cu>0?ars(cxu(p)):'—'}</td><td class="hint">${p.upu}</td>
-          <td><button class="btn btn-xs" onclick="editingId='${p.id}';renderInv()">— Editar</button></td>
+        return`<tr${st!=='ok'?' class="al"':''}${isEd?' style="background:rgba(200,169,110,.06);outline:1.5px solid var(--accent);outline-offset:-1px"':''}>
+          <td><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:2px">${p.nom}${p.practica?' <span class="badge b-prac">pr\xE1ctica</span>':''}</div><div style="font-size:11px;color:var(--text-3)">${p.cat} \xB7 ${p.sub}</div></td>
+          <td><span style="font-weight:700;font-size:14px">${stockOf(p.id)}</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">${p.um}</span></td><td>${p.sm}</td><td>${badge(st)}</td>
+          <td>${p.cu>0?ars(cxu(p)):'--'}</td><td class="hint">${p.upu}</td>
+          <td><button style="padding:5px 12px;font-size:12px;font-weight:600;background:transparent;color:var(--text-3);border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-3)'" onclick="editingId='${p.id}';renderInv()">Editar</button></td>
         </tr>`;}).join('')}
       </tbody>
-    </table></div>
-    <p class="hint" style="padding:4px">Usá Movimientos para registrar entradas/salidas de stock.</p>`;
+    </table>
+    <div style="padding:10px 20px;font-size:12px;color:var(--text-3);border-top:1px solid var(--border)">Us\xE1 Movimientos para registrar entradas/salidas de stock.</div>
+    </div>`;
 }
 
 function buildEditCard(p){
