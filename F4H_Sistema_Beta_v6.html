@@ -1,0 +1,1424 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F4H Sistema Beta v6</title>
+<style>
+:root{
+  --bg:#0f0f0f;
+  --bg-card:#1a1a1a;
+  --bg-elevated:#222;
+  --bg-input:#141414;
+  --border:#2e2e2e;
+  --border-hover:#444;
+  --text:#f0f0ee;
+  --text-2:#888;
+  --text-3:#555;
+  --accent:#c8a96e;
+  --accent-dim:#2a2318;
+  --red:#e24b4a;
+  --red-bg:#2a1414;
+  --amber:#d4872a;
+  --amber-bg:#2a1e0a;
+  --green:#4a9a3a;
+  --green-bg:#0f2010;
+  --radius:10px;
+  --radius-sm:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;color:var(--text);background:var(--bg);min-height:100vh}
+.app{max-width:900px;margin:0 auto;padding:1.25rem}
+
+/* ── Nav ── */
+.nav{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 2rem;background:#0a0908;border-bottom:1px solid #1e1e1e;position:sticky;top:0;z-index:100;backdrop-filter:blur(8px)}
+.nav-logo-img{height:32px;width:auto;filter:invert(1);opacity:.9}
+.nav-tabs{display:flex;gap:2px;align-items:center}
+.nav-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-family:inherit;cursor:pointer;border:none;background:transparent;color:var(--text-2);transition:all .15s;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.on{background:var(--accent);color:#111;font-weight:500}
+.nav-tc{font-size:12px;color:var(--text-2);white-space:nowrap;min-width:90px;text-align:right}
+
+/* ── Side art ── */
+.side-art{position:fixed;top:0;width:240px;height:100vh;object-fit:cover;object-position:center;opacity:0.18;pointer-events:none;z-index:0}
+.side-art-left{left:0;-webkit-mask-image:linear-gradient(to right,black 30%,transparent 100%);mask-image:linear-gradient(to right,black 30%,transparent 100%)}
+.side-art-right{right:0;-webkit-mask-image:linear-gradient(to left,black 30%,transparent 100%);mask-image:linear-gradient(to left,black 30%,transparent 100%)}
+@media(max-width:1300px){.side-art{display:none}}
+
+/* ── Stabs ── */
+.stabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.stab{padding:4px 13px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);transition:all .15s}
+.stab:hover{border-color:var(--border-hover);color:var(--text)}
+.stab.on{background:var(--accent);color:#111;border-color:transparent;font-weight:500}
+
+/* ── Cards ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
+.card-blue{background:var(--bg-card);border:1.5px solid var(--accent);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem}
+.card-inner{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem}
+.card-tattoo{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .15s}
+.card-tattoo:hover{border-color:var(--border-hover)}
+.card-tattoo.active{border-color:var(--accent)}
+
+/* ── Metrics ── */
+.metric{background:var(--bg-elevated);border-radius:var(--radius-sm);padding:1rem;border:1px solid var(--border)}
+.ml{font-size:11px;color:var(--text-2);margin-bottom:3px}
+.mv{font-size:20px;font-weight:600;color:var(--text)}
+.ms{font-size:11px;color:var(--text-3);margin-top:2px}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.25rem}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.25rem}
+
+/* ── Titles ── */
+.ct{font-size:13px;font-weight:600;margin-bottom:.85rem;color:var(--text)}
+
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:var(--text-2);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px}
+td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg-elevated)}
+tr.al td:first-child{border-left:2px solid var(--red)}
+.total-row td{font-weight:600;background:var(--bg-elevated);border-top:1px solid var(--border)}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.b-ok{background:var(--green-bg);color:var(--green)}
+.b-low{background:var(--amber-bg);color:var(--amber)}
+.b-crit{background:var(--red-bg);color:var(--red)}
+.b-prac{background:var(--accent-dim);color:var(--accent)}
+.b-curso{background:var(--amber-bg);color:var(--amber)}
+.b-fin{background:var(--green-bg);color:var(--green)}
+.b-pend{background:var(--bg-elevated);color:var(--text-2)}
+.tag-in{background:var(--green-bg);color:var(--green);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
+.tag-out{background:var(--red-bg);color:var(--red);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
+
+/* ── Score buttons ── */
+.sc-btn{padding:4px 9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text-2);margin-right:3px;min-width:30px;transition:all .1s}
+.sc-btn:hover{border-color:var(--border-hover);color:var(--text)}
+.sc-btn.on-red{background:var(--red);color:#fff;border-color:transparent}
+.sc-btn.on-amber{background:var(--amber);color:#111;border-color:transparent}
+.sc-btn.on-green{background:var(--green);color:#fff;border-color:transparent}
+.sc-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sc-lbl{font-size:11px;color:var(--text-2);font-weight:500;width:120px;flex-shrink:0}
+.sc-dim-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem;margin-bottom:.5rem}
+.sc-dim-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:5px}
+
+/* ── Progress bars ── */
+.progress-bar{height:5px;border-radius:3px;background:var(--bg-elevated);border:1px solid var(--border);margin:4px 0;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s}
+.pf-red{background:var(--red)}
+.pf-amber{background:var(--amber)}
+.pf-green{background:var(--green)}
+
+/* ── Forms ── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fl{font-size:11px;color:var(--text-2);font-weight:500}
+input,select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg-input);color:var(--text);font-family:inherit;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+select option{background:var(--bg-card)}
+textarea{resize:vertical;min-height:80px}
+
+/* ── Buttons ── */
+.btn{padding:7px 14px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;transition:all .15s}
+.btn:hover{background:var(--bg-elevated);border-color:var(--border-hover)}
+.btn-p{background:var(--accent);color:#111;border-color:transparent;font-weight:500}
+.btn-p:hover{opacity:.88}
+.btn-sm{padding:3px 9px;font-size:11px}
+.btn-xs{padding:2px 7px;font-size:10px;border-radius:4px}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text-2)}
+.btn-ghost:hover{color:var(--text)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red-bg)}
+
+/* ── Layout helpers ── */
+.sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.empty{text-align:center;padding:2rem;color:var(--text-3);font-size:12px}
+.ok{font-size:11px;color:var(--green)}
+.err{font-size:11px;color:var(--red)}
+.hint{font-size:11px;color:var(--text-3)}
+
+/* ── Kit rows ── */
+.kit-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.kit-row:last-child{border-bottom:none}
+
+/* ── Score pills ── */
+.sp{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:600}
+.sp-hi{background:var(--green-bg);color:var(--green)}
+.sp-md{background:var(--amber-bg);color:var(--amber)}
+.sp-lo{background:var(--red-bg);color:var(--red)}
+
+/* ── Cost bar ── */
+.cost-bar{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;margin:1rem 0}
+.cost-total{font-size:22px;font-weight:700;color:var(--accent)}
+
+/* ── Aguja chips ── */
+.aguja-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.aguja-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-2);user-select:none;transition:all .15s}
+.aguja-chip:hover{border-color:var(--border-hover);color:var(--text)}
+.aguja-chip.on{background:var(--text);color:var(--bg);border-color:transparent}
+.aguja-chip.prac{border-color:var(--accent);color:var(--accent)}
+.aguja-chip.prac.on{background:var(--accent);color:#111}
+
+/* ── Inject banner ── */
+.inject-banner{background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1rem;font-size:12px;color:var(--green);display:none;align-items:center;gap:8px}
+
+/* ── Edit hints ── */
+.edit-hint{font-size:11px;color:var(--accent);background:var(--accent-dim);padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:.85rem;border:1px solid rgba(200,169,110,0.2)}
+
+/* ── Tattoo detail ── */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.detail-item{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem}
+.detail-lbl{font-size:10px;color:var(--text-2);margin-bottom:2px}
+.detail-val{font-size:13px;font-weight:500;color:var(--text)}
+
+/* ── Break-even bar ── */
+.be-bar{height:6px;border-radius:3px;background:var(--bg-elevated);border:1px solid var(--border);margin:6px 0;overflow:hidden}
+.be-fill{height:100%;border-radius:3px;transition:width .4s}
+.be-fill.over{background:var(--green)}
+.be-fill.under{background:var(--red)}
+
+/* ── Margin colors ── */
+.margin-pos{color:var(--green);font-weight:600}
+.margin-neg{color:var(--red);font-weight:600}
+.margin-zero{color:var(--text-2)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
+
+/* ── Page headers ── */
+.ph{padding:1.5rem 0 1.25rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.ph-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:4px}
+.ph-title{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--text);line-height:1.1;margin-bottom:4px}
+.ph-sub{font-size:12px;color:var(--text-2)}
+
+/* ── Stat grid ── */
+.sg2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.sc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem}
+.sc.hi{border-color:rgba(200,169,110,.3)}
+.sc-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-2);margin-bottom:8px}
+.sc-val{font-size:30px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:6px}
+.sc-sub{font-size:11px;color:var(--text-2);margin-top:4px}
+.sc-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:500;margin-top:8px}
+
+/* ── Inv / list filter bar ── */
+.list-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.list-filters{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.list-actions{display:flex;gap:8px;align-items:center;white-space:nowrap;flex-shrink:0}
+
+/* ── Be card inner grid ── */
+.be-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
+.be-cell-label{font-size:10px;color:var(--text-2);margin-bottom:4px}
+.be-cell-val{font-size:18px;font-weight:700;letter-spacing:-.3px}
+</style>
+</head>
+<body style="background:var(--bg)">
+<nav class="nav">
+  <img src="Logo.png" class="nav-logo-img" alt="F4H">
+  <div class="nav-tabs">
+    <button class="nav-tab on" data-tab="dash" onclick="go('dash')">Dashboard</button>
+    <button class="nav-tab" data-tab="tattoos" onclick="go('tattoos')">Tatuajes</button>
+    <button class="nav-tab" data-tab="inv" onclick="go('inv')">Inventario</button>
+    <button class="nav-tab" data-tab="act" onclick="go('act')">Activos</button>
+    <button class="nav-tab" data-tab="ses" onclick="go('ses')">Sesiones</button>
+    <button class="nav-tab" data-tab="new" onclick="go('new')">+ Nuevo</button>
+    <button class="nav-tab" data-tab="egresos" onclick="go('egresos')">Egresos</button>
+    <button class="nav-tab" data-tab="mov" onclick="go('mov')">Movimientos</button>
+    <button class="nav-tab" data-tab="cfg" onclick="go('cfg')">Config</button>
+  </div>
+  <span class="nav-tc" id="tc-display">USD = $1.400</span>
+</nav>
+<img src="mockups/assets/fuego.jpg" class="side-art side-art-left" alt="">
+<img src="mockups/assets/hannya.jpg" class="side-art side-art-right" alt="">
+<div class="app">
+
+<div id="inject-banner" class="inject-banner"></div>
+
+
+<div id="t-dash"></div>
+<div id="t-tattoos" style="display:none"></div>
+<div id="t-inv" style="display:none"></div>
+<div id="t-act" style="display:none"></div>
+<div id="t-ses" style="display:none"></div>
+
+<div id="t-egresos" style="display:none"></div>
+<div id="t-new" style="display:none">
+  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Catálogo</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">+ Nuevo producto</div><div style="font-size:14px;color:var(--text-2)">Registrá un nuevo insumo, activo, aguja o descartable</div></div>
+  <div class="card">
+    <div class="ct">Datos del producto</div>
+    <div class="fgrid">
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Nombre</label><input id="np-nom" placeholder="Ej: Cartucho #12 Curved Mag"></div>
+      <div class="fg"><label class="fl">Categoría</label><select id="np-cat" onchange="toggleNewFields()"><option>Activo</option><option>Descartable</option><option>Consumible</option><option>Aguja</option></select></div>
+      <div class="fg"><label class="fl">Subcategoría</label><input id="np-sub"></div>
+      <div class="fg"><label class="fl">Unidad</label><select id="np-um"><option>Unidad</option><option>Caja (100u)</option><option>Caja (50u)</option><option>Onza</option><option>ml</option><option>Uso</option></select></div>
+      <div class="fg"><label class="fl">Moneda</label><select id="np-mon"><option value="ARS">ARS $</option><option value="USD">USD u$s</option></select></div>
+      <div class="fg"><label class="fl">Costo unitario</label><input id="np-cu" type="number" min="0" step="0.01" value="0"></div>
+      <div class="fg" id="tipo-consumo-field"><label class="fl">Tipo de consumo</label><select id="np-tipo" onchange="toggleNewFields()"><option value="UNIDAD">Unidad</option><option value="SESION">Sesión (rinde X ses.)</option><option value="VARIABLE">Variable (tinta)</option><option value="LONGITUD">Longitud (metros)</option></select></div>
+      <div class="fg"><label class="fl" id="np-upu-label">Usos por unidad</label><input id="np-upu" type="number" min="1" value="1"></div>
+      <div class="fg"><label class="fl">Stock actual</label><input id="np-si" type="number" min="0" value="1"></div>
+      <div class="fg"><label class="fl">Stock mínimo</label><input id="np-sm" type="number" min="0" value="1"></div>
+      <div class="fg" id="vum-field"><label class="fl">Vida útil (meses)</label><input id="np-vum" type="number" min="1" value="24"></div>
+      <div class="fg" id="prac-field" style="display:none;grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="np-prac" style="width:auto"> Aguja de práctica (no descuenta stock)</label></div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="addProd()">Guardar</button>
+      <button class="btn" onclick="clearNewForm()">Limpiar</button>
+      <span id="np-msg"></span>
+    </div>
+  </div>
+</div>
+
+<div id="t-mov" style="display:none">
+  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Movimientos</div><div style="font-size:14px;color:var(--text-2)">Entradas y salidas de inventario con trazabilidad</div></div>
+  <div class="card">
+    <div class="ct">Registrar movimiento</div>
+    <div class="fgrid">
+      <div class="fg"><label class="fl">Producto</label><select id="mv-prod" onchange="onMovChange()"></select></div>
+      <div class="fg"><label class="fl">Tipo</label><select id="mv-tipo" onchange="onMovChange()"><option value="entrada">Entrada (+)</option><option value="salida">Salida (−)</option></select></div>
+      <div class="fg"><label class="fl">Cantidad</label><input id="mv-qty" type="number" min="1" value="1"></div>
+      <div class="fg" id="mv-unidad-wrap" style="display:none"><label class="fl">Unidad de salida</label>
+        <select id="mv-unidad"><option value="unidad">Unidad / caja completa</option><option value="uso">Usos individuales</option></select>
+      </div>
+      <div class="fg" id="mv-costo-wrap" style="display:none">
+        <label class="fl">Costo unitario de esta compra <span style="color:var(--accent)">(actualiza promedio)</span></label>
+        <input id="mv-costo" type="number" min="0" step="1" placeholder="Vacío = mantener actual">
+      </div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Referencia</label><input id="mv-ref" placeholder="Ej: Compra MeLi, proveedor, fecha"></div>
+    </div>
+    <div id="mv-info" class="hint" style="margin:.4rem 0"></div>
+    <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="addMov()">Registrar</button><span id="mv-msg"></span>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><table>
+    <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cant.</th><th>Costo unit.</th><th>Referencia</th><th>Stock post</th></tr></thead>
+    <tbody id="mv-body"></tbody>
+  </table></div>
+</div>
+
+<div id="t-cfg" style="display:none">
+  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Configuración</div><div style="font-size:14px;color:var(--text-2)">Parámetros globales, kits de insumos y gestión de datos</div></div>
+  <div class="card">
+    <div class="ct">Parámetros</div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
+      <div>
+        <div class="fl" style="margin-bottom:4px">Tipo de cambio</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hint">USD 1 =</span><input id="tc-val" type="number" min="1" step="1" style="width:100px"><span class="hint">ARS</span>
+          <button class="btn btn-sm" onclick="saveTc()">Actualizar</button><span id="tc-msg"></span>
+        </div>
+      </div>
+      <div>
+        <div class="fl" style="margin-bottom:4px">Sesiones por mes</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="spm-val" type="number" min="1" step="1" style="width:70px"><span class="hint">ses/mes</span>
+          <button class="btn btn-sm" onclick="saveSpm()">Actualizar</button><span id="spm-msg"></span>
+        </div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:10px">Amort./sesión actual: <strong id="cfg-amort-display">—</strong></div>
+  </div>
+  <div class="card"><div class="ct">Kits de insumos</div><div id="kit-cfg-body"></div></div>
+  <div class="card"><div class="ct">Datos</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="exportJSON()">Exportar JSON</button>
+      <button class="btn btn-sm" onclick="importJSON()">Importar JSON</button>
+      <button class="btn btn-sm" onclick="importJSONMerge()">Importar (merge)</button>
+      <button class="btn btn-sm btn-danger" onclick="if(confirm('¿Borrar TODO?'))resetAll()">Reset</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(this)">
+    <input type="file" id="import-file-merge" accept=".json" style="display:none" onchange="handleImportMerge(this)">
+    <p class="hint" style="margin-top:6px">Datos guardados en este navegador. Exportá JSON para backup. "Importar (merge)" agrega tatuajes y sesiones sin pisar el estado actual.</p>
+  </div>
+</div>
+
+</div>
+
+<script>
+const today=new Date().toISOString().slice(0,10);
+const SK='siget_f4h_v6';
+let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
+const ESTILOS=['American Traditional','Neo Traditional','New School','Blackwork','Realismo','Fine Line','Minimalista','Geométrico','Japonés (Irezumi)','Lettering','Acuarela','Chicano','Tribal','Dark / Horror','Ilustración','Otro'];
+let curTab='dash',sesView='nueva',tattooView='lista',fCat=[],fSt='',editingId=null,selectedTattooId=null;
+let nExtras=[],nScores={L:0,R:0,T:0,D:0,C:0},nTestedIds=new Set(),nKitExcludes=new Set(),editSesionId=null;
+const DIMS=[{k:'sL',lbl:'Calidad de línea'},{k:'sR',lbl:'Solidez del relleno'},{k:'sT',lbl:'Técnica'},{k:'sD',lbl:'Diseño'},{k:'sC',lbl:'Conformidad'}];
+
+const TATUAJES_SEED=[
+  {id:'TAT_FANTASMA_001',num:1,cliente:'Yo mismo (práctica)',diseno:'Fantasma — American Traditional',estilo:'American Traditional',zona:'Piel sintética',tamano:'~5cm',precio:0,estado:'Finalizado',fotoUrl:'',notas:'Práctica en piel sintética. Fantasma con halo y alas, estilo american traditional. Primera exploración sistemática de selección de aguja por tamaño de diseño. Conclusión: RL7 como estándar para diseños ≤5cm. RL3/RL5 para detalles finos. Evitar RL11+ y RS para contornos.'},
+  {id:'TAT_BOTELLA_002',num:2,cliente:'Yo mismo (práctica)',diseno:'Botella con calavera y flores',estilo:'American Traditional',zona:'Piel sintética',tamano:'No registrado',precio:0,estado:'Finalizado',fotoUrl:'',notas:'Práctica en piel sintética. Botella con calavera y flores. Contorno con RL7, detalles internos con RL5. Aprendizaje principal: el cuello de botella NO es la elección de aguja sino la velocidad de ejecución. Trabajar en bajar velocidad, mejorar control de dirección de trazo y reducir el impacto de la fatiga.'}
+];
+
+const SESIONES_SEED=[
+  {id:'SES_FANTASMA_20260421',fecha:'2026-04-21',cliente:'Yo mismo',zona:'Piel sintética',hrs:0.75,maquina:'Pen Garage',agujaId:'P27',agujasTested:['P28','P23','P26','P27'],voltaje:7.8,stroke:'fijo',kitOn:true,extras:[],sL:0,sR:0,sT:0,sD:0,sC:0,practica:true,tattooId:'TAT_FANTASMA_001',notas:'Fantasma ~5cm. RL11: demasiado grueso. RS7: sin nitidez. RL5: parcial. MEJOR: RL7 — balance definición/control. CONCLUSIÓN: diseños ≤5cm → RL7 principal. Detalles finos → RL3/RL5. Evitar RL11+ y RS para contornos.'},
+  {id:'SES_BOTELLA_20260421',fecha:'2026-04-21',cliente:'Yo mismo',zona:'Piel sintética',hrs:1,maquina:'Pen Garage',agujaId:'P27',agujasTested:['P27','P26'],voltaje:7.8,stroke:'fijo',kitOn:true,extras:[],sL:0,sR:0,sT:0,sD:0,sC:0,practica:true,tattooId:'TAT_BOTELLA_002',notas:'Botella con calavera y flores. RL7 contorno principal, RL5 detalles finos. PROBLEMA: ejecución apresurada → errores y exceso de tinta. Dificultad dirección de aguja. Fatiga impacta calidad. CONCLUSIÓN: la mejora no pasa por agujas sino por bajar velocidad y mejorar control de trazo.'}
+];
+
+async function persist(){try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}}
+function load(){
+  try{const d=localStorage.getItem(SK);if(d){const p=JSON.parse(d);S.productos=p.productos||[];S.movimientos=p.movimientos||[];S.sesiones=p.sesiones||[];S.tatuajes=p.tatuajes||[];S.kit=p.kit||[];S.kits=p.kits||[];S.tc=p.tc||1200;S.spm=p.spm||8;}}catch(e){}
+  if(!S.productos.length)seed();
+  if(!S.kits||!S.kits.length){S.kits=S.kit&&S.kit.length?[{id:'K_base',nombre:'Kit base',items:[...S.kit]}]:[];}
+  if(!S.kits.length)seedKits();
+  S.productos.forEach(p=>{if(p.tipo_consumo===undefined){if(p.cat==='Activo')p.tipo_consumo=null;else if(['P18','P19','P20','P21'].includes(p.id))p.tipo_consumo='SESION';else p.tipo_consumo='UNIDAD';}});
+  if(!S.tatuajes)S.tatuajes=[];
+  let injected=0;
+  TATUAJES_SEED.forEach(t=>{if(!S.tatuajes.find(x=>x.id===t.id)){S.tatuajes.push(t);injected++;}});
+  SESIONES_SEED.forEach(ses=>{
+    if(!S.sesiones.find(s=>s.id===ses.id)){S.sesiones.push(ses);injected++;}
+    else{const ex=S.sesiones.find(s=>s.id===ses.id);if(ex&&!ex.tattooId&&ses.tattooId){ex.tattooId=ses.tattooId;}}
+  });
+  if(injected>0){
+    persist();
+    const b=document.getElementById('inject-banner');
+    b.textContent='✓ Tatuajes y sesiones cargados: Fantasma + Botella calavera (21/04)';
+    b.style.display='flex';setTimeout(()=>b.style.display='none',5000);
+  }
+  document.getElementById('tc-display').textContent='USD = $'+S.tc.toLocaleString('es-AR');
+  renderDash();
+}
+
+function seed(){
+  const p=(id,nom,cat,sub,um,mon,cu,upu,si,sm,vum,prac)=>({id,nom,cat,sub,um,mon,cu,upu,si,sm,vum:vum||0,practica:!!prac});
+  S.productos=[
+    p('P01','Pen Garage','Activo','Maquina','Unidad','ARS',25000,1,1,1,24),
+    p('P02','Fuente Critical','Activo','Fuente','Unidad','ARS',205000,1,1,1,36),
+    p('P03','Pedal','Activo','Otros','Unidad','ARS',0,1,1,1,60),
+    p('P04','Ambition Soldier','Activo','Maquina','Unidad','USD',147.36,1,1,1,36),
+    p('P05','iPad A16 + Apple Pen','Activo','Tecnologia','Unidad','USD',505,1,1,1,24),
+    p('P06','Inkless Printer','Activo','Impresora','Unidad','ARS',150000,1,1,1,36),
+    p('P07','Tornito Bate Pintura','Activo','Otros','Unidad','ARS',0,1,1,1,60),
+    p('P08','Cups Medianos (100u)','Descartable','Cups','Caja','ARS',2000,100,2,1),
+    p('P09','Papel Stencil','Descartable','Papel','Unidad','ARS',2000,1,13,4),
+    p('P10','Grip p/ Pen','Descartable','Otros','Unidad','ARS',0,1,1,3),
+    p('P11','Guantes Nitrilo Ref (100u)','Descartable','Guantes','Caja','ARS',7400,100,4,1),
+    p('P12','Compresas Negras (50u)','Descartable','Compresas','Caja','ARS',7400,50,5,1),
+    p('P13','Guantes Latex Negros (100u)','Descartable','Guantes','Caja','ARS',3400,100,1,1),
+    p('P14','Papel de Cocina','Descartable','Papel cocina','Unidad','ARS',2600,200,1,1),
+    p('P15','Film para Pen (100u)','Descartable','Film','Caja','ARS',2500,100,1,1),
+    p('P16','Tinta Dynamic Triple Black','Consumible','Tinta','Onza','ARS',27000,30,1,1),
+    p('P17','Piel Sintética Gruesa','Consumible','Piel sint.','Unidad','ARS',6000,1,3,6),
+    p('P18','Stencil Stuff','Consumible','Stencil','Uso','ARS',0,40,1,1),
+    p('P19','Vaselina Grande','Consumible','Vaselina','Uso','ARS',0,60,1,1),
+    p('P20','Green Soap','Consumible','Green Soap','Uso','ARS',0,50,1,1),
+    p('P21','Diluyente','Consumible','Diluyente','Uso','ARS',8000,50,1,1),
+    p('P22','Levanta Lengua (100u)','Consumible','Otros','Caja','ARS',0,100,1,1),
+    p('P23','RS 7','Aguja','RS','Unidad','ARS',1500,1,4,2,0,false),
+    p('P24','Magnum 7','Aguja','MG','Unidad','ARS',1500,1,1,2,0,false),
+    p('P25','RL 3','Aguja','RL','Unidad','ARS',1500,1,3,2,0,false),
+    p('P26','RL 5','Aguja','RL','Unidad','ARS',1500,1,3,2,0,false),
+    p('P27','RL 7','Aguja','RL','Unidad','ARS',1500,1,2,2,0,false),
+    p('P28','RL 11','Aguja','RL','Unidad','ARS',1500,1,2,2,0,false),
+  ];
+}
+function seedKit(){S.kit=[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},{pid:'P20',qty:1},{pid:'P21',qty:1},{pid:'P22',qty:2}];}
+function seedKits(){S.kits=[{id:'K_base',nombre:'Kit base',items:[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},{pid:'P20',qty:1},{pid:'P21',qty:1},{pid:'P22',qty:2}]}];}
+
+// ─── Core calculations ───────────────────────────────────────────────────────
+function stockOf(pid){
+  const pr=S.productos.find(p=>p.id===pid);if(!pr)return 0;
+  const ins=S.movimientos.filter(m=>m.pid===pid&&m.tipo==='entrada').reduce((a,m)=>a+m.qty,0);
+  const out=S.movimientos.filter(m=>m.pid===pid&&m.tipo==='salida').reduce((a,m)=>a+m.qty,0);
+  return pr.si+ins-out;
+}
+
+function updateCostoPromedio(pid,qtyEntrada,costoEntrada){const p=S.productos.find(x=>x.id===pid);if(!p||!costoEntrada||costoEntrada<=0)return;const stk=stockOf(pid);p.cu=stk<=0?costoEntrada:Math.round(((stk*cuARS(p))+(qtyEntrada*costoEntrada))/(stk+qtyEntrada));p.lastCostoUpdate=today;}
+function cuARS(p){return p.mon==='USD'?p.cu*S.tc:p.cu;}
+function amortMensual(p){return p.vum>0?cuARS(p)/p.vum:0;}
+function amortSesion(p){return S.spm>0?amortMensual(p)/S.spm:0;}
+function cxu(p){return p.upu>0?cuARS(p)/p.upu:cuARS(p);}
+function status(p){if(p.cat==='Activo')return'ok';const s=stockOf(p.id);if(s<=0)return'critical';if(s<p.sm)return'low';return'ok';}
+function amortTotalSes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortSesion(p),0);}
+function amortTotalMes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortMensual(p),0);}
+function calcExtrasCost(){return nExtras.reduce((a,e)=>{const p=S.productos.find(x=>x.id===e.pid);return a+(p&&p.cu>0?cxu(p)*e.qty:0);},0);}
+function sesionCosto(s){
+  let c=amortTotalSes();
+  if(s.kitId)c+=calcKitCost(s.kitId,s.kitExcludes||[]);
+  else if(s.kitOn&&S.kits.length>0)c+=calcKitCost(S.kits[0].id,[]);
+  (s.extras||[]).forEach(e=>{const p=S.productos.find(x=>x.id===e.pid);if(p&&p.cu>0)c+=cxu(p)*e.qty;});
+  const ag=S.productos.find(x=>x.id===s.agujaId);
+  if(ag&&ag.cu>0&&!ag.practica)c+=cxu(ag);
+  return c;
+}
+function calcKitCost(kitId,excludes){const kit=S.kits.find(k=>k.id===kitId);if(!kit)return 0;const excl=excludes||[];return kit.items.reduce((a,ki)=>{if(excl.includes(ki.pid))return a;const p=S.productos.find(x=>x.id===ki.pid);return a+(p&&p.cu>0?cxu(p)*ki.qty:0);},0);}
+function calcKitCostStatic(){return S.kits.length?calcKitCost(S.kits[0].id,[]):0;}
+function tattooSesiones(tid){return S.sesiones.filter(s=>s.tattooId===tid);}
+function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCosto(s),0);}
+function globalScore(s){const vals=[s.sL,s.sR,s.sT,s.sD,s.sC].filter(v=>v>0);return vals.length?+(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;}
+function tattooMargen(t){return t.precio?(t.precio-tattooCosto(t.id)):null;}
+function tattooHrs(tid){return tattooSesiones(tid).reduce((a,s)=>a+(s.hrs||0),0);}
+
+function badge(st){if(st==='critical')return`<span class="badge b-crit">Crítico</span>`;if(st==='low')return`<span class="badge b-low">Stock bajo</span>`;return`<span class="badge b-ok">OK</span>`;}
+function ars(n){return'$'+Math.round(n).toLocaleString('es-AR');}
+function fdate(iso){return iso?iso.slice(5).replace('-','/'):'—';}
+function msg(id,txt,type){const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.className=type;setTimeout(()=>{if(el)el.textContent='';},3000);}
+function scorePill(v){if(!v)return'<span class="sp" style="background:#eee;color:#aaa">—</span>';const cl=v>=7?'sp-hi':v>=4?'sp-md':'sp-lo';return`<span class="sp ${cl}">${v}</span>`;}
+function estadoBadge(e){if(e==='En curso')return`<span class="badge b-curso">En curso</span>`;if(e==='Finalizado')return`<span class="badge b-fin">Finalizado</span>`;return`<span class="badge b-pend">Pendiente</span>`;}
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function go(t){
+  curTab=t;editingId=null;
+  document.querySelectorAll('.nav-tab').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
+  ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg'].forEach(x=>{
+    document.getElementById('t-'+x).style.display=x===t?'':'none';
+  });
+  if(t==='dash')renderDash();
+  if(t==='tattoos')renderTattoos();
+  if(t==='inv')renderInv();
+  if(t==='act')renderActivos();
+  if(t==='ses'){nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();editSesionId=null;editScoresBuf={};renderSes();}
+  if(t==='egresos')renderEgresos();
+  if(t==='mov'){fillMovSel();renderMovTable();}
+  if(t==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
+}
+function setSesView(v){sesView=v;editSesionId=null;editScoresBuf={};nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();renderSes();}
+function renderAll(){if(curTab==='dash')renderDash();else if(curTab==='tattoos')renderTattoos();else if(curTab==='inv')renderInv();else if(curTab==='act')renderActivos();else if(curTab==='ses')renderSes();else if(curTab==='egresos')renderEgresos();
+  else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+function renderDash(){
+  const n=S.sesiones.length;
+  const avgGlobal=n?(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1):'--';
+  const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;};
+  const amortS=amortTotalSes();
+  const amortM=amortTotalMes();
+  const kitC=calcKitCostStatic();
+  const costoMinSes=amortS+kitC;
+  const tatFin=S.tatuajes.filter(t=>t.estado==='Finalizado');
+  const tatCurso=S.tatuajes.filter(t=>t.estado==='En curso');
+  const gananciaTotal=tatFin.reduce((a,t)=>{const m=tattooMargen(t);return m!=null?a+m:a;},0);
+  const sesBreakEven=amortM>0&&costoMinSes>0?Math.ceil(amortM/costoMinSes):0;
+  const bePct=Math.min(100,sesBreakEven>0?Math.round((S.spm/sesBreakEven)*100):100);
+  const cubierto=sesBreakEven===0||S.spm>=sesBreakEven;
+  const margenSes=S.spm-sesBreakEven;
+  const alerts=S.productos.filter(p=>status(p)!=='ok');
+  const ultimasSes=[...S.sesiones].sort((a,b)=>b.fecha>a.fecha?1:-1).slice(0,3);
+  const mesLabel=new Date().toLocaleString('es-AR',{month:'long',year:'numeric'});
+  const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
+  const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
+  document.getElementById('t-dash').innerHTML=`
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Resumen general</div>
+      <div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Dashboard</div>
+      <div style="font-size:14px;color:var(--text-2)">${mesLabel.charAt(0).toUpperCase()+mesLabel.slice(1)} \xB7 ${S.spm} sesiones/mes configuradas</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:26px 26px 22px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.7"></div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.13em;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">Sesiones totales</div>
+        <div style="font-size:52px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-.02em">${n}</div>
+        <div style="margin-top:9px;font-size:14px;color:var(--text-2)">Score global promedio</div>
+        <div style="display:inline-flex;align-items:center;margin-top:10px;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;background:${gBg};color:${gColor}">${avgGlobal} / 10</div>
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:26px 26px 22px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)"></div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.13em;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">Ganancia acumulada</div>
+        <div style="font-size:52px;font-weight:800;color:var(--green);line-height:1;letter-spacing:-.02em">${ars(gananciaTotal)}</div>
+        <div style="margin-top:9px;font-size:14px;color:var(--text-2)">Tatuajes cerrados</div>
+        <div style="display:inline-flex;align-items:center;margin-top:10px;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;background:rgba(74,154,58,.15);color:var(--green)">${tatFin.length} finalizado${tatFin.length!==1?'s':''}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:4px">Tatuajes activos</div>
+          <div style="font-size:26px;font-weight:700;color:var(--text)">${tatCurso.length}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text-3)">En curso</div>
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:4px">Amortizaci\xF3n / sesi\xF3n</div>
+          <div style="font-size:26px;font-weight:700;color:var(--text)">${ars(amortS)}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text-3)">Costo m\xEDn: ${ars(costoMinSes)}</div>
+      </div>
+    </div>
+    <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:22px 26px;margin-bottom:20px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)">Break-even mensual</span>
+        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${cubierto?'rgba(45,122,58,.1)':'rgba(184,115,10,.1)'};color:${cubierto?'var(--green)':'var(--amber)'}">${cubierto?'✓ Cubierto':'⚠ Sin cubrir'}</span>
+      </div>
+      <div style="display:flex;gap:32px;margin-bottom:12px">
+        <div><div style="font-size:13px;color:var(--text-2);margin-bottom:3px">Depreciaci\xF3n mensual</div><div style="font-size:24px;font-weight:700;color:var(--text)">${ars(amortM)}</div></div>
+        <div><div style="font-size:13px;color:var(--text-2);margin-bottom:3px">Sesiones necesarias</div><div style="font-size:24px;font-weight:700;color:var(--text)">${sesBreakEven||'--'}</div></div>
+        <div><div style="font-size:13px;color:var(--text-2);margin-bottom:3px">Sesiones configuradas</div><div style="font-size:24px;font-weight:700;color:var(--text)">${S.spm}</div></div>
+      </div>
+      <div style="height:5px;background:var(--bg);border-radius:99px;overflow:hidden;margin-bottom:7px"><div style="height:100%;border-radius:99px;width:${bePct}%;background:${cubierto?'var(--green)':'var(--amber)'}"></div></div>
+      <div style="font-size:11px;color:var(--text-2)">${cubierto&&margenSes>0?'Con '+S.spm+' ses/mes cubr\xEDs los activos con margen de '+margenSes+' sesi\xF3n'+(margenSes!==1?'es':'')+'.':cubierto?'Cubr\xEDs la depreciaci\xF3n justo.':'Con '+S.spm+' ses/mes no cubr\xEDs la depreciaci\xF3n (faltan '+Math.abs(margenSes)+' ses.).'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:22px 26px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:16px">Mapa de desarrollo t\xE9cnico</div>
+        ${DIMS.map(({k,lbl})=>{const avg=avgDim(k);const pct=avg?Math.round((avg/10)*100):0;const colVar=avg>=7?'var(--green)':avg>=4?'var(--amber)':'var(--red)';return'<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="font-size:14px;color:var(--text-2)">'+lbl+'</span><span style="font-size:15px;font-weight:700;color:var(--text)">'+(avg||'--')+'</span></div><div style="height:4px;background:var(--bg);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;width:'+pct+'%;background:'+colVar+'"></div></div></div>';}).join('')}
+      </div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:18px 22px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:14px">Alertas de stock</div>
+        ${alerts.length?alerts.map(p=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;color:var(--text);font-weight:500">'+p.nom+'</div><div style="font-size:12px;color:var(--text-2);margin-top:2px">Stock: '+stockOf(p.id)+' \xB7 M\xEDn: '+p.sm+'</div></div><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase;background:'+(status(p)==='critical'?'rgba(226,75,74,.15)':'rgba(212,135,42,.15)')+';color:'+(status(p)==='critical'?'var(--red)':'var(--amber)')+'">'+( status(p)==='critical'?'CR\xCDTICO':'BAJO')+'</span></div>').join(''):'<div style="font-size:14px;color:var(--green);padding:10px 0">✓ Sin alertas de stock</div>'}
+      </div>
+    </div>
+    <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:22px 26px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2);margin-bottom:14px">\xDAltimas sesiones</div>
+      ${ultimasSes.length?ultimasSes.map(s=>{const tat=S.tatuajes.find(t=>t.id===s.tattooId);const gs=globalScore(s);const gsColor=gs>=7?'var(--green)':gs>=4?'var(--amber)':gs>0?'var(--red)':'var(--text-3)';return'<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">'+(tat?tat.diseno:(s.cliente||'Sin proyecto'))+'</div><div style="font-size:12px;color:var(--text-2)">'+(fdate(s.fecha))+(s.zona?' \xB7 '+s.zona:'')+(s.aguja?' \xB7 '+s.aguja:'')+'</div></div><div style="font-size:28px;font-weight:800;color:'+gsColor+';letter-spacing:-.5px">'+(gs>0?gs.toFixed(1):'--')+'</div></div>';}).join(''):'<div style="font-size:14px;color:var(--text-3);padding:12px 0">Sin sesiones registradas.</div>'}
+    </div>`;
+}
+
+// ─── Tatuajes ────────────────────────────────────────────────────────────────
+function renderTattoos(){
+  const el=document.getElementById('t-tattoos');
+  const finCount=S.tatuajes.filter(t=>t.estado==='Finalizado').length;
+  const curCount=S.tatuajes.filter(t=>t.estado==='En curso').length;
+  el.innerHTML=`
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Proyectos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Tatuajes</div><div style="font-size:14px;color:var(--text-2)">${S.tatuajes.length} registrado${S.tatuajes.length!==1?'s':''} · ${curCount} en curso · ${finCount} finalizado${finCount!==1?'s':''}</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        <button class="stab ${tattooView==='lista'?'on':''}" onclick="tattooView='lista';renderTattoos()">Lista (${S.tatuajes.length})</button>
+        <button class="stab ${tattooView==='stats'?'on':''}" onclick="tattooView='stats';renderTattoos()">Estadísticas</button>
+      </div>
+      <button class="btn btn-sm btn-p" onclick="tattooView='nuevo';renderTattoos()">+ Nuevo tatuaje</button>
+    </div>
+    ${tattooView==='nuevo'?buildNuevoTattoo():tattooView==='stats'?buildStatsTattoos():tattooView==='detalle'&&selectedTattooId?buildDetalleTattoo(selectedTattooId):buildListaTattoos()}`;
+}
+
+function buildListaTattoos(){
+  if(!S.tatuajes.length)return`<div class="empty" style="padding:2.5rem">Ningún tatuaje registrado todavía.<br>Creá el primero con "+ Nuevo tatuaje".</div>`;
+  return S.tatuajes.map(t=>{
+    const sess=tattooSesiones(t.id);
+    const costo=tattooCosto(t.id);
+    const margen=t.precio?(t.precio-costo):null;
+    return`<div class="card-tattoo${selectedTattooId===t.id?' active':''}" onclick="selectedTattooId='${t.id}';tattooView='detalle';renderTattoos()">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+        <div>
+          <span style="font-size:11px;color:#aaa;font-weight:500">#${t.num} · ${t.cliente}</span><br>
+          <span style="font-size:15px;font-weight:600">${t.diseno}</span>
+        </div>
+        <div style="text-align:right">
+          ${estadoBadge(t.estado)}
+          ${t.precio?`<div style="font-size:12px;margin-top:4px;color:#888">Precio: ${ars(t.precio)}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:11px;color:#888;flex-wrap:wrap">
+        <span>${sess.length} sesión(es)</span>
+        ${t.estilo?`<span class="badge b-prac">${t.estilo}</span>`:''}
+        ${t.zona?`<span>${t.zona}</span>`:''}
+        ${t.tamano?`<span>${t.tamano}</span>`:''}
+        <span>Costo acum: ${ars(costo)}</span>
+        ${margen!=null?`<span class="${margen>=0?'margin-pos':'margin-neg'}">Margen: ${margen>=0?'+':''}${ars(margen)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildNuevoTattoo(){
+  const nextNum=(S.tatuajes.length?Math.max(...S.tatuajes.map(t=>t.num||0))+1:1);
+  const orphanSes=S.sesiones.filter(s=>!s.tattooId);
+  return`<div class="card">
+    <div class="ct">Nuevo tatuaje</div>
+    <div class="fgrid">
+      <div class="fg"><label class="fl">N° de tatuaje</label><input id="nt-num" type="number" value="${nextNum}" min="1"></div>
+      <div class="fg"><label class="fl">Estado</label><select id="nt-estado"><option>En curso</option><option>Finalizado</option><option>Pendiente</option></select></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Cliente</label><input id="nt-cli" placeholder="Nombre o referencia"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Diseño / descripción</label><input id="nt-dis" placeholder="Ej: Fantasma americano tradicional, antebrazo"></div>
+      <div class="fg"><label class="fl">Zona del cuerpo</label><input id="nt-zona" list="zonas-dl2" placeholder="Ej: Muslo, Brazo...">
+        <datalist id="zonas-dl2"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Tobillo</option><option>Cuello</option><option>Mano</option></datalist>
+      </div>
+      <div class="fg"><label class="fl">Tamaño estimado</label><input id="nt-tam" placeholder="Ej: 5cm, A4, pequeño"></div>
+      <div class="fg"><label class="fl">Estilo</label><select id="nt-est"><option value="">— Sin definir —</option>${ESTILOS.map(e=>`<option>${e}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Precio acordado (ARS)</label><input id="nt-precio" type="number" min="0" step="100" placeholder="0"></div>
+      <div class="fg"><label class="fl">URL foto de referencia</label><input id="nt-foto" placeholder="https://..."></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Notas</label><textarea id="nt-notas" rows="2" placeholder="Estilo, restricciones, preferencias del cliente..."></textarea></div>
+      ${orphanSes.length?`<div class="fg" style="grid-column:1/-1">
+        <label class="fl">Asociar sesiones sin proyecto <span class="hint">(${orphanSes.length} disponibles)</span></label>
+        <div style="max-height:130px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-top:4px">
+          ${orphanSes.map(s=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;cursor:pointer">
+            <input type="checkbox" name="link-ses" value="${s.id}" style="width:auto">
+            ${fdate(s.fecha)} · ${s.cliente||'sin cliente'} · ${s.zona||'sin zona'}
+          </label>`).join('')}
+        </div>
+      </div>`:''}
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="addTattoo()">Guardar tatuaje</button>
+      <button class="btn" onclick="tattooView='lista';renderTattoos()">Cancelar</button>
+      <span id="nt-msg"></span>
+    </div>
+  </div>`;
+}
+
+function buildDetalleTattoo(tid){
+  const t=S.tatuajes.find(x=>x.id===tid);if(!t)return'';
+  const sess=tattooSesiones(tid);
+  const costo=tattooCosto(tid);
+  const margen=t.precio?(t.precio-costo):null;
+  const pct=t.precio?Math.min(100,Math.round((costo/t.precio)*100)):null;
+
+  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <button class="btn btn-sm" onclick="tattooView='lista';selectedTattooId=null;renderTattoos()">← Volver</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm" onclick="editTattoo('${tid}')">✏ Editar</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteTattoo('${tid}')">Eliminar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1rem">
+      <div>
+        <div class="hint">#${t.num} · ${t.cliente}</div>
+        <div style="font-size:18px;font-weight:600;margin:2px 0;color:var(--text)">${t.diseno}</div>
+        ${t.zona?`<div class="hint">${t.zona}${t.tamano?' · '+t.tamano:''}</div>`:''}
+      </div>
+      ${estadoBadge(t.estado)}
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="detail-lbl">Precio acordado</div><div class="detail-val">${t.precio?ars(t.precio):'—'}</div></div>
+      <div class="detail-item"><div class="detail-lbl">Costo acumulado</div><div class="detail-val">${ars(costo)}</div></div>
+      <div class="detail-item"><div class="detail-lbl">Margen</div><div class="detail-val ${margen!=null?(margen>=0?'margin-pos':'margin-neg'):'margin-zero'}">${margen!=null?(margen>=0?'+':'')+ars(margen):'sin precio'}</div></div>
+      <div class="detail-item"><div class="detail-lbl">Sesiones</div><div class="detail-val">${sess.length}</div></div>
+      <div class="detail-item"><div class="detail-lbl">Tiempo total</div><div class="detail-val">${tattooHrs(t.id).toFixed(2)} hrs</div></div>
+      <div class="detail-item" style="grid-column:1/-1"><div class="detail-lbl">Estilo</div><div class="detail-val">${t.estilo||'— Sin definir'}</div></div>
+    </div>
+    ${pct!=null?`<div style="font-size:11px;color:var(--text-2);margin-bottom:4px">Costo vs precio: ${pct}%</div>
+    <div class="be-bar"><div class="be-fill ${pct<=100?'over':'under'}" style="width:${Math.min(pct,100)}%"></div></div>`:'' }
+    ${t.fotoUrl?`<div style="margin-top:10px"><a href="${t.fotoUrl}" target="_blank" style="font-size:12px;color:#378ADD">Ver referencia →</a></div>`:''}
+    ${t.notas?`<div style="margin-top:10px;font-size:12px;color:#666;background:#f5f5f3;padding:8px 10px;border-radius:8px">${t.notas}</div>`:''}
+  </div>
+
+  <div class="card">
+    <div class="sec-head">
+      <div class="ct" style="margin:0">Sesiones vinculadas</div>
+      <button class="btn btn-sm" onclick="go('ses')">+ Nueva sesión</button>
+    </div>
+    ${sess.length?`<table>
+      <thead><tr><th>Fecha</th><th>Zona</th><th>Máquina</th><th>Aguja</th><th>Línea</th><th>Relleno</th><th>Tec.</th><th>Dis.</th><th>Con.</th><th>Global</th><th>Costo</th><th>Notas</th><th></th></tr></thead>
+      <tbody>${sess.map(s=>{
+        const ag=S.productos.find(p=>p.id===s.agujaId);
+        return`<tr><td>${fdate(s.fecha)}</td><td>${s.zona||'—'}</td><td class="hint">${s.maquina||'—'}</td>
+          <td class="hint">${ag?ag.nom:'—'}</td>
+          <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
+          <td>${scorePill(globalScore(s))}</td>
+          <td>${ars(sesionCosto(s))}</td>
+          <td style="font-size:11px;color:var(--text-2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notas||'—'}</td>
+          <td><button class="btn btn-xs btn-ghost" onclick="editSesFromTattoo('${s.id}')">✏</button></td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr class="total-row"><td colspan="7">Total</td><td>${ars(costo)}</td><td></td></tr></tfoot>
+    </table>`:`<div class="empty">Sin sesiones vinculadas aún.<br>Al crear una sesión, seleccioná este tatuaje en el campo correspondiente.</div>`}
+  </div>`;
+}
+
+
+function buildStatsTattoos(){
+  const allSes=S.sesiones.filter(s=>s.tattooId);
+  if(!allSes.length)return'<div class="empty" style="padding:2.5rem">Sin sesiones vinculadas a tatuajes todavía.</div>';
+  // Group by estilo
+  const estiloMap={};
+  allSes.forEach(s=>{
+    const t=S.tatuajes.find(x=>x.id===s.tattooId);
+    const est=(t&&t.estilo)||'Sin estilo';
+    if(!estiloMap[est])estiloMap[est]={sesiones:[],tattoos:new Set()};
+    estiloMap[est].sesiones.push(s);
+    if(t)estiloMap[est].tattoos.add(t.id);
+  });
+  const rows=Object.entries(estiloMap).map(([est,data])=>{
+    const n=data.sesiones.length;
+    const avgG=(data.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1);
+    const dimAvg=k=>{const v=data.sesiones.map(s=>s[k]).filter(x=>x>0);return v.length?(v.reduce((a,x)=>a+x,0)/v.length).toFixed(1):'—';};
+    const avgL=dimAvg('sL'),avgR=dimAvg('sR'),avgT=dimAvg('sT'),avgD=dimAvg('sD'),avgC=dimAvg('sC');
+    const hrs=data.sesiones.reduce((a,s)=>a+(s.hrs||0),0).toFixed(2);
+    return{est,n,avgL,avgR,avgT,avgD,avgC,avgG,hrs,tattoos:data.tattoos.size};
+  }).sort((a,b)=>b.avgG-a.avgG);
+
+  const scoreColor=v=>v>=7?'var(--green)':v>=4?'var(--amber)':'var(--red)';
+
+  return`<div class="card">
+    <div class="ct">Promedio de scores por estilo</div>
+    <table>
+      <thead><tr><th>Estilo</th><th>Tattoos</th><th>Ses.</th><th>Hrs</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td><strong>${r.est}</strong></td>
+        <td>${r.tattoos}</td><td>${r.n}</td><td>${r.hrs}</td>
+        <td style="color:${scoreColor(r.avgL||0)};font-weight:500">${r.avgL}</td>
+        <td style="color:${scoreColor(r.avgR||0)};font-weight:500">${r.avgR}</td>
+        <td style="color:${scoreColor(r.avgT||0)};font-weight:500">${r.avgT}</td>
+        <td style="color:${scoreColor(r.avgD||0)};font-weight:500">${r.avgD}</td>
+        <td style="color:${scoreColor(r.avgC||0)};font-weight:500">${r.avgC}</td>
+        <td><span class="sp ${r.avgG>=4?'sp-hi':r.avgG>=3?'sp-md':'sp-lo'}">${r.avgG}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="ct">Notas por sesión vinculada</div>
+    <table>
+      <thead><tr><th>Fecha</th><th>Tatuaje</th><th>Estilo</th><th>Línea</th><th>Rell.</th><th>Tec.</th><th>Dis.</th><th>Con.</th><th>Hrs</th><th>Notas</th></tr></thead>
+      <tbody>${[...allSes].reverse().map(s=>{
+        const t=S.tatuajes.find(x=>x.id===s.tattooId);
+        return`<tr>
+          <td>${fdate(s.fecha)}</td>
+          <td style="font-size:11px">${t?t.diseno:'—'}</td>
+          <td class="hint">${(t&&t.estilo)||'—'}</td>
+          <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
+          <td>${s.hrs||'—'}</td>
+          <td style="font-size:11px;color:var(--text-2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(s.notas||'').replace(/"/g,'&quot;')}">${s.notas||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function addTattoo(){
+  const diseno=document.getElementById('nt-dis').value.trim();
+  const cli=document.getElementById('nt-cli').value.trim();
+  if(!diseno||!cli){msg('nt-msg','Cliente y diseño requeridos','err');return;}
+  const t={
+    id:'T'+Date.now(),
+    num:parseInt(document.getElementById('nt-num').value)||1,
+    cliente:cli,diseno,
+    estado:document.getElementById('nt-estado').value,
+    zona:document.getElementById('nt-zona').value.trim(),
+    tamano:document.getElementById('nt-tam').value.trim(),
+    precio:parseFloat(document.getElementById('nt-precio').value)||0,
+    estilo:document.getElementById('nt-est').value,
+    fotoUrl:document.getElementById('nt-foto').value.trim(),
+    notas:document.getElementById('nt-notas').value.trim()
+  };
+  if(!t.precio)t.precio=0;
+  S.tatuajes.push(t);
+  document.querySelectorAll('input[name="link-ses"]:checked').forEach(cb=>{
+    const s=S.sesiones.find(x=>x.id===cb.value);
+    if(s){s.tattooId=t.id;s.practica=false;}
+  });
+  persist();
+  selectedTattooId=t.id;tattooView='detalle';renderTattoos();
+}
+
+function editTattoo(tid){
+  const t=S.tatuajes.find(x=>x.id===tid);if(!t)return;
+  const el=document.getElementById('t-tattoos');
+  el.innerHTML=`<div style="margin-bottom:1rem"><button class="btn btn-sm" onclick="tattooView='detalle';selectedTattooId='${tid}';renderTattoos()">← Cancelar</button></div>
+  <div class="card">
+    <div class="ct">Editar tatuaje</div>
+    <div class="fgrid">
+      <div class="fg"><label class="fl">N°</label><input id="et-num" type="number" value="${t.num}"></div>
+      <div class="fg"><label class="fl">Estado</label><select id="et-estado"><option${t.estado==='En curso'?' selected':''}>En curso</option><option${t.estado==='Finalizado'?' selected':''}>Finalizado</option><option${t.estado==='Pendiente'?' selected':''}>Pendiente</option></select></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Cliente</label><input id="et-cli" value="${t.cliente}"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Diseño</label><input id="et-dis" value="${t.diseno}"></div>
+      <div class="fg"><label class="fl">Zona</label><input id="et-zona" value="${t.zona||''}"></div>
+      <div class="fg"><label class="fl">Tamaño</label><input id="et-tam" value="${t.tamano||''}"></div>
+      <div class="fg"><label class="fl">Estilo</label><select id="et-est">${ESTILOS.map(e=>`<option value="${e}"${(t.estilo||'')===e?' selected':''}>${e}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Precio (ARS)</label><input id="et-precio" type="number" value="${t.precio||0}"></div>
+      <div class="fg"><label class="fl">URL referencia</label><input id="et-foto" value="${t.fotoUrl||''}"></div>
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Notas</label><textarea id="et-notas" rows="2">${t.notas||''}</textarea></div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="saveEditTattoo('${tid}')">Guardar</button>
+      <span id="et-msg"></span>
+    </div>
+  </div>`;
+}
+
+function saveEditTattoo(tid){
+  const t=S.tatuajes.find(x=>x.id===tid);if(!t)return;
+  t.num=parseInt(document.getElementById('et-num').value)||t.num;
+  t.estado=document.getElementById('et-estado').value;
+  t.cliente=document.getElementById('et-cli').value.trim();
+  t.diseno=document.getElementById('et-dis').value.trim();
+  t.zona=document.getElementById('et-zona').value.trim();
+  t.tamano=document.getElementById('et-tam').value.trim();
+  t.estilo=document.getElementById('et-est').value;
+  t.precio=parseFloat(document.getElementById('et-precio').value)||0;
+  t.fotoUrl=document.getElementById('et-foto').value.trim();
+  t.notas=document.getElementById('et-notas').value.trim();
+  persist();tattooView='detalle';selectedTattooId=tid;renderTattoos();
+}
+
+function deleteTattoo(tid){
+  if(!confirm('¿Eliminar este tatuaje? Las sesiones vinculadas quedan pero sin proyecto.'))return;
+  S.tatuajes=S.tatuajes.filter(x=>x.id!==tid);
+  S.sesiones.forEach(s=>{if(s.tattooId===tid)s.tattooId=null;});
+  persist();tattooView='lista';selectedTattooId=null;renderTattoos();
+}
+
+// ─── Inventario ──────────────────────────────────────────────────────────────
+function toggleFCat(c){const i=fCat.indexOf(c);if(i>=0)fCat.splice(i,1);else fCat.push(c);renderInv();}
+function renderInv(){
+  let prods=S.productos;
+  if(fCat.length)prods=prods.filter(p=>fCat.includes(p.cat));
+  if(fSt)prods=prods.filter(p=>status(p)===fSt);
+  const editCard=editingId?buildEditCard(S.productos.find(x=>x.id===editingId)):'';
+  const totalAlerts=S.productos.filter(p=>status(p)!=='ok').length;
+  document.getElementById('t-inv').innerHTML=`
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Inventario</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos · ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
+    ${editCard}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        <button class="stab${!fCat.length&&!fSt?' on':''}" onclick="fCat=[];fSt='';renderInv()">Todos</button>
+        ${['Activo','Descartable','Consumible','Aguja'].map(c=>`<button class="stab${fCat.includes(c)?' on':''}" onclick="toggleFCat('${c}')">${c}s</button>`).join('')}
+        <button class="stab${fSt==='ok'?' on':''}" onclick="fSt='ok';fCat=[];renderInv()">OK</button>
+        <button class="stab${fSt==='low'?' on':''}" onclick="fSt='low';fCat=[];renderInv()">Bajo</button>
+        <button class="stab${fSt==='critical'?' on':''}" onclick="fSt='critical';fCat=[];renderInv()">Crítico</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="hint">${prods.length} producto${prods.length!==1?'s':''}</span>
+        <button class="btn btn-sm btn-p" onclick="go('new')">+ Agregar</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><table>
+      <thead><tr><th>Producto</th><th>Stock</th><th>Mín.</th><th>Estado</th><th>Costo/uso</th><th>Usos/un.</th><th></th></tr></thead>
+      <tbody>${prods.map(p=>{const st=status(p);const isEd=p.id===editingId;
+        return`<tr${st!=='ok'?' class="al"':''}${isEd?' style="background:var(--accent-dim)"':''}>
+          <td><strong>${p.nom}</strong>${p.practica?' <span class="badge b-prac">práctica</span>':''}<br><span class="hint">${p.cat} · ${p.sub}</span></td>
+          <td>${stockOf(p.id)} <span class="hint">${p.um}</span></td><td>${p.sm}</td><td>${badge(st)}</td>
+          <td>${p.cu>0?ars(cxu(p)):'—'}</td><td class="hint">${p.upu}</td>
+          <td><button class="btn btn-xs" onclick="editingId='${p.id}';renderInv()">— Editar</button></td>
+        </tr>`;}).join('')}
+      </tbody>
+    </table></div>
+    <p class="hint" style="padding:4px">Usá Movimientos para registrar entradas/salidas de stock.</p>`;
+}
+
+function buildEditCard(p){
+  if(!p)return'';
+  const isSesion=p.tipo_consumo==='SESION';
+  const upuLabel=isSesion?'Rinde aprox. X ses. ←':'Usos por unidad ←';
+  const hintTxt=isSesion?'cuántas sesiones rinde el envase':'cuántas veces se puede usar esta unidad';
+  return`<div class="card-blue">
+    <div class="ct" style="color:var(--accent)">✏ Editando: ${p.nom}</div>
+    <div class="edit-hint"><strong>${upuLabel.replace(' ←','')}</strong>: ${hintTxt}.</div>
+    <div class="fgrid">
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Nombre</label><input id="ep-nom" value="${p.nom}"></div>
+      <div class="fg"><label class="fl">Subcategoría</label><input id="ep-sub" value="${p.sub}"></div>
+      <div class="fg"><label class="fl">Moneda</label><select id="ep-mon"><option value="ARS"${p.mon==='ARS'?' selected':''}>ARS</option><option value="USD"${p.mon==='USD'?' selected':''}>USD</option></select></div>
+      <div class="fg"><label class="fl">Costo unitario</label><input id="ep-cu" type="number" min="0" step="0.01" value="${p.cu}"></div>
+      <div class="fg"><label class="fl">${upuLabel}</label><input id="ep-upu" type="number" min="1" value="${p.upu}" style="border-color:#378ADD"></div>
+      <div class="fg"><label class="fl">Stock mínimo</label><input id="ep-sm" type="number" min="0" value="${p.sm}"></div>
+      ${p.cat!=='Activo'?`<div class="fg"><label class="fl">Tipo de consumo</label><select id="ep-tipo"><option value="UNIDAD"${p.tipo_consumo==='UNIDAD'?' selected':''}>Unidad</option><option value="SESION"${p.tipo_consumo==='SESION'?' selected':''}>Sesión</option><option value="VARIABLE"${p.tipo_consumo==='VARIABLE'?' selected':''}>Variable</option><option value="LONGITUD"${p.tipo_consumo==='LONGITUD'?' selected':''}>Longitud</option></select></div>`:''}
+      ${p.cat==='Activo'?`<div class="fg"><label class="fl">Vida útil (meses)</label><input id="ep-vum" type="number" min="1" value="${p.vum||24}"></div>`:''}
+      ${p.cat==='Aguja'?`<div class="fg" style="grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"${p.practica?' checked':''}> Aguja de práctica (no descuenta stock)</label></div>`:''}
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="saveEdit('${p.id}')">Guardar</button>
+      <button class="btn" onclick="editingId=null;renderInv()">Cancelar</button>
+      <span id="ep-msg"></span>
+    </div>
+  </div>`;
+}
+function saveEdit(pid){
+  const p=S.productos.find(x=>x.id===pid);if(!p)return;
+  const nom=document.getElementById('ep-nom').value.trim();if(!nom){msg('ep-msg','Nombre requerido','err');return;}
+  p.nom=nom;p.sub=document.getElementById('ep-sub').value.trim();
+  p.mon=document.getElementById('ep-mon').value;
+  p.cu=parseFloat(document.getElementById('ep-cu').value)||0;
+  p.upu=parseInt(document.getElementById('ep-upu').value)||1;
+  p.sm=parseInt(document.getElementById('ep-sm').value)||0;
+  if(p.cat==='Activo'){const v=document.getElementById('ep-vum');if(v)p.vum=parseInt(v.value)||0;}
+  if(p.cat==='Aguja'){const v=document.getElementById('ep-prac');if(v)p.practica=v.checked;}
+  if(p.cat!=='Activo'){const v=document.getElementById('ep-tipo');if(v)p.tipo_consumo=v.value;}
+  persist();editingId=null;renderInv();
+}
+
+// ─── Activos ─────────────────────────────────────────────────────────────────
+function renderActivos(){
+  const acts=S.productos.filter(p=>p.cat==='Activo');
+  const totC=acts.reduce((a,p)=>a+cuARS(p),0);
+  const totM=acts.reduce((a,p)=>a+amortMensual(p),0);
+  const totS=acts.reduce((a,p)=>a+amortSesion(p),0);
+  document.getElementById('t-act').innerHTML=`
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Equipos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Activos</div><div style="font-size:14px;color:var(--text-2)">${acts.length} activo${acts.length!==1?'s':''} · Deprec. total: ${ars(totM)}/mes</div></div>
+    <div class="g4">
+      <div class="metric"><div class="ml">Valor total</div><div class="mv" style="font-size:15px">${ars(totC)}</div></div>
+      <div class="metric"><div class="ml">Deprec./mes</div><div class="mv" style="font-size:15px">${ars(totM)}</div></div>
+      <div class="metric"><div class="ml">Deprec./sesión</div><div class="mv" style="font-size:15px">${ars(totS)}</div><div class="ms">a ${S.spm} ses/mes</div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><table>
+      <thead><tr><th>Activo</th><th>Sub.</th><th>Costo ARS</th><th>Mon.</th><th>Vida útil</th><th>Amort./mes</th><th>Amort./ses.</th><th>Vida útil (meses)</th></tr></thead>
+      <tbody>${acts.map(p=>`<tr>
+        <td>${p.nom}</td><td class="hint">${p.sub}</td>
+        <td>${p.cu>0?ars(cuARS(p)):'—'}</td>
+        <td class="hint">${p.mon==='USD'?p.cu+'u$s':''}</td>
+        <td>${p.vum?p.vum+'m':'—'}</td>
+        <td>${p.vum&&p.cu>0?ars(amortMensual(p)):'—'}</td>
+        <td>${p.vum&&p.cu>0?ars(amortSesion(p)):'—'}</td>
+        <td><input type="number" min="1" style="width:65px;padding:3px 6px;font-size:11px" value="${p.vum||''}" onchange="updateVum('${p.id}',this.value)"></td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr class="total-row"><td colspan="4">Total</td><td>—</td><td>${ars(totM)}</td><td>${ars(totS)}</td><td></td></tr></tfoot>
+    </table></div>`;
+}
+
+// ─── Sesiones ────────────────────────────────────────────────────────────────
+function renderSes(){
+  const avgG=S.sesiones.length?(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/S.sesiones.length).toFixed(1):'—';
+  document.getElementById('t-ses').innerHTML=`
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Bitácora técnica</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Sesiones</div><div style="font-size:14px;color:var(--text-2)">${S.sesiones.length} registrada${S.sesiones.length!==1?'s':''} · Score global: ${avgG}/10</div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        <button class="stab ${sesView==='bit'?'on':''}" onclick="setSesView('bit')">Bitácora (${S.sesiones.length})</button>
+      </div>
+      <button class="btn btn-sm btn-p" onclick="setSesView('nueva')">+ Nueva sesión</button>
+    </div>
+    ${sesView==='nueva'?buildNuevaSes():sesView==='edit'&&editSesionId?buildEditSes(editSesionId):buildBitacora()}`;
+  if(sesView==='nueva'){applyScores();renderKitItems();}
+}
+
+function onTattooSelChange(){const tid=document.getElementById('sf-tattoo').value;const t=S.tatuajes.find(x=>x.id===tid);if(t){const c=document.getElementById('sf-cli');const z=document.getElementById('sf-zona');if(c)c.value=t.cliente||'';if(z)z.value=t.zona||'';}}
+function onKitSelChange(){nKitExcludes.clear();renderKitItems();updateSesTotal();}
+function toggleKitExclude(pid){if(nKitExcludes.has(pid))nKitExcludes.delete(pid);else nKitExcludes.add(pid);updateSesTotal();}
+function renderKitItems(){
+  const el=document.getElementById('sf-kit-items');if(!el)return;
+  const kitId=document.getElementById('sf-kit-sel')?.value;
+  if(!kitId){el.innerHTML='';return;}
+  const kit=S.kits.find(k=>k.id===kitId);if(!kit){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card-inner">${kit.items.map(ki=>{
+    const p=S.productos.find(x=>x.id===ki.pid);if(!p)return'';
+    const on=!nKitExcludes.has(ki.pid);
+    return`<div class="kit-row"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" style="width:auto" ${on?'checked':''} onchange="toggleKitExclude('${ki.pid}')"><span style="${on?'':'opacity:.45;text-decoration:line-through'}">${p.nom} ×${ki.qty}</span></label><span class="hint">${on&&p.cu>0?ars(cxu(p)*ki.qty):'—'}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function buildNuevaSes(){
+  const maquinas=S.productos.filter(p=>p.cat==='Activo'&&p.sub==='Maquina');
+  const agujas=S.productos.filter(p=>p.cat==='Aguja');
+  const realAgujas=agujas.filter(p=>!p.practica);
+  const pracAgujas=agujas.filter(p=>p.practica);
+  const amortS=amortTotalSes();const kitC=calcKitCostStatic();
+  const testedChips=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${nTestedIds.has(a.id)?' on':''}" onclick="toggleTested('${a.id}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
+  const tattooOpts=S.tatuajes.filter(t=>t.estado!=='Finalizado').map(t=>`<option value="${t.id}">#${t.num} · ${t.cliente} — ${t.diseno}</option>`).join('');
+  return`<div class="card">
+    <div class="ct">Nueva sesión</div>
+    <div class="fgrid" style="margin-bottom:1rem">
+      <div class="fg" style="grid-column:1/-1"><label class="fl">Tatuaje vinculado <span class="hint">(opcional)</span></label>
+        <select id="sf-tattoo" onchange="onTattooSelChange()"><option value="">— Práctica / sin proyecto —</option>${tattooOpts}</select>
+      </div>
+      <div class="fg"><label class="fl">Fecha</label><input id="sf-fecha" type="date" value="${today}"></div>
+      <div class="fg"><label class="fl">Cliente</label><input id="sf-cli" placeholder="Nombre o 'Yo mismo'"></div>
+      <div class="fg"><label class="fl">Zona</label><input id="sf-zona" list="zonas-dl" placeholder="Muslo, Antebrazo...">
+        <datalist id="zonas-dl"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Tobillo</option><option>Piel sintética</option></datalist>
+      </div>
+      <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="sf-hrs" type="number" min="0.25" step="0.25" value="2"></div>
+      <div class="fg"><label class="fl">Máquina</label><select id="sf-maq"><option value="">— Seleccionar —</option>${maquinas.map(m=>`<option value="${m.nom}">${m.nom}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Voltaje (V)</label><input id="sf-volt" type="number" min="0" step="0.1" value="8"></div>
+      <div class="fg"><label class="fl">Stroke</label><input id="sf-stroke" placeholder="Ej: 3.8 o 'fijo'"></div>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <div class="fl" style="margin-bottom:6px">Aguja principal</div>
+      <select id="sf-aguja">
+        <option value="">— Sin registrar —</option>
+        ${realAgujas.length?`<optgroup label="Real (descuenta stock)">${realAgujas.map(a=>`<option value="${a.id}">${a.nom} (stock: ${stockOf(a.id)})</option>`).join('')}</optgroup>`:''}
+        ${pracAgujas.length?`<optgroup label="★ Práctica (no descuenta)">${pracAgujas.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('')}</optgroup>`:''}
+      </select>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <div class="fl" style="margin-bottom:6px">Agujas testeadas <span class="hint">— todas las que probaste</span></div>
+      <div class="aguja-grid" id="tested-grid">${testedChips}</div>
+    </div>
+
+    <div style="margin-bottom:.5rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:500">Kit de insumos</span>
+        <select id="sf-kit-sel" style="flex:1;font-size:12px" onchange="onKitSelChange()">
+          <option value="">— Ninguno —</option>
+          ${S.kits.map(k=>`<option value="${k.id}"${k.id===S.kits[0]?.id?' selected':''}>${k.nombre}</option>`).join('')}
+        </select>
+      </div>
+      <div id="sf-kit-items"></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin:.75rem 0 .5rem">
+      <span style="font-size:12px;font-weight:500">Insumos adicionales</span>
+      <button class="btn btn-sm" onclick="addExtra()">+ Agregar</button>
+    </div>
+    <div id="extras-sec">${renderExtras()}</div>
+
+    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span></div>
+    ${DIMS.map(({k,lbl})=>`<div class="sc-dim-card">
+      <div class="sc-dim-title">${lbl}</div>
+      <div>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="sc-btn" id="s${k}${n}" onclick="setScore('${k}',${n})">${n}</button>`).join('')}</div>
+    </div>`).join('')}
+
+    <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
+    <textarea id="sf-notas" placeholder="¿Qué funcionó? ¿Qué cambiarías?"></textarea>
+
+    <div class="cost-bar">
+      <div><div style="font-size:12px;color:#666">Costo estimado sesión</div>
+      <div class="hint">amort. ${ars(amortS)} + insumos <span id="ins-cost">${ars(kitC+calcExtrasCost())}</span></div></div>
+      <div class="cost-total" id="ses-total">${ars(amortS+kitC+calcExtrasCost())}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="saveSes()">Guardar sesión</button>
+      <span id="ses-msg"></span>
+    </div>
+  </div>`;
+}
+
+
+function editSesFromTattoo(sid){go('ses');setTimeout(()=>{editSesionId=sid;sesView='edit';renderSes();},60);}
+function startEditSes(sid){
+  editSesionId=sid;
+  sesView='edit';
+  renderSes();
+}
+
+function buildEditSes(sid){
+  const s=S.sesiones.find(x=>x.id===sid);
+  if(!s)return'<div class="empty">Sesión no encontrada.</div>';
+  const maquinas=S.productos.filter(p=>p.cat==='Activo'&&p.sub==='Maquina');
+  const agujas=S.productos.filter(p=>p.cat==='Aguja');
+  const realAgujas=agujas.filter(p=>!p.practica);
+  const pracAgujas=agujas.filter(p=>p.practica);
+  const testedSet=new Set(s.agujasTested||[]);
+  const tattooOpts=S.tatuajes.map(t=>`<option value="${t.id}"${s.tattooId===t.id?' selected':''}>#${t.num} · ${t.cliente} — ${t.diseno}</option>`).join('');
+  const chips=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${testedSet.has(a.id)?' on':''}" onclick="toggleEditTested('${a.id}','${sid}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
+
+  // Pre-fill scores
+  const es={L:s.sL||0,R:s.sR||0,T:s.sT||0,D:s.sD||0,C:s.sC||0};
+  const scoreButtons=DIMS.map(({k,lbl})=>`<div class="sc-dim-card">
+    <div class="sc-dim-title">${lbl}</div>
+    <div>${[1,2,3,4,5,6,7,8,9,10].map(n=>{const on=n===es[k];const cls=on?(n>=7?'on-green':n>=4?'on-amber':'on-red'):'';return`<button class="sc-btn ${cls}" id="es${k}${n}" onclick="setEditScore('${sid}','${k}',${n})">${n}</button>`;}).join('')}</div>
+  </div>`).join('');
+
+  return`<div class="card-blue">
+    <div class="ct" style="color:var(--accent)">✏ Editando sesión — ${fdate(s.fecha)} · ${s.zona||'sin zona'}</div>
+    <div class="edit-hint">Podés corregir todos los campos incluidos los scores. Los movimientos de stock NO se recalculan — solo los datos de la bitácora.</div>
+    <div class="fgrid" style="margin-bottom:1rem">
+      <div class="fg"><label class="fl">Fecha</label><input id="es-fecha" type="date" value="${s.fecha}"></div>
+      <div class="fg"><label class="fl">Cliente</label><input id="es-cli" value="${s.cliente||''}"></div>
+      <div class="fg"><label class="fl">Zona</label><input id="es-zona" list="zonas-dl-e" value="${s.zona||''}">
+        <datalist id="zonas-dl-e"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Piel sintética</option></datalist>
+      </div>
+      <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="es-hrs" type="number" min="0.25" step="0.25" value="${s.hrs||1}"></div>
+      <div class="fg"><label class="fl">Máquina</label><select id="es-maq"><option value="">— —</option>${maquinas.map(m=>`<option value="${m.nom}"${s.maquina===m.nom?' selected':''}>${m.nom}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Voltaje (V)</label><input id="es-volt" type="number" step="0.1" value="${s.voltaje||0}"></div>
+      <div class="fg"><label class="fl">Stroke</label><input id="es-stroke" value="${s.stroke||''}"></div>
+      <div class="fg"><label class="fl">Tatuaje vinculado</label>
+        <select id="es-tattoo"><option value="">— Práctica —</option>${tattooOpts}</select>
+      </div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div class="fl" style="margin-bottom:6px">Aguja principal</div>
+      <select id="es-aguja">
+        <option value="">— —</option>
+        ${realAgujas.length?`<optgroup label="Real">${realAgujas.map(a=>`<option value="${a.id}"${s.agujaId===a.id?' selected':''}>${a.nom}</option>`).join('')}</optgroup>`:''}
+        ${pracAgujas.length?`<optgroup label="★ Práctica">${pracAgujas.map(a=>`<option value="${a.id}"${s.agujaId===a.id?' selected':''}>${a.nom}</option>`).join('')}</optgroup>`:''}
+      </select>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div class="fl" style="margin-bottom:6px">Agujas testeadas</div>
+      <div class="aguja-grid" id="edit-tested-grid-${sid}">${chips}</div>
+    </div>
+    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span></div>
+    ${scoreButtons}
+    <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
+    <textarea id="es-notas" rows="4">${s.notas||''}</textarea>
+    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-p" onclick="saveEditSes('${sid}')">Guardar cambios</button>
+      <button class="btn btn-ghost" onclick="editSesionId=null;sesView='bit';renderSes()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSes('${sid}')">Eliminar sesión</button>
+      <span id="es-msg-${sid}"></span>
+    </div>
+  </div>`;
+}
+
+// Track edited scores separately for edit form
+let editScoresBuf={};
+function setEditScore(sid,k,v){
+  if(!editScoresBuf[sid])editScoresBuf[sid]={L:0,R:0,T:0,D:0,C:0};
+  editScoresBuf[sid][k]=v;
+  // update button UI
+  for(let n=1;n<=10;n++){
+    const b=document.getElementById('es'+k+n);
+    if(!b)continue;
+    const on=n===v;
+    b.className='sc-btn'+(on?' '+(n>=7?'on-green':n>=4?'on-amber':'on-red'):'');
+  }
+}
+
+function toggleEditTested(pid,sid){
+  const grid=document.getElementById('edit-tested-grid-'+sid);
+  if(!grid)return;
+  // toggle in the session object temporarily
+  const s=S.sesiones.find(x=>x.id===sid);if(!s)return;
+  if(!s._editTested)s._editTested=new Set(s.agujasTested||[]);
+  if(s._editTested.has(pid))s._editTested.delete(pid);else s._editTested.add(pid);
+  const agujas=S.productos.filter(p=>p.cat==='Aguja');
+  grid.innerHTML=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${s._editTested.has(a.id)?' on':''}" onclick="toggleEditTested('${a.id}','${sid}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
+}
+
+function saveEditSes(sid){
+  const s=S.sesiones.find(x=>x.id===sid);if(!s)return;
+  s.fecha=document.getElementById('es-fecha').value||s.fecha;
+  s.cliente=document.getElementById('es-cli').value.trim();
+  s.zona=document.getElementById('es-zona').value.trim();
+  s.hrs=parseFloat(document.getElementById('es-hrs').value)||s.hrs;
+  s.maquina=document.getElementById('es-maq').value;
+  s.voltaje=parseFloat(document.getElementById('es-volt').value)||0;
+  s.stroke=document.getElementById('es-stroke').value;
+  s.agujaId=document.getElementById('es-aguja').value;
+  s.tattooId=document.getElementById('es-tattoo').value||null;
+  s.notas=document.getElementById('es-notas').value.trim();
+  // scores
+  const buf=editScoresBuf[sid]||{};
+  s.sL=buf.L||s.sL||0;s.sR=buf.R||s.sR||0;s.sT=buf.T||s.sT||0;
+  s.sD=buf.D||s.sD||0;s.sC=buf.C||s.sC||0;
+  // tested
+  if(s._editTested){s.agujasTested=[...s._editTested];delete s._editTested;}
+  persist();
+  editSesionId=null;sesView='bit';renderSes();
+}
+
+function deleteSes(sid){
+  if(!confirm('¿Eliminar esta sesión? Los movimientos de stock generados NO se revierten.'))return;
+  S.sesiones=S.sesiones.filter(x=>x.id!==sid);
+  persist();editSesionId=null;sesView='bit';renderSes();
+}
+
+function buildBitacora(){
+  if(!S.sesiones.length)return'<div class="empty">Sin sesiones todavía.</div>';
+  const n=S.sesiones.length;
+  const avgGlobal=(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1);
+  const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):'—';};
+  return`<div class="g4">
+    <div class="metric"><div class="ml">Sesiones</div><div class="mv">${n}</div></div>
+    <div class="metric"><div class="ml">Score global</div><div class="mv">${avgGlobal}</div></div>
+    <div class="metric"><div class="ml">Línea</div><div class="mv">${avgDim('sL')}</div></div>
+    <div class="metric"><div class="ml">Relleno</div><div class="mv">${avgDim('sR')}</div></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden"><table>
+    <thead><tr><th>Fecha</th><th>Zona</th><th>Proyecto</th><th>Aguja princ.</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
+    <tbody>${[...S.sesiones].reverse().map(s=>{
+      const ag=S.productos.find(p=>p.id===s.agujaId);
+      const tattoo=S.tatuajes.find(t=>t.id===s.tattooId);
+      const tested=(s.agujasTested||[]).map(id=>{const p=S.productos.find(x=>x.id===id);return p?`<span class="badge b-prac">${p.nom}</span>`:id;}).join(' ');
+      return`<tr>
+        <td>${fdate(s.fecha)}</td><td>${s.zona||'—'}</td>
+        <td>${tattoo?`<span style="font-size:11px;color:var(--accent)">#${tattoo.num} ${tattoo.diseno}</span>`:'<span class="hint">práctica</span>'}</td>
+        <td class="hint">${ag?ag.nom+(ag.practica?' ★':''):'—'}</td>
+        <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
+        <td>${scorePill(globalScore(s))}</td>
+        <td style="font-size:11px;color:var(--text-2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(s.notas||'').replace(/"/g,'&quot;')}">${s.notas||'—'}</td>
+        <td><button class="btn btn-xs btn-ghost" onclick="startEditSes('${s.id}')">✏</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function toggleTested(pid){
+  if(nTestedIds.has(pid))nTestedIds.delete(pid);else nTestedIds.add(pid);
+  const grid=document.getElementById('tested-grid');
+  if(grid){const agujas=S.productos.filter(p=>p.cat==='Aguja');grid.innerHTML=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${nTestedIds.has(a.id)?' on':''}" onclick="toggleTested('${a.id}')">${a.nom}${a.practica?' ★':''}</button>`).join('');}
+}
+function renderExtras(){
+  if(!nExtras.length)return`<p class="hint" style="padding:4px 0 .5rem">Sin insumos adicionales.</p>`;
+  const opts=S.productos.filter(p=>p.cat!=='Activo').map(p=>`<option value="${p.id}">[${p.cat}] ${p.nom}</option>`).join('');
+  return nExtras.map((e,i)=>{const p=S.productos.find(x=>x.id===e.pid);
+    return`<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+      <select style="flex:1;font-size:12px" onchange="nExtras[${i}].pid=this.value;updateSesTotal()">${opts.replace(`value="${e.pid}"`,`value="${e.pid}" selected`)}</select>
+      <input type="number" min="1" value="${e.qty}" style="width:55px" onchange="nExtras[${i}].qty=parseInt(this.value)||1;updateSesTotal()">
+      <button class="btn btn-xs" onclick="nExtras.splice(${i},1);rerenderExtras();updateSesTotal()">✕</button>
+      <span class="hint" style="min-width:55px;text-align:right">${p&&p.cu>0?ars(cxu(p)*e.qty):'—'}</span>
+    </div>`;
+  }).join('');
+}
+function rerenderExtras(){const el=document.getElementById('extras-sec');if(el)el.innerHTML=renderExtras();}
+function addExtra(){const first=S.productos.find(p=>p.cat!=='Activo');nExtras.push({pid:first?first.id:'',qty:1});rerenderExtras();updateSesTotal();}
+function scoreClass(v){return v>=7?'on-green':v>=4?'on-amber':'on-red';}
+function applyScores(){DIMS.forEach(({k})=>{for(let n=1;n<=10;n++){const b=document.getElementById('s'+k+n);if(!b)continue;const on=n===nScores[k];b.className='sc-btn'+(on?' '+scoreClass(n):'');}});}
+function setScore(k,v){nScores[k]=v;applyScores();}
+function updateSesTotal(){
+  const kitId=document.getElementById('sf-kit-sel')?.value;
+  const kitC=kitId?calcKitCost(kitId,[...nKitExcludes]):0;const extC=calcExtrasCost();const amortS=amortTotalSes();
+  const el=document.getElementById('ses-total');const eli=document.getElementById('ins-cost');
+  if(el)el.textContent=ars(amortS+kitC+extC);if(eli)eli.textContent=ars(kitC+extC);
+}
+function saveSes(){
+  const fecha=document.getElementById('sf-fecha').value||today;
+  const agujaId=document.getElementById('sf-aguja').value;
+  const kitId=document.getElementById('sf-kit-sel').value||null;
+  const kitExcludes=[...nKitExcludes];
+  const tattooId=document.getElementById('sf-tattoo').value||null;
+  const sesId='S'+Date.now();
+  const agujasTested=[...nTestedIds];
+  S.sesiones.push({id:sesId,fecha,
+    cliente:document.getElementById('sf-cli').value.trim(),
+    zona:document.getElementById('sf-zona').value.trim(),
+    hrs:parseFloat(document.getElementById('sf-hrs').value)||0,
+    maquina:document.getElementById('sf-maq').value,
+    agujaId,agujasTested,tattooId,
+    voltaje:parseFloat(document.getElementById('sf-volt').value)||0,
+    stroke:document.getElementById('sf-stroke').value,
+    kitId,kitExcludes,extras:[...nExtras],
+    sL:nScores.L,sR:nScores.R,sT:nScores.T,sD:nScores.D,sC:nScores.C,
+    notas:document.getElementById('sf-notas').value.trim(),
+    practica:!tattooId
+  });
+  if(kitId){const kit=S.kits.find(k=>k.id===kitId);if(kit)kit.items.filter(ki=>!kitExcludes.includes(ki.pid)&&ki.qty>0).forEach(ki=>{const _kp=S.productos.find(x=>x.id===ki.pid);S.movimientos.push({id:'M'+Date.now()+'k'+ki.pid,fecha,pid:ki.pid,tipo:'salida',qty:ki.qty,ref:sesId+' (kit)',costoAlMomento:_kp?Math.round(cuARS(_kp)):0});});}
+  nExtras.forEach(e=>{if(e.pid&&e.qty>0){const _ep=S.productos.find(x=>x.id===e.pid);S.movimientos.push({id:'M'+Date.now()+'x'+e.pid,fecha,pid:e.pid,tipo:'salida',qty:e.qty,ref:sesId+' (extra)',costoAlMomento:_ep?Math.round(cuARS(_ep)):0});}});
+  if(agujaId){const ap=S.productos.find(x=>x.id===agujaId);if(ap&&!ap.practica)S.movimientos.push({id:'M'+Date.now()+'ag',fecha,pid:agujaId,tipo:'salida',qty:1,ref:sesId+' (aguja)',costoAlMomento:Math.round(cuARS(ap))});}
+  persist();msg('ses-msg','Sesión guardada','ok');
+  nExtras=[];nScores={D:3,T:3,E:3};nTestedIds=new Set();nKitExcludes=new Set();
+  setTimeout(()=>setSesView('bit'),1000);
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+function renderKitCfg(){
+  const el=document.getElementById('kit-cfg-body');if(!el)return;
+  const allProds=S.productos.filter(p=>p.cat!=='Activo');
+  const opts=allProds.map(p=>`<option value="${p.id}">[${p.cat}] ${p.nom}</option>`).join('');
+  el.innerHTML=S.kits.map((k,ki)=>`<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+      <input value="${k.nombre}" style="flex:1;font-size:12px" onchange="S.kits[${ki}].nombre=this.value;persist()">
+      ${S.kits.length>1?`<button class="btn btn-xs btn-danger" onclick="S.kits.splice(${ki},1);persist();renderKitCfg()">✕</button>`:''}
+    </div>
+    ${k.items.map((item,ii)=>`<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+      <select style="flex:1;font-size:11px" onchange="S.kits[${ki}].items[${ii}].pid=this.value;persist()">${opts.replace(`value="${item.pid}"`,`value="${item.pid}" selected`)}</select>
+      <input type="number" min="0" value="${item.qty}" style="width:50px" onchange="S.kits[${ki}].items[${ii}].qty=parseInt(this.value)||0;persist()">
+      <button class="btn btn-xs" onclick="S.kits[${ki}].items.splice(${ii},1);persist();renderKitCfg()">✕</button>
+    </div>`).join('')}
+    <button class="btn btn-sm" style="margin-top:2px" onclick="S.kits[${ki}].items.push({pid:'${allProds[0]?.id||''}',qty:1});persist();renderKitCfg()">+ Ítem</button>
+  </div>`).join('')+`<button class="btn btn-sm" onclick="S.kits.push({id:'K'+Date.now(),nombre:'Kit nuevo',items:[]});persist();renderKitCfg()">+ Nuevo kit</button>`;
+}
+function updateVum(pid,val){const p=S.productos.find(x=>x.id===pid);if(p){p.vum=parseInt(val)||0;persist();renderActivos();}}
+function toggleNewFields(){
+  const cat=document.getElementById('np-cat')?.value;
+  const tipo=document.getElementById('np-tipo')?.value||'UNIDAD';
+  const f=document.getElementById('vum-field');if(f)f.style.display=cat==='Activo'?'':'none';
+  const pf=document.getElementById('prac-field');if(pf)pf.style.display=cat==='Aguja'?'':'none';
+  const tf=document.getElementById('tipo-consumo-field');if(tf)tf.style.display=cat==='Activo'?'none':'';
+  const ul=document.getElementById('np-upu-label');if(ul)ul.textContent=tipo==='SESION'?'Rinde aprox. X ses.':'Usos por unidad';
+}
+
+function onMovChange(){
+  const tipo=document.getElementById('mv-tipo')?.value;
+  const pid=document.getElementById('mv-prod')?.value;
+  const p=S.productos.find(x=>x.id===pid);
+  const cw=document.getElementById('mv-costo-wrap');
+  const uw=document.getElementById('mv-unidad-wrap');
+  const info=document.getElementById('mv-info');
+  if(cw)cw.style.display=tipo==='entrada'?'':'none';
+  if(uw)uw.style.display=(tipo==='salida'&&p&&p.upu>1)?'':'none';
+  if(info&&p){const stk=stockOf(p.id);info.textContent='Stock actual: '+stk+' '+p.um+' · Costo vigente: $'+Math.round(cuARS(p)).toLocaleString('es-AR')+(p.upu>1?' · '+p.upu+' usos/unidad':'');}
+  else if(info)info.textContent='';
+}
+function fillMovSel(){const sel=document.getElementById('mv-prod');const cur=sel.value;sel.innerHTML=S.productos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>[${p.cat}] ${p.nom}</option>`).join('');}
+function renderMovTable(){
+  const rows=[...S.movimientos].reverse().slice(0,60);
+  document.getElementById('mv-body').innerHTML=rows.length?rows.map(m=>{const p=S.productos.find(x=>x.id===m.pid);return`<tr><td>${fdate(m.fecha)}</td><td>${p?p.nom:m.pid}</td><td>${m.tipo==='entrada'?'<span class="tag-in">+ entrada</span>':'<span class="tag-out">− salida</span>'}</td><td>${m.qty}</td><td class="hint">${m.costoAlMomento?'$'+Math.round(m.costoAlMomento).toLocaleString('es-AR'):'—'}</td><td class="hint">${m.ref||'—'}</td><td>${stockOf(m.pid)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="empty">Sin movimientos</td></tr>';
+}
+function addMov(){
+  const pid=document.getElementById('mv-prod').value;
+  const tipo=document.getElementById('mv-tipo').value;
+  const qty=parseInt(document.getElementById('mv-qty').value)||1;
+  const ref=document.getElementById('mv-ref').value.trim();
+  const costoInput=parseFloat(document.getElementById('mv-costo')?.value)||0;
+  const unidad=document.getElementById('mv-unidad')?.value||'unidad';
+  if(!pid){msg('mv-msg','Seleccioná un producto','err');return;}
+  const p=S.productos.find(x=>x.id===pid);
+  let qtyFinal=qty;
+  let refExtra='';
+  if(tipo==='salida'&&unidad==='uso'&&p&&p.upu>1){qtyFinal=Math.round((qty/p.upu)*1000)/1000;refExtra=' ['+qty+' usos]';}
+  if(tipo==='salida'&&stockOf(pid)<qtyFinal){msg('mv-msg','Stock insuficiente ('+stockOf(pid)+')','err');return;}
+  if(tipo==='entrada'&&costoInput>0)updateCostoPromedio(pid,qty,costoInput);
+  const costoMom=p?Math.round(cuARS(p)):0;
+  S.movimientos.push({id:'M'+Date.now(),fecha:today,pid,tipo,qty:qtyFinal,ref:ref+refExtra,costoAlMomento:costoMom});
+  persist();msg('mv-msg','Registrado','ok');
+  document.getElementById('mv-ref').value='';document.getElementById('mv-qty').value='1';
+  const mc=document.getElementById('mv-costo');if(mc)mc.value='';
+  onMovChange();renderMovTable();
+}
+function addProd(){
+  const nom=document.getElementById('np-nom').value.trim();if(!nom){msg('np-msg','Nombre requerido','err');return;}
+  const cat=document.getElementById('np-cat').value;
+  const prac=cat==='Aguja'&&!!document.getElementById('np-prac')?.checked;
+  S.productos.push({id:'P'+Date.now(),nom,cat,sub:document.getElementById('np-sub').value.trim(),um:document.getElementById('np-um').value,mon:document.getElementById('np-mon').value,cu:parseFloat(document.getElementById('np-cu').value)||0,upu:parseInt(document.getElementById('np-upu').value)||1,si:parseInt(document.getElementById('np-si').value)||0,sm:parseInt(document.getElementById('np-sm').value)||0,vum:cat==='Activo'?(parseInt(document.getElementById('np-vum').value)||24):0,practica:prac,tipo_consumo:cat==='Activo'?null:(document.getElementById('np-tipo')?.value||'UNIDAD')});
+  persist();msg('np-msg','Guardado','ok');clearNewForm();
+}
+function clearNewForm(){['np-nom','np-sub'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cu').value='0';document.getElementById('np-upu').value='1';document.getElementById('np-si').value='1';document.getElementById('np-sm').value='1';document.getElementById('np-vum').value='24';}
+function updateCfgAmort(){const el=document.getElementById('cfg-amort-display');if(el)el.textContent=ars(amortTotalSes());}
+function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if(v>0){S.tc=v;persist();document.getElementById('tc-display').textContent='USD = $'+v.toLocaleString('es-AR');msg('tc-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
+function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
+function renderEgresos(){
+  const el=document.getElementById('t-egresos');if(!el)return;
+  const phEgresos=`<div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Costos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Egresos</div><div style="font-size:14px;color:var(--text-2)">Historial de insumos consumidos y movimientos</div></div>`;
+  const salidas=S.movimientos.filter(m=>m.tipo==='salida'&&m.costoAlMomento>0);
+  const entradas=S.movimientos.filter(m=>m.tipo==='entrada'&&m.costoAlMomento>0);
+  if(!salidas.length&&!entradas.length){
+    el.innerHTML=phEgresos+'<div class="empty" style="padding:2.5rem">Sin movimientos con costo registrado todavía.<br><span class="hint">Los egresos se generan al registrar sesiones o movimientos de salida.</span></div>';
+    return;
+  }
+  const byCat={};
+  salidas.forEach(m=>{
+    const p=S.productos.find(x=>x.id===m.pid);if(!p)return;
+    if(!byCat[p.cat])byCat[p.cat]={total:0,count:0};
+    byCat[p.cat].total+=Math.round(m.qty*(m.costoAlMomento||0));
+    byCat[p.cat].count++;
+  });
+  const totalEg=Object.values(byCat).reduce((a,v)=>a+v.total,0);
+  const totalEnt=entradas.reduce((a,m)=>a+Math.round(m.qty*(m.costoAlMomento||0)),0);
+  const bySes={};
+  salidas.forEach(m=>{
+    const key=(m.ref||'Sin ref').split(' ')[0];
+    if(!bySes[key])bySes[key]={total:0,fecha:m.fecha,items:[]};
+    const p=S.productos.find(x=>x.id===m.pid);
+    bySes[key].total+=Math.round(m.qty*(m.costoAlMomento||0));
+    if(p)bySes[key].items.push(p.nom);
+  });
+  const sortedCats=Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total);
+  el.innerHTML=phEgresos+'<div class="g4">'+
+    '<div class="metric"><div class="ml">Total egresos</div><div class="mv" style="color:var(--red);font-size:17px">'+ars(totalEg)+'</div><div class="ms">insumos consumidos</div></div>'+
+    '<div class="metric"><div class="ml">Total entradas</div><div class="mv" style="color:var(--green);font-size:17px">'+ars(totalEnt)+'</div><div class="ms">inversión en stock</div></div>'+
+    '<div class="metric"><div class="ml">Movimientos</div><div class="mv">'+salidas.length+'</div><div class="ms">salidas registradas</div></div>'+
+    '<div class="metric"><div class="ml">Balance</div><div class="mv '+(totalEnt-totalEg>=0?'margin-pos':'margin-neg')+'" style="font-size:16px">'+ars(totalEnt-totalEg)+'</div><div class="ms">entradas − egresos</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ct">Egresos por categoría</div>'+
+    sortedCats.map(function(entry){var cat=entry[0];var data=entry[1];var pct=totalEg>0?Math.round((data.total/totalEg)*100):0;return'<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">'+cat+'</span><span>'+ars(data.total)+' <span class="hint">('+pct+'%)</span></span></div><div class="progress-bar"><div class="progress-fill pf-red" style="width:'+pct+'%"></div></div></div>';}).join('')+
+    '</div>'+
+    '<div class="card"><div class="ct">Egresos por sesión / evento</div><table><thead><tr><th>Referencia</th><th>Fecha</th><th>Ítems</th><th>Total</th></tr></thead><tbody>'+
+    Object.entries(bySes).sort(function(a,b){return b[1].total-a[1].total;}).map(function(entry){var ref=entry[0];var data=entry[1];return'<tr><td style="font-size:11px">'+ref+'</td><td class="hint">'+fdate(data.fecha)+'</td><td class="hint" style="font-size:11px;max-width:150px">'+data.items.slice(0,4).join(', ')+(data.items.length>4?'...':'')+'</td><td style="color:var(--red);font-weight:500">'+ars(data.total)+'</td></tr>';}).join('')+
+    '</tbody></table></div>'+
+    '<div class="card"><div class="ct">Historial de salidas</div><table><thead><tr><th>Fecha</th><th>Producto</th><th>Cat.</th><th>Cant.</th><th>Costo unit.</th><th>Total</th><th>Referencia</th></tr></thead><tbody>'+
+    salidas.slice().reverse().map(function(m){var p=S.productos.find(function(x){return x.id===m.pid;});var monto=Math.round(m.qty*(m.costoAlMomento||0));return'<tr><td>'+fdate(m.fecha)+'</td><td>'+(p?p.nom:m.pid)+'</td><td class="hint">'+(p?p.cat:'—')+'</td><td>'+m.qty+'</td><td class="hint">'+(m.costoAlMomento?ars(m.costoAlMomento):'—')+'</td><td style="color:var(--red)">'+(monto?ars(monto):'—')+'</td><td class="hint" style="font-size:11px;max-width:110px">'+(m.ref||'—')+'</td></tr>';}).join('')+
+    '</tbody></table></div>';
+}
+function exportJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='siget-'+today+'.json';a.click();}
+function importJSON(){document.getElementById('import-file').click();}
+function handleImport(input){const file=input.files[0];if(!file)return;if(!confirm('⚠️ IMPORTAR reemplazará TODO el estado actual (tatuajes, sesiones, productos, movimientos, kit). ¿Continuar?'))return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);persist();renderAll();alert('Importado correctamente.');}catch(err){alert('Error al leer el JSON.');}};r.readAsText(file);}
+function importJSONMerge(){document.getElementById('import-file-merge').click();}
+function handleImportMerge(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      const backupKey='siget_f4h_v6_backup_'+new Date().toISOString().slice(0,19);
+      localStorage.setItem(backupKey,JSON.stringify(S));
+      ['productos','movimientos','kit','kits'].forEach(k=>{if(k in data)console.warn('[F4H merge] Colección ignorada:',k);});
+      const existingTatIds=new Set(S.tatuajes.map(t=>t.id));
+      let tatAgr=0,tatDup=0,tatInv=0;
+      (data.tatuajes||[]).forEach(t=>{
+        if(!t||!t.id){console.warn('[F4H merge] Tatuaje sin id, omitido:',t);tatInv++;return;}
+        if(existingTatIds.has(t.id)){tatDup++;return;}
+        S.tatuajes.push(t);existingTatIds.add(t.id);tatAgr++;
+      });
+      const existingSesIds=new Set(S.sesiones.map(s=>s.id));
+      let sesAgr=0,sesDup=0,sesInv=0;
+      (data.sesiones||[]).forEach(s=>{
+        if(!s||!s.id){console.warn('[F4H merge] Sesión sin id, omitida:',s);sesInv++;return;}
+        if(!s.fecha){console.warn('[F4H merge] Sesión sin fecha, omitida:',s);sesInv++;return;}
+        if(existingSesIds.has(s.id)){sesDup++;return;}
+        if(s.tattooId&&!existingTatIds.has(s.tattooId)){console.warn('[F4H merge] Sesión '+s.id+': tattooId "'+s.tattooId+'" no existe — seteado a null');s.tattooId=null;}
+        S.sesiones.push(s);existingSesIds.add(s.id);sesAgr++;
+      });
+      persist();renderAll();
+      alert('Merge completado.\n\nTatuajes: '+tatAgr+' agregados, '+tatDup+' duplicados omitidos'+(tatInv?' ('+tatInv+' inválidos)':'')+'.\nSesiones: '+sesAgr+' agregadas, '+sesDup+' duplicados omitidos'+(sesInv?' ('+sesInv+' inválidos)':'')+'.\n\nBackup: '+backupKey);
+    }catch(err){alert('Error al leer el JSON: '+err.message);}
+  };
+  r.readAsText(file);
+}
+function resetAll(){S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],tc:1400,spm:8};seed();seedKit();persist();renderAll();go('dash');}
+
+toggleNewFields();
+load();
+renderAll();
+</script>
+</body>
+</html>
