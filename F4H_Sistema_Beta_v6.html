@@ -387,6 +387,8 @@ textarea{resize:vertical;min-height:80px}
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/db.js"></script>
 <script>
 const today=new Date().toISOString().slice(0,10);
 const SK='siget_f4h_v6';
@@ -406,28 +408,13 @@ const SESIONES_SEED=[
   {id:'SES_BOTELLA_20260421',fecha:'2026-04-21',cliente:'Yo mismo',zona:'Piel sintética',hrs:1,maquina:'Pen Garage',agujaId:'P27',agujasTested:['P27','P26'],voltaje:7.8,stroke:'fijo',kitOn:true,extras:[],sL:0,sR:0,sT:0,sD:0,sC:0,practica:true,tattooId:'TAT_BOTELLA_002',notas:'Botella con calavera y flores. RL7 contorno principal, RL5 detalles finos. PROBLEMA: ejecución apresurada → errores y exceso de tinta. Dificultad dirección de aguja. Fatiga impacta calidad. CONCLUSIÓN: la mejora no pasa por agujas sino por bajar velocidad y mejorar control de trazo.'}
 ];
 
-async function persist(){try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}}
+function persist(){try{localStorage.setItem(SK,JSON.stringify(S));}catch(e){}}
 function load(){
-  try{const d=localStorage.getItem(SK);if(d){const p=JSON.parse(d);S.productos=p.productos||[];S.movimientos=p.movimientos||[];S.sesiones=p.sesiones||[];S.tatuajes=p.tatuajes||[];S.kit=p.kit||[];S.kits=p.kits||[];S.tc=p.tc||1200;S.spm=p.spm||8;}}catch(e){}
-  if(!S.productos.length)seed();
-  if(!S.kits||!S.kits.length){S.kits=S.kit&&S.kit.length?[{id:'K_base',nombre:'Kit base',items:[...S.kit]}]:[];}
-  if(!S.kits.length)seedKits();
-  S.productos.forEach(p=>{if(p.tipo_consumo===undefined){if(p.cat==='Activo')p.tipo_consumo=null;else if(['P18','P19','P20','P21'].includes(p.id))p.tipo_consumo='SESION';else p.tipo_consumo='UNIDAD';}});
-  if(!S.tatuajes)S.tatuajes=[];
-  let injected=0;
-  TATUAJES_SEED.forEach(t=>{if(!S.tatuajes.find(x=>x.id===t.id)){S.tatuajes.push(t);injected++;}});
-  SESIONES_SEED.forEach(ses=>{
-    if(!S.sesiones.find(s=>s.id===ses.id)){S.sesiones.push(ses);injected++;}
-    else{const ex=S.sesiones.find(s=>s.id===ses.id);if(ex&&!ex.tattooId&&ses.tattooId){ex.tattooId=ses.tattooId;}}
+  initDB().then(()=>{
+    const el=document.getElementById('tc-display');
+    if(el)el.textContent='USD = $'+S.tc.toLocaleString('es-AR');
+    renderDash();
   });
-  if(injected>0){
-    persist();
-    const b=document.getElementById('inject-banner');
-    b.textContent='✓ Tatuajes y sesiones cargados: Fantasma + Botella calavera (21/04)';
-    b.style.display='flex';setTimeout(()=>b.style.display='none',5000);
-  }
-  document.getElementById('tc-display').textContent='USD = $'+S.tc.toLocaleString('es-AR');
-  renderDash();
 }
 
 function seed(){
@@ -467,14 +454,7 @@ function seedKit(){S.kit=[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},
 function seedKits(){S.kits=[{id:'K_base',nombre:'Kit base',items:[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},{pid:'P20',qty:1},{pid:'P21',qty:1},{pid:'P22',qty:2}]}];}
 
 // ─── Core calculations ───────────────────────────────────────────────────────
-function stockOf(pid){
-  const pr=S.productos.find(p=>p.id===pid);if(!pr)return 0;
-  const ins=S.movimientos.filter(m=>m.pid===pid&&m.tipo==='entrada').reduce((a,m)=>a+m.qty,0);
-  const out=S.movimientos.filter(m=>m.pid===pid&&m.tipo==='salida').reduce((a,m)=>a+m.qty,0);
-  return pr.si+ins-out;
-}
-
-function updateCostoPromedio(pid,qtyEntrada,costoEntrada){const p=S.productos.find(x=>x.id===pid);if(!p||!costoEntrada||costoEntrada<=0)return;const stk=stockOf(pid);p.cu=stk<=0?costoEntrada:Math.round(((stk*cuARS(p))+(qtyEntrada*costoEntrada))/(stk+qtyEntrada));p.lastCostoUpdate=today;}
+function stockOf(pid){const p=S.productos.find(x=>x.id===String(pid));return p?p.stock:0;}
 function cuARS(p){return p.mon==='USD'?p.cu*S.tc:p.cu;}
 function amortMensual(p){return p.vum>0?cuARS(p)/p.vum:0;}
 function amortSesion(p){return S.spm>0?amortMensual(p)/S.spm:0;}
@@ -791,30 +771,34 @@ function buildStatsTattoos(){
   </div>`;
 }
 
-function addTattoo(){
+async function addTattoo(){
   const diseno=document.getElementById('nt-dis').value.trim();
   const cli=document.getElementById('nt-cli').value.trim();
   if(!diseno||!cli){msg('nt-msg','Cliente y diseño requeridos','err');return;}
   const t={
-    id:'T'+Date.now(),
     num:parseInt(document.getElementById('nt-num').value)||1,
     cliente:cli,diseno,
     estado:document.getElementById('nt-estado').value,
     zona:document.getElementById('nt-zona').value.trim(),
-    tamano:document.getElementById('nt-tam').value.trim(),
+    tam:document.getElementById('nt-tam').value.trim(),
     precio:parseFloat(document.getElementById('nt-precio').value)||0,
     estilo:document.getElementById('nt-est').value,
     fotoUrl:document.getElementById('nt-foto').value.trim(),
     notas:document.getElementById('nt-notas').value.trim()
   };
-  if(!t.precio)t.precio=0;
-  S.tatuajes.push(t);
+  const newId=await dbSaveTatuaje(t);
+  if(!newId)return;
+  // Vincular sesiones seleccionadas al nuevo tatuaje
+  const linked=[];
   document.querySelectorAll('input[name="link-ses"]:checked').forEach(cb=>{
     const s=S.sesiones.find(x=>x.id===cb.value);
-    if(s){s.tattooId=t.id;s.practica=false;}
+    if(s){s.tattooId=newId;s.practica=false;linked.push(Number(cb.value));}
   });
-  persist();
-  selectedTattooId=t.id;tattooView='detalle';renderTattoos();
+  if(linked.length){
+    await Promise.all(linked.map(sid=>_db.from('sesiones').update({tatuaje_id:Number(newId),practica:false}).eq('id',sid)));
+    const nuevasSes=await getSesiones();if(nuevasSes)S.sesiones=nuevasSes;
+  }
+  selectedTattooId=newId;tattooView='detalle';renderTattoos();
 }
 
 function editTattoo(tid){
@@ -842,26 +826,26 @@ function editTattoo(tid){
   </div>`;
 }
 
-function saveEditTattoo(tid){
-  const t=S.tatuajes.find(x=>x.id===tid);if(!t)return;
+async function saveEditTattoo(tid){
+  const t=S.tatuajes.find(x=>x.id===String(tid));if(!t)return;
   t.num=parseInt(document.getElementById('et-num').value)||t.num;
   t.estado=document.getElementById('et-estado').value;
   t.cliente=document.getElementById('et-cli').value.trim();
   t.diseno=document.getElementById('et-dis').value.trim();
   t.zona=document.getElementById('et-zona').value.trim();
-  t.tamano=document.getElementById('et-tam').value.trim();
+  t.tam=document.getElementById('et-tam').value.trim();
   t.estilo=document.getElementById('et-est').value;
   t.precio=parseFloat(document.getElementById('et-precio').value)||0;
   t.fotoUrl=document.getElementById('et-foto').value.trim();
   t.notas=document.getElementById('et-notas').value.trim();
-  persist();tattooView='detalle';selectedTattooId=tid;renderTattoos();
+  const ok=await dbSaveTatuaje(t);if(!ok)return;
+  tattooView='detalle';selectedTattooId=tid;renderTattoos();
 }
 
-function deleteTattoo(tid){
+async function deleteTattoo(tid){
   if(!confirm('¿Eliminar este tatuaje? Las sesiones vinculadas quedan pero sin proyecto.'))return;
-  S.tatuajes=S.tatuajes.filter(x=>x.id!==tid);
-  S.sesiones.forEach(s=>{if(s.tattooId===tid)s.tattooId=null;});
-  persist();tattooView='lista';selectedTattooId=null;renderTattoos();
+  const ok=await dbDeleteTatuaje(tid);if(!ok)return;
+  tattooView='lista';selectedTattooId=null;renderTattoos();
 }
 
 // ─── Inventario ──────────────────────────────────────────────────────────────
@@ -961,8 +945,8 @@ function buildEditCard(p){
     +'</div>'
   +'</div>';
 }
-function saveEdit(pid){
-  const p=S.productos.find(x=>x.id===pid);if(!p)return;
+async function saveEdit(pid){
+  const p=S.productos.find(x=>x.id===String(pid));if(!p)return;
   const nom=document.getElementById('ep-nom').value.trim();if(!nom){msg('ep-msg','Nombre requerido','err');return;}
   p.nom=nom;p.sub=document.getElementById('ep-sub').value.trim();
   p.mon=document.getElementById('ep-mon').value;
@@ -972,7 +956,9 @@ function saveEdit(pid){
   if(p.cat==='Activo'){const v=document.getElementById('ep-vum');if(v)p.vum=parseInt(v.value)||0;}
   if(p.cat==='Aguja'){const v=document.getElementById('ep-prac');if(v)p.practica=v.checked;}
   if(p.cat!=='Activo'){const v=document.getElementById('ep-tipo');if(v)p.tipo_consumo=v.value;}
-  persist();editingId=null;renderInv();
+  const ok=await dbUpdateProducto(pid,{nom:p.nom,sub:p.sub,mon:p.mon,cu:p.cu,upu:p.upu,sm:p.sm,vum:p.vum,tipo_consumo:p.tipo_consumo,practica:p.practica});
+  if(!ok)return;
+  editingId=null;renderInv();
 }
 
 // ─── Activos ─────────────────────────────────────────────────────────────────
@@ -1203,32 +1189,36 @@ function toggleEditTested(pid,sid){
   grid.innerHTML=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${s._editTested.has(a.id)?' on':''}" onclick="toggleEditTested('${a.id}','${sid}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
 }
 
-function saveEditSes(sid){
-  const s=S.sesiones.find(x=>x.id===sid);if(!s)return;
-  s.fecha=document.getElementById('es-fecha').value||s.fecha;
-  s.cliente=document.getElementById('es-cli').value.trim();
-  s.zona=document.getElementById('es-zona').value.trim();
-  s.hrs=parseFloat(document.getElementById('es-hrs').value)||s.hrs;
-  s.maquina=document.getElementById('es-maq').value;
-  s.voltaje=parseFloat(document.getElementById('es-volt').value)||0;
-  s.stroke=document.getElementById('es-stroke').value;
-  s.agujaId=document.getElementById('es-aguja').value;
-  s.tattooId=document.getElementById('es-tattoo').value||null;
-  s.notas=document.getElementById('es-notas').value.trim();
-  // scores
+async function saveEditSes(sid){
+  const s=S.sesiones.find(x=>x.id===String(sid));if(!s)return;
   const buf=editScoresBuf[sid]||{};
-  s.sL=buf.L||s.sL||0;s.sR=buf.R||s.sR||0;s.sT=buf.T||s.sT||0;
-  s.sD=buf.D||s.sD||0;s.sC=buf.C||s.sC||0;
-  // tested
-  if(s._editTested){s.agujasTested=[...s._editTested];delete s._editTested;}
-  persist();
+  const params={
+    id:sid,
+    fecha:document.getElementById('es-fecha').value||s.fecha,
+    cliente:document.getElementById('es-cli').value.trim(),
+    zona:document.getElementById('es-zona').value.trim(),
+    hrs:parseFloat(document.getElementById('es-hrs').value)||s.hrs,
+    maquina:document.getElementById('es-maq').value,
+    voltaje:parseFloat(document.getElementById('es-volt').value)||0,
+    stroke:document.getElementById('es-stroke').value,
+    agujaId:document.getElementById('es-aguja').value||null,
+    tattooId:document.getElementById('es-tattoo').value||null,
+    kitId:s.kitId||null,
+    notas:document.getElementById('es-notas').value.trim(),
+    sL:buf.L||s.sL||0,sR:buf.R||s.sR||0,sT:buf.T||s.sT||0,
+    sD:buf.D||s.sD||0,sC:buf.C||s.sC||0,
+    practica:s.practica,
+    agujasTested:s._editTested?[...s._editTested]:(s.agujasTested||[]),
+  };
+  if(s._editTested)delete s._editTested;
+  const ok=await dbSaveSesion(params);if(!ok)return;
   editSesionId=null;sesView='bit';renderSes();
 }
 
-function deleteSes(sid){
+async function deleteSes(sid){
   if(!confirm('¿Eliminar esta sesión? Los movimientos de stock generados NO se revierten.'))return;
-  S.sesiones=S.sesiones.filter(x=>x.id!==sid);
-  persist();editSesionId=null;sesView='bit';renderSes();
+  const ok=await dbDeleteSesion(sid);if(!ok)return;
+  editSesionId=null;sesView='bit';renderSes();
 }
 
 function buildBitacora(){
@@ -1289,32 +1279,29 @@ function updateSesTotal(){
   const el=document.getElementById('ses-total');const eli=document.getElementById('ins-cost');
   if(el)el.textContent=ars(amortS+kitC+extC);if(eli)eli.textContent=ars(kitC+extC);
 }
-function saveSes(){
+async function saveSes(){
   const fecha=document.getElementById('sf-fecha').value||today;
-  const agujaId=document.getElementById('sf-aguja').value;
+  const agujaId=document.getElementById('sf-aguja').value||null;
   const kitId=document.getElementById('sf-kit-sel').value||null;
   const kitExcludes=[...nKitExcludes];
   const tattooId=document.getElementById('sf-tattoo').value||null;
-  const sesId='S'+Date.now();
-  const agujasTested=[...nTestedIds];
-  S.sesiones.push({id:sesId,fecha,
+  const sesId=await dbSaveSesion({
+    fecha,
     cliente:document.getElementById('sf-cli').value.trim(),
     zona:document.getElementById('sf-zona').value.trim(),
     hrs:parseFloat(document.getElementById('sf-hrs').value)||0,
     maquina:document.getElementById('sf-maq').value,
-    agujaId,agujasTested,tattooId,
-    voltaje:parseFloat(document.getElementById('sf-volt').value)||0,
+    agujaId,voltaje:parseFloat(document.getElementById('sf-volt').value)||0,
     stroke:document.getElementById('sf-stroke').value,
-    kitId,kitExcludes,extras:[...nExtras],
+    tattooId,kitId,kitExcludes,extras:[...nExtras],
     sL:nScores.L,sR:nScores.R,sT:nScores.T,sD:nScores.D,sC:nScores.C,
     notas:document.getElementById('sf-notas').value.trim(),
-    practica:!tattooId
+    practica:!tattooId,
+    agujasTested:[...nTestedIds],
   });
-  if(kitId){const kit=S.kits.find(k=>k.id===kitId);if(kit)kit.items.filter(ki=>!kitExcludes.includes(ki.pid)&&ki.qty>0).forEach(ki=>{const _kp=S.productos.find(x=>x.id===ki.pid);S.movimientos.push({id:'M'+Date.now()+'k'+ki.pid,fecha,pid:ki.pid,tipo:'salida',qty:ki.qty,ref:sesId+' (kit)',costoAlMomento:_kp?Math.round(cuARS(_kp)):0});});}
-  nExtras.forEach(e=>{if(e.pid&&e.qty>0){const _ep=S.productos.find(x=>x.id===e.pid);S.movimientos.push({id:'M'+Date.now()+'x'+e.pid,fecha,pid:e.pid,tipo:'salida',qty:e.qty,ref:sesId+' (extra)',costoAlMomento:_ep?Math.round(cuARS(_ep)):0});}});
-  if(agujaId){const ap=S.productos.find(x=>x.id===agujaId);if(ap&&!ap.practica)S.movimientos.push({id:'M'+Date.now()+'ag',fecha,pid:agujaId,tipo:'salida',qty:1,ref:sesId+' (aguja)',costoAlMomento:Math.round(cuARS(ap))});}
-  persist();msg('ses-msg','Sesión guardada','ok');
-  nExtras=[];nScores={D:3,T:3,E:3};nTestedIds=new Set();nKitExcludes=new Set();
+  if(!sesId)return;
+  msg('ses-msg','Sesión guardada','ok');
+  nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();
   setTimeout(()=>setSesView('bit'),1000);
 }
 
@@ -1336,7 +1323,7 @@ function renderKitCfg(){
     <button class="btn btn-sm" style="margin-top:2px" onclick="S.kits[${ki}].items.push({pid:'${allProds[0]?.id||''}',qty:1});persist();renderKitCfg()">+ Ítem</button>
   </div>`).join('')+`<button class="btn btn-sm" onclick="S.kits.push({id:'K'+Date.now(),nombre:'Kit nuevo',items:[]});persist();renderKitCfg()">+ Nuevo kit</button>`;
 }
-function updateVum(pid,val){const p=S.productos.find(x=>x.id===pid);if(p){p.vum=parseInt(val)||0;persist();renderActivos();}}
+async function updateVum(pid,val){const p=S.productos.find(x=>x.id===String(pid));if(p){p.vum=parseInt(val)||0;await dbUpdateProducto(pid,{vum:p.vum});renderActivos();}}
 function toggleNewFields(){
   const cat=document.getElementById('np-cat')?.value;
   const tipo=document.getElementById('np-tipo')?.value||'UNIDAD';
@@ -1360,10 +1347,10 @@ function onMovChange(){
 }
 function fillMovSel(){const sel=document.getElementById('mv-prod');const cur=sel.value;sel.innerHTML=S.productos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>[${p.cat}] ${p.nom}</option>`).join('');}
 function renderMovTable(){
-  const rows=[...S.movimientos].reverse().slice(0,60);
+  const rows=S.movimientos.slice(0,60);
   document.getElementById('mv-body').innerHTML=rows.length?rows.map(m=>{const p=S.productos.find(x=>x.id===m.pid);return`<tr><td>${fdate(m.fecha)}</td><td>${p?p.nom:m.pid}</td><td>${m.tipo==='entrada'?'<span class="tag-in">+ entrada</span>':'<span class="tag-out">− salida</span>'}</td><td>${m.qty}</td><td class="hint">${m.costoAlMomento?'$'+Math.round(m.costoAlMomento).toLocaleString('es-AR'):'—'}</td><td class="hint">${m.ref||'—'}</td><td>${stockOf(m.pid)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="empty">Sin movimientos</td></tr>';
 }
-function addMov(){
+async function addMov(){
   const pid=document.getElementById('mv-prod').value;
   const tipo=document.getElementById('mv-tipo').value;
   const qty=parseInt(document.getElementById('mv-qty').value)||1;
@@ -1371,30 +1358,46 @@ function addMov(){
   const costoInput=parseFloat(document.getElementById('mv-costo')?.value)||0;
   const unidad=document.getElementById('mv-unidad')?.value||'unidad';
   if(!pid){msg('mv-msg','Seleccioná un producto','err');return;}
-  const p=S.productos.find(x=>x.id===pid);
+  const p=S.productos.find(x=>x.id===String(pid));
   let qtyFinal=qty;
   let refExtra='';
   if(tipo==='salida'&&unidad==='uso'&&p&&p.upu>1){qtyFinal=Math.round((qty/p.upu)*1000)/1000;refExtra=' ['+qty+' usos]';}
   if(tipo==='salida'&&stockOf(pid)<qtyFinal){msg('mv-msg','Stock insuficiente ('+stockOf(pid)+')','err');return;}
-  if(tipo==='entrada'&&costoInput>0)updateCostoPromedio(pid,qty,costoInput);
-  const costoMom=p?Math.round(cuARS(p)):0;
-  S.movimientos.push({id:'M'+Date.now(),fecha:today,pid,tipo,qty:qtyFinal,ref:ref+refExtra,costoAlMomento:costoMom});
-  persist();msg('mv-msg','Registrado','ok');
+  const mov=await dbAddMovimiento({
+    productoId:pid,tipo,cantidad:qtyFinal,
+    costoAlMomento:tipo==='entrada'&&costoInput>0?costoInput:null,
+    referencia:ref+refExtra,
+  });
+  if(!mov)return;
+  S.movimientos.unshift(mov);
+  msg('mv-msg','Registrado','ok');
   document.getElementById('mv-ref').value='';document.getElementById('mv-qty').value='1';
   const mc=document.getElementById('mv-costo');if(mc)mc.value='';
   onMovChange();renderMovTable();
 }
-function addProd(){
+async function addProd(){
   const nom=document.getElementById('np-nom').value.trim();if(!nom){msg('np-msg','Nombre requerido','err');return;}
   const cat=document.getElementById('np-cat').value;
   const prac=cat==='Aguja'&&!!document.getElementById('np-prac')?.checked;
-  S.productos.push({id:'P'+Date.now(),nom,cat,sub:document.getElementById('np-sub').value.trim(),um:document.getElementById('np-um').value,mon:document.getElementById('np-mon').value,cu:parseFloat(document.getElementById('np-cu').value)||0,upu:parseInt(document.getElementById('np-upu').value)||1,si:parseInt(document.getElementById('np-si').value)||0,sm:parseInt(document.getElementById('np-sm').value)||0,vum:cat==='Activo'?(parseInt(document.getElementById('np-vum').value)||24):0,practica:prac,tipo_consumo:cat==='Activo'?null:(document.getElementById('np-tipo')?.value||'UNIDAD')});
-  persist();msg('np-msg','Guardado','ok');clearNewForm();
+  const prod={nom,cat,
+    sub:document.getElementById('np-sub').value.trim(),
+    um:document.getElementById('np-um').value,
+    mon:document.getElementById('np-mon').value,
+    cu:parseFloat(document.getElementById('np-cu').value)||0,
+    upu:parseInt(document.getElementById('np-upu').value)||1,
+    si:parseInt(document.getElementById('np-si').value)||0,
+    sm:parseInt(document.getElementById('np-sm').value)||0,
+    vum:cat==='Activo'?(parseInt(document.getElementById('np-vum').value)||24):0,
+    practica:prac,
+    tipo_consumo:cat==='Activo'?null:(document.getElementById('np-tipo')?.value||'UNIDAD'),
+  };
+  const nuevo=await dbAddProducto(prod);if(!nuevo)return;
+  msg('np-msg','Guardado','ok');clearNewForm();
 }
 function clearNewForm(){['np-nom','np-sub'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cu').value='0';document.getElementById('np-upu').value='1';document.getElementById('np-si').value='1';document.getElementById('np-sm').value='1';document.getElementById('np-vum').value='24';}
 function updateCfgAmort(){const el=document.getElementById('cfg-amort-display');if(el)el.textContent=ars(amortTotalSes());}
-function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if(v>0){S.tc=v;persist();document.getElementById('tc-display').textContent='USD = $'+v.toLocaleString('es-AR');msg('tc-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
-function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
+async function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if(v>0){S.tc=v;await dbSetConfig('tipo_cambio',v);persist();document.getElementById('tc-display').textContent='USD = $'+v.toLocaleString('es-AR');msg('tc-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
+async function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;await dbSetConfig('sesiones_por_mes',v);persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
 function renderEgresos(){
   const el=document.getElementById('t-egresos');if(!el)return;
   const phEgresos=`<div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Costos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Egresos</div><div style="font-size:14px;color:var(--text-2)">Historial de insumos consumidos y movimientos</div></div>`;
