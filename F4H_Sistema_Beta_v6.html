@@ -80,14 +80,14 @@ tr.al td:first-child{border-left:2px solid var(--red)}
 .total-row td{font-weight:600;background:var(--bg-elevated);border-top:1px solid var(--border)}
 
 /* ── Badges ── */
-.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:500}
-.b-ok{background:var(--green-bg);color:var(--green)}
-.b-low{background:var(--amber-bg);color:var(--amber)}
-.b-crit{background:var(--red-bg);color:var(--red)}
-.b-prac{background:var(--accent-dim);color:var(--accent)}
-.b-curso{background:var(--amber-bg);color:var(--amber)}
-.b-fin{background:var(--green-bg);color:var(--green)}
-.b-pend{background:var(--bg-elevated);color:var(--text-2)}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.b-ok{background:rgba(74,154,58,.15);color:var(--green)}
+.b-low{background:rgba(212,135,42,.15);color:var(--amber)}
+.b-crit{background:rgba(226,75,74,.15);color:var(--red)}
+.b-prac{background:rgba(74,143,212,.15);color:#4a8fd4}
+.b-curso{background:rgba(212,135,42,.15);color:var(--amber)}
+.b-fin{background:rgba(74,154,58,.15);color:var(--green)}
+.b-pend{background:rgba(200,200,200,.1);color:var(--text-2)}
 .tag-in{background:var(--green-bg);color:var(--green);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
 .tag-out{background:var(--red-bg);color:var(--red);padding:1px 7px;border-radius:20px;font-size:10px;font-weight:500;display:inline-block}
 
@@ -500,12 +500,12 @@ function globalScore(s){const vals=[s.sL,s.sR,s.sT,s.sD,s.sC].filter(v=>v>0);ret
 function tattooMargen(t){return t.precio?(t.precio-tattooCosto(t.id)):null;}
 function tattooHrs(tid){return tattooSesiones(tid).reduce((a,s)=>a+(s.hrs||0),0);}
 
-function badge(st){if(st==='critical')return`<span class="badge b-crit">Crítico</span>`;if(st==='low')return`<span class="badge b-low">Stock bajo</span>`;return`<span class="badge b-ok">OK</span>`;}
+function badge(st){if(st==='critical')return'<span class="badge b-crit">Cr\xEDtico</span>';if(st==='low')return'<span class="badge b-low">Bajo</span>';return'<span class="badge b-ok">OK</span>';}
 function ars(n){return'$'+Math.round(n).toLocaleString('es-AR');}
 function fdate(iso){return iso?iso.slice(5).replace('-','/'):'—';}
 function msg(id,txt,type){const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.className=type;setTimeout(()=>{if(el)el.textContent='';},3000);}
 function scorePill(v){if(!v)return'<span class="sp" style="background:#eee;color:#aaa">—</span>';const cl=v>=7?'sp-hi':v>=4?'sp-md':'sp-lo';return`<span class="sp ${cl}">${v}</span>`;}
-function estadoBadge(e){if(e==='En curso')return`<span class="badge b-curso">En curso</span>`;if(e==='Finalizado')return`<span class="badge b-fin">Finalizado</span>`;return`<span class="badge b-pend">Pendiente</span>`;}
+function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En curso</span>';if(e==='Finalizado')return'<span class="badge b-fin">Finalizado</span>';return'<span class="badge b-pend">Pendiente</span>';}
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function go(t){
