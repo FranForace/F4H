@@ -245,7 +245,7 @@ textarea{resize:vertical;min-height:80px}
 
 <div id="t-egresos" style="display:none"></div>
 <div id="t-new" style="display:none">
-  <div style="padding:28px 0 24px;margin-bottom:24px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">+ Nuevo registro</div><div style="font-size:14px;color:var(--text-2)">Seleccioná el tipo y completá los datos</div></div>
+  <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">+ Nuevo registro</div><div style="font-size:14px;color:var(--text-2)">Seleccioná el tipo y completá los datos</div></div>
   <div style="display:flex;gap:10px;margin-bottom:28px">
     <div onclick="tattooView='nuevo';go('tattoos')" style="flex:1;padding:16px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg-card);text-align:center;cursor:pointer" onmouseover="this.style.borderColor='rgba(200,169,110,.4)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="font-size:20px;margin-bottom:6px">🖋</div>
@@ -304,7 +304,7 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <div id="t-mov" style="display:none">
-  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Movimientos</div><div style="font-size:14px;color:var(--text-2)">Entradas y salidas de inventario con trazabilidad</div></div>
+  <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Movimientos</div><div style="font-size:14px;color:var(--text-2)">Entradas y salidas de inventario con trazabilidad</div></div>
   <div class="card">
     <div class="ct">Registrar movimiento</div>
     <div class="fgrid">
@@ -332,7 +332,7 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <div id="t-cfg" style="display:none">
-  <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Configuración</div><div style="font-size:14px;color:var(--text-2)">Parámetros globales, kits de insumos y gestión de datos</div></div>
+  <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Sistema</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Configuración</div><div style="font-size:14px;color:var(--text-2)">Parámetros globales, kits de insumos y gestión de datos</div></div>
   <div style="display:flex;flex-direction:column;gap:18px">
     <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
       <div style="padding:16px 24px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Parámetros del sistema</span></div>
@@ -549,7 +549,7 @@ function renderDash(){
   const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
   const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
   document.getElementById('t-dash').innerHTML=`
-    <div style="position:relative;padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border);min-height:200px;display:flex;align-items:center">
+    <div style="position:relative;padding:28px 0 24px;margin-bottom:24px;min-height:200px;display:flex;align-items:center">
       <img src="logo-v2.png" alt="F4H" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:380px;width:auto;filter:invert(1) sepia(0.4) saturate(1.8) hue-rotate(350deg) brightness(0.9);opacity:.7;pointer-events:none;z-index:0">
       <div style="position:relative;z-index:1">
         <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Resumen general</div>
@@ -625,7 +625,7 @@ function renderTattoos(){
   const curCount=S.tatuajes.filter(t=>t.estado==='En curso').length;
   const isSplit=tattooView==='lista'||tattooView==='detalle';
   el.innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:24px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Proyectos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Tatuajes</div><div style="font-size:14px;color:var(--text-2)">${S.tatuajes.length} registrado${S.tatuajes.length!==1?'s':''} \xB7 ${curCount} en curso \xB7 ${finCount} finalizado${finCount!==1?'s':''}</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Proyectos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Tatuajes</div><div style="font-size:14px;color:var(--text-2)">${S.tatuajes.length} registrado${S.tatuajes.length!==1?'s':''} \xB7 ${curCount} en curso \xB7 ${finCount} finalizado${finCount!==1?'s':''}</div></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
         <button class="stab ${isSplit?'on':''}" onclick="tattooView='lista';selectedTattooId=null;renderTattoos()">Lista (${S.tatuajes.length})</button>
@@ -899,7 +899,7 @@ function renderInv(){
     +'</tr>';
   }).join('');
   document.getElementById('t-inv').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Gesti\xF3n de stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos \xB7 ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Gesti\xF3n de stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos \xB7 ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
     ${editCard}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -982,7 +982,7 @@ function renderActivos(){
   const totM=acts.reduce((a,p)=>a+amortMensual(p),0);
   const totS=acts.reduce((a,p)=>a+amortSesion(p),0);
   document.getElementById('t-act').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Equipos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Activos</div><div style="font-size:14px;color:var(--text-2)">${acts.length} activo${acts.length!==1?'s':''} · Deprec. total: ${ars(totM)}/mes</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Equipos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Activos</div><div style="font-size:14px;color:var(--text-2)">${acts.length} activo${acts.length!==1?'s':''} · Deprec. total: ${ars(totM)}/mes</div></div>
     <div class="g4">
       <div class="metric"><div class="ml">Valor total</div><div class="mv" style="font-size:15px">${ars(totC)}</div></div>
       <div class="metric"><div class="ml">Deprec./mes</div><div class="mv" style="font-size:15px">${ars(totM)}</div></div>
@@ -1007,7 +1007,7 @@ function renderActivos(){
 function renderSes(){
   const avgG=S.sesiones.length?(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/S.sesiones.length).toFixed(1):'—';
   document.getElementById('t-ses').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Bitácora técnica</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Sesiones</div><div style="font-size:14px;color:var(--text-2)">${S.sesiones.length} registrada${S.sesiones.length!==1?'s':''} · Score global: ${avgG}/10</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Bitácora técnica</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Sesiones</div><div style="font-size:14px;color:var(--text-2)">${S.sesiones.length} registrada${S.sesiones.length!==1?'s':''} · Score global: ${avgG}/10</div></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
         <button class="stab ${sesView==='bit'?'on':''}" onclick="setSesView('bit')">Bitácora (${S.sesiones.length})</button>
@@ -1397,7 +1397,7 @@ function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if
 function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
 function renderEgresos(){
   const el=document.getElementById('t-egresos');if(!el)return;
-  const phEgresos=`<div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Costos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Egresos</div><div style="font-size:14px;color:var(--text-2)">Historial de insumos consumidos y movimientos</div></div>`;
+  const phEgresos=`<div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Costos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Egresos</div><div style="font-size:14px;color:var(--text-2)">Historial de insumos consumidos y movimientos</div></div>`;
   const salidas=S.movimientos.filter(m=>m.tipo==='salida'&&m.costoAlMomento>0);
   const entradas=S.movimientos.filter(m=>m.tipo==='entrada'&&m.costoAlMomento>0);
   if(!salidas.length&&!entradas.length){
