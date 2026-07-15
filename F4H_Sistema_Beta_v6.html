@@ -32,7 +32,7 @@ body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;co
 
 /* ── Nav ── */
 .nav{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 2rem;background:#0a0908;border-bottom:1px solid #1e1e1e;position:sticky;top:0;z-index:100;backdrop-filter:blur(8px)}
-.nav-logo-img{height:32px;width:auto;filter:invert(1);opacity:.9}
+.nav-logo-img{height:44px;width:auto;filter:invert(1);opacity:.9}
 .nav-tabs{display:flex;gap:2px;align-items:center}
 .nav-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-family:inherit;cursor:pointer;border:none;background:transparent;color:var(--text-2);transition:all .15s;white-space:nowrap}
 .nav-tab:hover{color:var(--text)}
@@ -216,7 +216,7 @@ textarea{resize:vertical;min-height:80px}
 </head>
 <body style="background:var(--bg)">
 <nav class="nav">
-  <img src="Logo.png" class="nav-logo-img" alt="F4H">
+  <img src="logo-v2.png" class="nav-logo-img" alt="F4H">
   <div class="nav-tabs">
     <button class="nav-tab on" data-tab="dash" onclick="go('dash')">Dashboard</button>
     <button class="nav-tab" data-tab="tattoos" onclick="go('tattoos')">Tatuajes</button>
@@ -549,10 +549,13 @@ function renderDash(){
   const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
   const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
   document.getElementById('t-dash').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Resumen general</div>
-      <div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Dashboard</div>
-      <div style="font-size:14px;color:var(--text-2)">${mesLabel.charAt(0).toUpperCase()+mesLabel.slice(1)} \xB7 ${S.spm} sesiones/mes configuradas</div>
+    <div style="position:relative;padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border);min-height:200px;display:flex;align-items:center">
+      <img src="logo-v2.png" alt="F4H" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:380px;width:auto;filter:invert(1) sepia(0.4) saturate(1.8) hue-rotate(350deg) brightness(0.9);opacity:.7;pointer-events:none;z-index:0">
+      <div style="position:relative;z-index:1">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Resumen general</div>
+        <div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Dashboard</div>
+        <div style="font-size:14px;color:var(--text-2)">${tatCurso.length} tatuaje${tatCurso.length!==1?'s':''} activo${tatCurso.length!==1?'s':''} \xB7 ${n} sesi\xF3n${n!==1?'es':''} registrada${n!==1?'s':''}</div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
       <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:26px 26px 22px;position:relative;overflow:hidden">
@@ -869,62 +872,94 @@ function renderInv(){
   if(fSt)prods=prods.filter(p=>status(p)===fSt);
   const editCard=editingId?buildEditCard(S.productos.find(x=>x.id===editingId)):'';
   const totalAlerts=S.productos.filter(p=>status(p)!=='ok').length;
+  const allAct=!fCat.length&&!fSt;
+  function cpill(lbl,val){
+    const a=fCat.includes(val);
+    return '<button style="padding:6px 14px;font-size:12px;font-weight:'+(a?700:600)+';border-radius:99px;border:1.5px solid '+(a?'var(--accent)':'var(--border)')+';background:'+(a?'var(--accent)':'var(--bg-card)')+';color:'+(a?'#1a1200':'var(--text-2)')+';cursor:pointer;letter-spacing:.02em" onclick="toggleFCat(\''+val+'\')">'+lbl+'</button>';
+  }
+  function spill(lbl,val,col){
+    const a=fSt===val;
+    return '<button style="padding:6px 14px;font-size:12px;font-weight:'+(a?700:600)+';border-radius:99px;border:1.5px solid '+(a?'var(--'+col+')':'var(--border)')+';background:'+(a?'var(--'+col+')':'var(--bg-card)')+';color:'+(a?'#fff':'var(--text-2)')+';cursor:pointer;letter-spacing:.02em" onclick="fSt=\''+val+'\';fCat=[];renderInv()">'+lbl+'</button>';
+  }
+  const rows=prods.map(p=>{
+    const st=status(p);const isEd=p.id===editingId;
+    const rowBg=isEd?'background:rgba(200,169,110,.07)':st!=='ok'?'background:rgba(226,75,74,.05)':'';
+    const cxuVal=p.cu>0?'<span style="font-weight:700;color:var(--accent)">'+ars(cxu(p))+'</span>':'--';
+    const editBtn=isEd
+      ?'<button style="padding:6px 13px;font-size:12px;font-weight:600;background:rgba(200,169,110,.12);color:var(--accent);border:1.5px solid var(--accent);border-radius:7px;cursor:pointer">✏ Editando</button>'
+      :'<button style="padding:6px 13px;font-size:12px;font-weight:600;background:transparent;color:var(--text-3);border:1.5px solid var(--border);border-radius:7px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-3)\'" onclick="editingId=\''+p.id+'\';renderInv()">✏ Editar</button>';
+    return '<tr style="border-bottom:1px solid var(--border);'+rowBg+'">'
+      +'<td style="padding:14px 18px;vertical-align:middle"><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:3px">'+p.nom+(p.practica?' <span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,143,212,.15);color:#4a8fd4">pr\xE1ctica</span>':'')+'</div><div style="font-size:11px;color:var(--text-3)">'+p.cat+' \xB7 '+p.sub+'</div></td>'
+      +'<td style="padding:14px 18px;vertical-align:middle"><span style="font-weight:700">'+stockOf(p.id)+'</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">'+p.um+'</span></td>'
+      +'<td style="padding:14px 18px;vertical-align:middle;color:var(--text-2)">'+p.sm+'</td>'
+      +'<td style="padding:14px 18px;vertical-align:middle">'+badge(st)+'</td>'
+      +'<td style="padding:14px 18px;vertical-align:middle">'+cxuVal+'</td>'
+      +'<td style="padding:14px 18px;vertical-align:middle;color:var(--text-3)">'+p.upu+'</td>'
+      +'<td style="padding:14px 18px;vertical-align:middle;text-align:right">'+editBtn+'</td>'
+    +'</tr>';
+  }).join('');
   document.getElementById('t-inv').innerHTML=`
-    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Inventario</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos \xB7 ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
+    <div style="padding:28px 0 24px;margin-bottom:32px;border-bottom:1px solid var(--border)"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Gesti\xF3n de stock</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Inventario</div><div style="font-size:14px;color:var(--text-2)">${S.productos.length} productos \xB7 ${totalAlerts} alerta${totalAlerts!==1?'s':''} activa${totalAlerts!==1?'s':''}</div></div>
     ${editCard}
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
-      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-        <button class="stab${!fCat.length&&!fSt?' on':''}" onclick="fCat=[];fSt='';renderInv()">Todos</button>
-        ${['Activo','Descartable','Consumible','Aguja'].map(c=>`<button class="stab${fCat.includes(c)?' on':''}" onclick="toggleFCat('${c}')">${c}s</button>`).join('')}
-        <button class="stab${fSt==='ok'?' on':''}" onclick="fSt='ok';fCat=[];renderInv()">OK</button>
-        <button class="stab${fSt==='low'?' on':''}" onclick="fSt='low';fCat=[];renderInv()">Bajo</button>
-        <button class="stab${fSt==='critical'?' on':''}" onclick="fSt='critical';fCat=[];renderInv()">Cr\xEDtico</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:4px">
+          <button style="padding:6px 14px;font-size:12px;font-weight:${allAct?700:600};border-radius:99px;border:1.5px solid ${allAct?'var(--accent)':'var(--border)'};background:${allAct?'var(--accent)':'var(--bg-card)'};color:${allAct?'#1a1200':'var(--text-2)'};cursor:pointer;letter-spacing:.02em" onclick="fCat=[];fSt='';renderInv()">Todos</button>
+          ${['Activo','Descartable','Consumible','Aguja'].map(c=>cpill(c+'s',c)).join('')}
+        </div>
+        <div style="width:1px;height:24px;background:var(--border)"></div>
+        <div style="display:flex;gap:4px">
+          ${spill('OK','ok','green')}${spill('Bajo','low','amber')}${spill('Cr\xEDtico','critical','red')}
+        </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="hint">${prods.length} producto${prods.length!==1?'s':''}</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:12px;font-weight:600;color:var(--text-2);background:var(--bg-card);border:1px solid var(--border);padding:5px 12px;border-radius:8px">${prods.length} producto${prods.length!==1?'s':''}</span>
         <button class="btn btn-sm btn-p" onclick="go('new')">+ Agregar</button>
       </div>
     </div>
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden"><table>
-      <thead><tr><th>Producto</th><th>Stock</th><th>M\xEDn.</th><th>Estado</th><th>Costo/uso</th><th>Usos/un.</th><th></th></tr></thead>
-      <tbody>${prods.map(p=>{const st=status(p);const isEd=p.id===editingId;
-        return`<tr${st!=='ok'?' class="al"':''}${isEd?' style="background:rgba(200,169,110,.06);outline:1.5px solid var(--accent);outline-offset:-1px"':''}>
-          <td><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:2px">${p.nom}${p.practica?' <span class="badge b-prac">pr\xE1ctica</span>':''}</div><div style="font-size:11px;color:var(--text-3)">${p.cat} \xB7 ${p.sub}</div></td>
-          <td><span style="font-weight:700;font-size:14px">${stockOf(p.id)}</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">${p.um}</span></td><td>${p.sm}</td><td>${badge(st)}</td>
-          <td>${p.cu>0?ars(cxu(p)):'--'}</td><td class="hint">${p.upu}</td>
-          <td><button style="padding:5px 12px;font-size:12px;font-weight:600;background:transparent;color:var(--text-3);border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-3)'" onclick="editingId='${p.id}';renderInv()">Editar</button></td>
-        </tr>`;}).join('')}
-      </tbody>
-    </table>
-    <div style="padding:10px 20px;font-size:12px;color:var(--text-3);border-top:1px solid var(--border)">Us\xE1 Movimientos para registrar entradas/salidas de stock.</div>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Producto</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Stock</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">M\xEDn.</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Estado</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Costo / uso</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Usos / un.</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="padding:10px 20px;font-size:12px;color:var(--text-3);border-top:1px solid var(--border)">Stock → us\xE1 Movimientos para mantener historial.</div>
     </div>`;
 }
 
 function buildEditCard(p){
   if(!p)return'';
   const isSesion=p.tipo_consumo==='SESION';
-  const upuLabel=isSesion?'Rinde aprox. X ses. ←':'Usos por unidad ←';
-  const hintTxt=isSesion?'cuántas sesiones rinde el envase':'cuántas veces se puede usar esta unidad';
-  return`<div class="card-blue">
-    <div class="ct" style="color:var(--accent)">✏ Editando: ${p.nom}</div>
-    <div class="edit-hint"><strong>${upuLabel.replace(' ←','')}</strong>: ${hintTxt}.</div>
-    <div class="fgrid">
-      <div class="fg" style="grid-column:1/-1"><label class="fl">Nombre</label><input id="ep-nom" value="${p.nom}"></div>
-      <div class="fg"><label class="fl">Subcategoría</label><input id="ep-sub" value="${p.sub}"></div>
-      <div class="fg"><label class="fl">Moneda</label><select id="ep-mon"><option value="ARS"${p.mon==='ARS'?' selected':''}>ARS</option><option value="USD"${p.mon==='USD'?' selected':''}>USD</option></select></div>
-      <div class="fg"><label class="fl">Costo unitario</label><input id="ep-cu" type="number" min="0" step="0.01" value="${p.cu}"></div>
-      <div class="fg"><label class="fl">${upuLabel}</label><input id="ep-upu" type="number" min="1" value="${p.upu}" style="border-color:#378ADD"></div>
-      <div class="fg"><label class="fl">Stock mínimo</label><input id="ep-sm" type="number" min="0" value="${p.sm}"></div>
-      ${p.cat!=='Activo'?`<div class="fg"><label class="fl">Tipo de consumo</label><select id="ep-tipo"><option value="UNIDAD"${p.tipo_consumo==='UNIDAD'?' selected':''}>Unidad</option><option value="SESION"${p.tipo_consumo==='SESION'?' selected':''}>Sesión</option><option value="VARIABLE"${p.tipo_consumo==='VARIABLE'?' selected':''}>Variable</option><option value="LONGITUD"${p.tipo_consumo==='LONGITUD'?' selected':''}>Longitud</option></select></div>`:''}
-      ${p.cat==='Activo'?`<div class="fg"><label class="fl">Vida útil (meses)</label><input id="ep-vum" type="number" min="1" value="${p.vum||24}"></div>`:''}
-      ${p.cat==='Aguja'?`<div class="fg" style="grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"${p.practica?' checked':''}> Aguja de práctica (no descuenta stock)</label></div>`:''}
-    </div>
-    <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
-      <button class="btn btn-p" onclick="saveEdit('${p.id}')">Guardar</button>
-      <button class="btn" onclick="editingId=null;renderInv()">Cancelar</button>
-      <span id="ep-msg"></span>
-    </div>
-  </div>`;
+  const upuLabel=isSesion?'Rinde aprox. (ses.)':'Usos por unidad';
+  const upuHint=isSesion?'cu\xE1ntas sesiones rinde el envase':'cu\xE1ntas veces se puede usar esta unidad';
+  const inp='padding:9px 12px;font-size:14px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg-elevated);color:var(--text);outline:none;width:100%;font-family:inherit';
+  const lbl='font-size:11px;font-weight:600;color:var(--text-2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px';
+  return '<div style="background:var(--bg-card);border:1.5px solid var(--accent);border-radius:14px;padding:24px 28px;margin-bottom:16px">'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:18px">✏ Editando: '+p.nom+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:18px">'
+      +'<div style="grid-column:span 2"><div style="'+lbl+'">Nombre</div><input id="ep-nom" value="'+p.nom+'" style="'+inp+'"></div>'
+      +'<div><div style="'+lbl+'">Subcategor\xEDa</div><input id="ep-sub" value="'+p.sub+'" style="'+inp+'"></div>'
+      +'<div><div style="'+lbl+'">Moneda</div><select id="ep-mon" style="'+inp+'"><option value="ARS"'+(p.mon==='ARS'?' selected':'')+'>ARS</option><option value="USD"'+(p.mon==='USD'?' selected':'')+'>USD</option></select></div>'
+      +'<div><div style="'+lbl+'">Costo unitario</div><input id="ep-cu" type="number" min="0" step="0.01" value="'+p.cu+'" style="'+inp+'"></div>'
+      +'<div><div style="'+lbl+'">'+upuLabel+'</div><input id="ep-upu" type="number" min="1" value="'+p.upu+'" title="'+upuHint+'" style="'+inp.replace('var(--border)','#4a8fd4')+'"></div>'
+      +'<div><div style="'+lbl+'">Stock m\xEDnimo</div><input id="ep-sm" type="number" min="0" value="'+p.sm+'" style="'+inp+'"></div>'
+      +(p.cat==='Activo'?'<div><div style="'+lbl+'">Vida \xFAtil (meses)</div><input id="ep-vum" type="number" min="1" value="'+(p.vum||24)+'" style="'+inp+'"></div>':'')
+      +(p.cat!=='Activo'?'<div><div style="'+lbl+'">Tipo de consumo</div><select id="ep-tipo" style="'+inp+'"><option value="UNIDAD"'+(p.tipo_consumo==='UNIDAD'?' selected':'')+'>Unidad</option><option value="SESION"'+(p.tipo_consumo==='SESION'?' selected':'')+'>Sesi\xF3n</option><option value="VARIABLE"'+(p.tipo_consumo==='VARIABLE'?' selected':'')+'>Variable</option><option value="LONGITUD"'+(p.tipo_consumo==='LONGITUD'?' selected':'')+'>Longitud</option></select></div>':'')
+      +(p.cat==='Aguja'?'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"'+(p.practica?' checked':'')+'>Aguja de pr\xE1ctica (no descuenta stock)</label></div>':'')
+    +'</div>'
+    +'<div style="display:flex;gap:10px;align-items:center">'
+      +'<button style="padding:9px 22px;font-size:13px;font-weight:700;background:var(--accent);color:#1a1200;border:none;border-radius:8px;cursor:pointer;font-family:inherit" onclick="saveEdit(\''+p.id+'\')">Guardar</button>'
+      +'<button style="padding:9px 16px;font-size:13px;font-weight:500;background:transparent;color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onclick="editingId=null;renderInv()">Cancelar</button>'
+      +'<span id="ep-msg" style="font-size:12px"></span>'
+    +'</div>'
+  +'</div>';
 }
 function saveEdit(pid){
   const p=S.productos.find(x=>x.id===pid);if(!p)return;
