@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/F4H_Sistema_Beta_v6.html" }
+  ]
+}
