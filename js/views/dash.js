@@ -1,3 +1,4 @@
+// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
   const alerts=S.productos.filter(p=>status(p)!=='ok');

@@ -1,4 +1,5 @@
-﻿// ─── Sesiones ────────────────────────────────────────────────────────────────
+﻿// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
+// ─── Sesiones ────────────────────────────────────────────────────────────────
 function renderSes(){
   document.getElementById('t-ses').innerHTML=`
     <div class="page-hdr">

@@ -1,4 +1,5 @@
-﻿function onMovChange(){
+﻿// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
+function onMovChange(){
   const tipo=document.getElementById('mv-tipo')?.value;
   const pid=document.getElementById('mv-prod')?.value;
   const p=S.productos.find(x=>x.id===pid);

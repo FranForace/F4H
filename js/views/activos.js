@@ -1,4 +1,5 @@
-﻿// ─── Activos ─────────────────────────────────────────────────────────────────
+﻿// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
+// ─── Activos ─────────────────────────────────────────────────────────────────
 function renderActivos(){
   const acts=S.productos.filter(p=>p.cat==='Activo');
   const totC=acts.reduce((a,p)=>a+cuARS(p),0);

@@ -1,4 +1,5 @@
-﻿function renderEgresos(){
+﻿// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
+function renderEgresos(){
   const el=document.getElementById('t-egresos');if(!el)return;
   const salidas=S.movimientos.filter(m=>m.tipo==='salida'&&m.costoAlMomento>0);
   const entradas=S.movimientos.filter(m=>m.tipo==='entrada'&&m.costoAlMomento>0);

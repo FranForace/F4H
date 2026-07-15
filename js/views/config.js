@@ -1,4 +1,5 @@
-﻿// ─── Misc ─────────────────────────────────────────────────────────────────────
+﻿// ARCHIVADO — Estructura modular antigua. El sistema activo es F4H_Sistema_Beta_v6.html. No modificar.
+// ─── Misc ─────────────────────────────────────────────────────────────────────
 function renderKitCfg(){
   const el=document.getElementById('kit-cfg-body');if(!el)return;
   const allProds=S.productos.filter(p=>p.cat!=='Activo');
@@ -30,6 +31,38 @@ function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if
 
 function exportJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='siget-'+today+'.json';a.click();}
 function importJSON(){document.getElementById('import-file').click();}
-function handleImport(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);persist();renderAll();alert('Importado correctamente.');}catch(err){alert('Error al leer el JSON.');}};r.readAsText(file);}
+function handleImport(input){const file=input.files[0];if(!file)return;if(!confirm('⚠️ IMPORTAR reemplazará TODO el estado actual (tatuajes, sesiones, productos, movimientos, kit). ¿Continuar?'))return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);persist();renderAll();alert('Importado correctamente.');}catch(err){alert('Error al leer el JSON.');}};r.readAsText(file);}
+function importJSONMerge(){document.getElementById('import-file-merge').click();}
+function handleImportMerge(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      const backupKey='siget_f4h_v6_backup_'+new Date().toISOString().slice(0,19);
+      localStorage.setItem(backupKey,JSON.stringify(S));
+      ['productos','movimientos','kit','kits'].forEach(k=>{if(k in data)console.warn('[F4H merge] Colección ignorada:',k);});
+      const existingTatIds=new Set(S.tatuajes.map(t=>t.id));
+      let tatAgr=0,tatDup=0,tatInv=0;
+      (data.tatuajes||[]).forEach(t=>{
+        if(!t||!t.id){console.warn('[F4H merge] Tatuaje sin id, omitido:',t);tatInv++;return;}
+        if(existingTatIds.has(t.id)){tatDup++;return;}
+        S.tatuajes.push(t);existingTatIds.add(t.id);tatAgr++;
+      });
+      const existingSesIds=new Set(S.sesiones.map(s=>s.id));
+      let sesAgr=0,sesDup=0,sesInv=0;
+      (data.sesiones||[]).forEach(s=>{
+        if(!s||!s.id){console.warn('[F4H merge] Sesión sin id, omitida:',s);sesInv++;return;}
+        if(!s.fecha){console.warn('[F4H merge] Sesión sin fecha, omitida:',s);sesInv++;return;}
+        if(existingSesIds.has(s.id)){sesDup++;return;}
+        if(s.tattooId&&!existingTatIds.has(s.tattooId)){console.warn('[F4H merge] Sesión '+s.id+': tattooId "'+s.tattooId+'" no existe — seteado a null');s.tattooId=null;}
+        S.sesiones.push(s);existingSesIds.add(s.id);sesAgr++;
+      });
+      persist();renderAll();
+      alert('Merge completado.\n\nTatuajes: '+tatAgr+' agregados, '+tatDup+' duplicados omitidos'+(tatInv?' ('+tatInv+' inválidos)':'')+'.\nSesiones: '+sesAgr+' agregadas, '+sesDup+' duplicados omitidos'+(sesInv?' ('+sesInv+' inválidos)':'')+'.\n\nBackup: '+backupKey);
+    }catch(err){alert('Error al leer el JSON: '+err.message);}
+  };
+  r.readAsText(file);
+}
 function resetAll(){S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],tc:1400,spm:8};seed();seedKit();persist();renderAll();go('dash');}
 
