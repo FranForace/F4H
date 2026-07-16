@@ -372,13 +372,8 @@ textarea{resize:vertical;min-height:80px}
       <div style="padding:20px 24px">
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
           <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="exportJSON()">Exportar JSON</button>
-          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="importJSON()">Importar JSON</button>
-          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="importJSONMerge()">Importar (merge)</button>
-          <button style="padding:9px 18px;font-size:12px;font-weight:600;background:var(--bg-elevated);color:var(--text-2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'" onclick="if(confirm('Borrar TODO el historial?'))resetAll()">Reset</button>
         </div>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(this)">
-        <input type="file" id="import-file-merge" accept=".json" style="display:none" onchange="handleImportMerge(this)">
-        <div style="font-size:12px;color:var(--text-3);line-height:1.6">Datos guardados en este navegador. Exportá JSON para backup. "Importar (merge)" agrega tatuajes y sesiones sin pisar el estado actual.</div>
+        <div style="font-size:12px;color:var(--text-3);line-height:1.6">Los datos viven en Supabase. Export\xE1 JSON para backup local. Para resetear o importar datos us\xE1 el SQL Editor de Supabase.</div>
       </div>
     </div>
   </div>
@@ -1309,20 +1304,35 @@ async function saveSes(){
 function renderKitCfg(){
   const el=document.getElementById('kit-cfg-body');if(!el)return;
   const allProds=S.productos.filter(p=>p.cat!=='Activo');
-  const opts=allProds.map(p=>`<option value="${p.id}">[${p.cat}] ${p.nom}</option>`).join('');
-  el.innerHTML=S.kits.map((k,ki)=>`<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">
-    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-      <input value="${k.nombre}" style="flex:1;font-size:12px" onchange="S.kits[${ki}].nombre=this.value;persist()">
-      ${S.kits.length>1?`<button class="btn btn-xs btn-danger" onclick="S.kits.splice(${ki},1);persist();renderKitCfg()">✕</button>`:''}
-    </div>
-    ${k.items.map((item,ii)=>`<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
-      <select style="flex:1;font-size:11px" onchange="S.kits[${ki}].items[${ii}].pid=this.value;persist()">${opts.replace(`value="${item.pid}"`,`value="${item.pid}" selected`)}</select>
-      <input type="number" min="0" value="${item.qty}" style="width:50px" onchange="S.kits[${ki}].items[${ii}].qty=parseInt(this.value)||0;persist()">
-      <button class="btn btn-xs" onclick="S.kits[${ki}].items.splice(${ii},1);persist();renderKitCfg()">✕</button>
-    </div>`).join('')}
-    <button class="btn btn-sm" style="margin-top:2px" onclick="S.kits[${ki}].items.push({pid:'${allProds[0]?.id||''}',qty:1});persist();renderKitCfg()">+ Ítem</button>
-  </div>`).join('')+`<button class="btn btn-sm" onclick="S.kits.push({id:'K'+Date.now(),nombre:'Kit nuevo',items:[]});persist();renderKitCfg()">+ Nuevo kit</button>`;
+  const defPid=allProds[0]?allProds[0].id:'';
+  const opts=allProds.map(p=>'<option value="'+p.id+'">['+p.cat+'] '+p.nom+'</option>').join('');
+  el.innerHTML=S.kits.map(function(k){
+    const kid=k.id;
+    const delBtn=S.kits.length>1?'<button class="btn btn-xs btn-danger" onclick="kitDelete(\''+kid+'\')">&#x2715;</button>':'';
+    const itemsHtml=k.items.map(function(item,ii){
+      return '<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">'+
+        '<select style="flex:1;font-size:11px" onchange="kitChangeItemPid(\''+kid+'\','+ii+',this.value)">'+
+        opts.replace('value="'+item.pid+'"','value="'+item.pid+'" selected')+
+        '</select>'+
+        '<input type="number" min="0" value="'+item.qty+'" style="width:50px" onchange="kitChangeItemQty(\''+kid+'\','+ii+',parseInt(this.value)||0)">'+
+        '<button class="btn btn-xs" onclick="kitRemoveItem(\''+kid+'\','+ii+')">&#x2715;</button>'+
+        '</div>';
+    }).join('');
+    return '<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px">'+
+      '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'+
+      '<input value="'+k.nombre.replace(/"/g,'&quot;')+'" style="flex:1;font-size:12px" onchange="dbRenameKit(\''+kid+'\',this.value)">'+
+      delBtn+'</div>'+
+      itemsHtml+
+      '<button class="btn btn-sm" style="margin-top:2px" onclick="kitAddItem(\''+kid+'\',\''+defPid+'\')">+ \xCDtem</button>'+
+      '</div>';
+  }).join('')+'<button class="btn btn-sm" onclick="kitAddNew()">+ Nuevo kit</button>';
 }
+async function kitAddNew(){const id=await dbAddKit();if(id)renderKitCfg();}
+async function kitDelete(id){const ok=await dbDeleteKit(id);if(ok)renderKitCfg();}
+async function kitChangeItemPid(kitId,ii,newPid){const k=S.kits.find(x=>x.id===String(kitId));if(!k)return;k.items[ii].pid=newPid;await dbSaveKitItems(kitId,k.items);}
+async function kitChangeItemQty(kitId,ii,qty){const k=S.kits.find(x=>x.id===String(kitId));if(!k)return;k.items[ii].qty=qty;await dbSaveKitItems(kitId,k.items);}
+async function kitRemoveItem(kitId,ii){const k=S.kits.find(x=>x.id===String(kitId));if(!k)return;k.items.splice(ii,1);await dbSaveKitItems(kitId,k.items);renderKitCfg();}
+async function kitAddItem(kitId,defaultPid){const k=S.kits.find(x=>x.id===String(kitId));if(!k)return;k.items.push({pid:defaultPid,qty:1});await dbSaveKitItems(kitId,k.items);renderKitCfg();}
 async function updateVum(pid,val){const p=S.productos.find(x=>x.id===String(pid));if(p){p.vum=parseInt(val)||0;await dbUpdateProducto(pid,{vum:p.vum});renderActivos();}}
 function toggleNewFields(){
   const cat=document.getElementById('np-cat')?.value;
@@ -1442,41 +1452,6 @@ function renderEgresos(){
     '</tbody></table></div>';
 }
 function exportJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='siget-'+today+'.json';a.click();}
-function importJSON(){document.getElementById('import-file').click();}
-function handleImport(input){const file=input.files[0];if(!file)return;if(!confirm('⚠️ IMPORTAR reemplazará TODO el estado actual (tatuajes, sesiones, productos, movimientos, kit). ¿Continuar?'))return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);persist();renderAll();alert('Importado correctamente.');}catch(err){alert('Error al leer el JSON.');}};r.readAsText(file);}
-function importJSONMerge(){document.getElementById('import-file-merge').click();}
-function handleImportMerge(input){
-  const file=input.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      const backupKey='siget_f4h_v6_backup_'+new Date().toISOString().slice(0,19);
-      localStorage.setItem(backupKey,JSON.stringify(S));
-      ['productos','movimientos','kit','kits'].forEach(k=>{if(k in data)console.warn('[F4H merge] Colección ignorada:',k);});
-      const existingTatIds=new Set(S.tatuajes.map(t=>t.id));
-      let tatAgr=0,tatDup=0,tatInv=0;
-      (data.tatuajes||[]).forEach(t=>{
-        if(!t||!t.id){console.warn('[F4H merge] Tatuaje sin id, omitido:',t);tatInv++;return;}
-        if(existingTatIds.has(t.id)){tatDup++;return;}
-        S.tatuajes.push(t);existingTatIds.add(t.id);tatAgr++;
-      });
-      const existingSesIds=new Set(S.sesiones.map(s=>s.id));
-      let sesAgr=0,sesDup=0,sesInv=0;
-      (data.sesiones||[]).forEach(s=>{
-        if(!s||!s.id){console.warn('[F4H merge] Sesión sin id, omitida:',s);sesInv++;return;}
-        if(!s.fecha){console.warn('[F4H merge] Sesión sin fecha, omitida:',s);sesInv++;return;}
-        if(existingSesIds.has(s.id)){sesDup++;return;}
-        if(s.tattooId&&!existingTatIds.has(s.tattooId)){console.warn('[F4H merge] Sesión '+s.id+': tattooId "'+s.tattooId+'" no existe — seteado a null');s.tattooId=null;}
-        S.sesiones.push(s);existingSesIds.add(s.id);sesAgr++;
-      });
-      persist();renderAll();
-      alert('Merge completado.\n\nTatuajes: '+tatAgr+' agregados, '+tatDup+' duplicados omitidos'+(tatInv?' ('+tatInv+' inválidos)':'')+'.\nSesiones: '+sesAgr+' agregadas, '+sesDup+' duplicados omitidos'+(sesInv?' ('+sesInv+' inválidos)':'')+'.\n\nBackup: '+backupKey);
-    }catch(err){alert('Error al leer el JSON: '+err.message);}
-  };
-  r.readAsText(file);
-}
-function resetAll(){S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],tc:1400,spm:8};seed();seedKit();persist();renderAll();go('dash');}
 
 toggleNewFields();
 load();

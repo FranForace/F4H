@@ -170,11 +170,10 @@ async function dbAddMovimiento({ productoId, tipo, cantidad, costoAlMomento = nu
     referencia:       referencia || null,
   }).select().single();
   if (error) {
-    const txt = error.message || '';
-    if (txt.includes('stock') || txt.includes('check'))
+    if (error.code === '23514')
       dbError('Stock insuficiente para realizar la salida.');
     else
-      dbError('Error registrando movimiento: ' + txt);
+      dbError('Error registrando movimiento: ' + (error.message || error.code));
     return null;
   }
   // El trigger actualizó stock y WAC — refrescar el producto en cache
@@ -349,6 +348,42 @@ async function dbSetConfig(clave, valor) {
   const { error } = await _db.from('config')
     .upsert({ clave, valor, updated_at: new Date().toISOString() }, { onConflict: 'clave' });
   if (error) { dbError('Error guardando configuración: ' + error.message); return false; }
+  return true;
+}
+
+// ── Kits ─────────────────────────────────────────────────────────────────────
+
+async function dbSaveKitItems(kitId, items) {
+  await _db.from('kit_items').delete().eq('kit_id', Number(kitId));
+  const rows = items.filter(i => i.pid && i.qty > 0).map(i => ({
+    kit_id: Number(kitId), producto_id: Number(i.pid), cantidad: Number(i.qty),
+  }));
+  if (rows.length > 0) {
+    const { error } = await _db.from('kit_items').insert(rows);
+    if (error) { dbError('Error guardando items de kit: ' + error.message); return false; }
+  }
+  return true;
+}
+
+async function dbRenameKit(id, nombre) {
+  const { error } = await _db.from('kits').update({ nombre }).eq('id', Number(id));
+  if (error) { dbError('Error renombrando kit: ' + error.message); return false; }
+  const k = S.kits.find(x => x.id === String(id));
+  if (k) k.nombre = nombre;
+  return true;
+}
+
+async function dbAddKit() {
+  const { data, error } = await _db.from('kits').insert({ nombre: 'Kit nuevo' }).select().single();
+  if (error) { dbError('Error creando kit: ' + error.message); return null; }
+  S.kits.push({ id: String(data.id), nombre: data.nombre, items: [] });
+  return String(data.id);
+}
+
+async function dbDeleteKit(id) {
+  const { error } = await _db.from('kits').delete().eq('id', Number(id));
+  if (error) { dbError('Error eliminando kit: ' + error.message); return false; }
+  S.kits = S.kits.filter(k => k.id !== String(id));
   return true;
 }
 

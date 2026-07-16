@@ -155,7 +155,8 @@ begin
         update productos
         set costo_unitario = round(
           (v_stock * v_costo + new.cantidad * new.costo_al_momento)
-          / (v_stock + new.cantidad)
+          / (v_stock + new.cantidad),
+          2
         )
         where id = new.producto_id;
       end if;

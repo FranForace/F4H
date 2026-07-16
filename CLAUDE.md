@@ -14,23 +14,41 @@ Branch activo: `dev` en https://github.com/FranForace/F4H.git
 
 ## Stack
 - HTML5 + CSS3 + JS vanilla (sin frameworks)
-- localStorage para persistencia (`siget_f4h_v6`)
-- Sin dependencias externas
-- Un solo archivo monolítico — NO modularizar por ahora
+- **Supabase PostgreSQL** — fuente de datos principal (`https://minletiyftpmufqpmviv.supabase.co`)
+- **CDN**: `@supabase/supabase-js@2` UMD vía jsdelivr + `js/db.js` como capa de datos
+- localStorage como snapshot offline (`siget_f4h_v6`) — NUNCA cambiar esta key
+- Monolítico: `F4H_Sistema_Beta_v6.html` + `js/db.js` — NO modularizar más allá de esto
+- **Vercel**: deploy estático desde main (URL en Vercel dashboard)
 
 ## Arquitectura de datos (objeto S en JS)
+S es **CACHE en memoria**. DB es la fuente de verdad.
+`initDB()` hidrata S al cargar. `persist()` guarda snapshot offline.
+Las mutations van a DB primero; S se actualiza vía adapters.
+
 ```js
 S = {
-  productos: [],    // inventario completo
-  movimientos: [],  // log transaccional (entradas/salidas)
-  sesiones: [],     // bitácora técnica de cada sesión
-  tatuajes: [],     // proyectos con costo acumulado y margen
-  kit: [],          // insumos base que se descuentan por sesión
-  kits: [],         // kits nombrados configurables
-  tc: 1400,         // tipo de cambio USD/ARS
-  spm: 8            // sesiones por mes (divisor de amortización)
+  productos: [],    // cache desde DB (tabla productos)
+  movimientos: [],  // cache desde DB (tabla movimientos, últimos 200)
+  sesiones: [],     // cache desde DB (tabla sesiones)
+  tatuajes: [],     // cache desde DB (tabla tatuajes)
+  kit: [],          // legacy — no usar en mutations nuevas
+  kits: [],         // cache desde DB (tabla kits + kit_items)
+  tc: 1400,         // tipo de cambio USD/ARS (tabla config)
+  spm: 8            // sesiones por mes (tabla config)
 }
 ```
+
+## Backend: Supabase
+- **Proyecto**: `https://minletiyftpmufqpmviv.supabase.co`
+- **Publishable key** (en `js/db.js`, safe para frontend): `sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH`
+- **service_role key**: NUNCA en frontend. NUNCA en el repo.
+- **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
+- **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 2)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
+- **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
+- **RLS**: permisiva MVP (`USING (true)`). Pendiente: endurecer con `auth.uid() IS NOT NULL` al agregar Supabase Auth (magic link).
+- **IDs**: `bigint` en DB → `String(id)` en S → `Number(id)` al escribir en DB.
+- **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje` — mapean columnas DB a campos cortos de S. No modificar render functions.
+- **Error de stock**: `error.code === '23514'` (violación de CHECK constraint `stock >= 0`).
 
 ## Módulos del sistema (tabs en la UI)
 1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo watermark
@@ -40,12 +58,12 @@ S = {
 5. **Sesiones** — registro técnico + bitácora con scoring 1-10
 6. **Egresos** — panel de gastos acumulados con historial
 7. **Movimientos** — log transaccional con costo promedio ponderado (WAC)
-8. **Config** — TC, sesiones/mes, kit base, backup JSON
+8. **Config** — TC, sesiones/mes, kits de insumos, backup JSON
 
 ## Lógica de costos clave
 - `cxu(p)` = costo por uso = `p.cu / p.upu`
 - `amortSesion(p)` = `cuARS(p) / p.vum / S.spm`
-- WAC en entradas: `nuevo_cu = (stock × cu_actual + qty × precio_compra) / (stock + qty)`
+- WAC en entradas: trigger PostgreSQL `round((stock × cu + qty × costo) / (stock + qty), 2)`
 - Score global = promedio de 5 dimensiones (sL, sR, sT, sD, sC) del 1 al 10
 
 ## Scoring — 5 dimensiones
@@ -57,13 +75,12 @@ S = {
 - Colores: rojo 1-3, naranja 4-6, verde 7-10
 
 ## Convenciones de código
-- IDs de productos: P01–P28 (seed), P+timestamp (nuevos)
-- IDs de sesiones: S+timestamp
-- IDs de tatuajes: T+timestamp
-- Sesiones seed: SES_FANTASMA_20260421, SES_BOTELLA_20260421
+- IDs: bigint en DB, seed desde 1 en orden. Nuevos: identity auto.
+- IDs en S: siempre `String(id)`. Al escribir en DB: `Number(id)`.
+- Sesiones seed: SES_FANTASMA_20260421, SES_BOTELLA_20260421 (IDs numéricos en DB)
 - Tatuajes seed: TAT_FANTASMA_001, TAT_BOTELLA_002
-- `persist()` = `localStorage.setItem('siget_f4h_v6', JSON.stringify(S))`
-- localStorage key: `siget_f4h_v6` — NUNCA cambiar
+- `persist()` = snapshot offline → `localStorage.setItem('siget_f4h_v6', JSON.stringify(S))`
+- localStorage key: `siget_f4h_v6` — NUNCA cambiar. DB es fuente de verdad; localStorage es fallback offline.
 
 ## Design system (dark mode)
 ```css
@@ -123,23 +140,25 @@ S = {
 - Agujas `practica:true` no descuentan stock
 - Salidas en "usos": `qtyFinal = qty / p.upu`
 - Kit base: se descuenta automáticamente en cada sesión si checkbox activo
-- costoAlMomento: guardado en cada movimiento para el panel de egresos
+- costoAlMomento: trigger sella el valor vigente si no se informa en el INSERT
 - `globalScore(s)` — NO modificar esta función
+- Mutations de kits: `dbSaveKitItems`, `dbRenameKit`, `dbAddKit`, `dbDeleteKit` en `js/db.js`
 
 ## Próximas features pendientes
-- Migración a Supabase + PostgreSQL (esquema ya diseñado)
+- **Auth**: Supabase magic link — endurecer RLS antes de compartir URL ampliamente
+- **FASE 5**: Bot Telegram con Supabase Edge Function (Deno) — `/stock`, `/dash`, `/entrada`, `/salida`
 - Layout responsive para móvil
 - Modo carga rápida de sesión
 - Análisis de agujas por zona del cuerpo
 - Timer de sesión integrado
-- Sesiones / Activos / Egresos / Movimientos: aplicar mismo design language
-  que Inventario y Tatuajes (no hay mockups específicos para estos módulos)
+- Sesiones / Activos / Egresos / Movimientos: aplicar mismo design language que Inventario/Tatuajes
 
 ## Cómo trabajar con este proyecto
 - Tratar a Francesco como par técnico (SQL Developer). No subestimar.
 - Desktop-first. No mobile-first.
-- Mantener compatibilidad con datos localStorage existentes.
-- Si se cambia estructura de S, agregar migración en `load()`.
+- DB es fuente de verdad. Mutations van a funciones `db*()` primero; S se actualiza vía adapters.
+- No pushear directo a `S.productos` / `S.movimientos` / etc. sin pasar por DB.
+- Si se cambia estructura de S, actualizar adapters en `js/db.js` y `initDB()`.
 - No romper el seed de productos y sesiones iniciales.
 - Argentina: dualidad ARS/USD en todos los cálculos de costo.
 - V5 (`F4H_Sistema_Beta_v5.html`) es el fallback de emergencia — no tocar.
