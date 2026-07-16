@@ -468,11 +468,13 @@ function initAuthUI(){
       if(signoutBtn)signoutBtn.style.display='';
       load();renderAll();
     }
-    if(event==='INITIAL_SESSION'&&!session){
-      // solo mostrar login si no hay token en la URL (evita flash en redirect de magic link)
-      if(!window.location.hash.includes('access_token'))showLoginForm();
+    if(event==='INITIAL_SESSION'&&!session){showLoginForm();}
+    if(event==='SIGNED_OUT'){
+      ready=false;
+      if(signoutBtn)signoutBtn.style.display='none';
+      document.getElementById('auth-screen').style.display='flex';
+      showLoginForm();
     }
-    if(event==='SIGNED_OUT'){ready=false;if(signoutBtn)signoutBtn.style.display='none';window.location.reload();}
   });
 }
 let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
