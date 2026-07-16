@@ -215,6 +215,31 @@ textarea{resize:vertical;min-height:80px}
 </style>
 </head>
 <body style="background:var(--bg)">
+
+<!-- ── Auth overlay ── -->
+<div id="auth-screen" style="position:fixed;inset:0;z-index:10000;background:#0f0f0f;display:flex;align-items:center;justify-content:center;padding:1rem">
+  <div style="width:100%;max-width:380px">
+    <div style="text-align:center;margin-bottom:2rem">
+      <img src="logo-v2.png" style="height:56px;filter:invert(1);opacity:.85" alt="F4H">
+    </div>
+    <div id="auth-loading" style="text-align:center;color:#555;font-size:13px">Verificando sesi&#xF3;n...</div>
+    <div id="auth-card" style="display:none;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:14px;padding:2rem">
+      <div id="auth-form">
+        <div style="font-size:20px;font-weight:700;color:#f0f0ee;margin-bottom:6px">Acceder</div>
+        <div style="font-size:13px;color:#888;margin-bottom:1.5rem">Ingres&#xE1; tu email para recibir un enlace de acceso</div>
+        <input id="auth-email" type="email" placeholder="tu@email.com" style="width:100%;padding:10px 14px;background:#141414;border:1.5px solid #2e2e2e;border-radius:8px;color:#f0f0ee;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button id="auth-btn" onclick="doSignIn()" style="width:100%;padding:11px;background:#c8a96e;color:#111;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Enviar enlace</button>
+        <div id="auth-msg" style="margin-top:10px;font-size:12px;text-align:center;color:#888"></div>
+      </div>
+      <div id="auth-sent" style="display:none;text-align:center">
+        <div style="font-size:48px;margin-bottom:12px;line-height:1">&#x1F4E7;</div>
+        <div style="font-size:16px;font-weight:600;color:#f0f0ee;margin-bottom:8px">Revis&#xE1; tu email</div>
+        <div style="font-size:13px;color:#888;line-height:1.5">Enviamos un enlace a <span id="auth-email-sent" style="color:#c8a96e;font-weight:600"></span>. Hac&#xE9; clic en el enlace para ingresar.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <nav class="nav">
   <img src="logo-v2.png" class="nav-logo-img" alt="F4H">
   <div class="nav-tabs">
@@ -229,6 +254,7 @@ textarea{resize:vertical;min-height:80px}
     <button class="nav-tab" data-tab="cfg" onclick="go('cfg')">Config</button>
   </div>
   <span class="nav-tc" id="tc-display">USD = $1.400</span>
+  <button id="nav-signout" onclick="doSignOut()" style="display:none;margin-left:12px;padding:4px 12px;border-radius:20px;font-size:11px;font-family:inherit;cursor:pointer;border:1px solid #2e2e2e;background:transparent;color:#555;white-space:nowrap" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='#2e2e2e';this.style.color='#555'">Salir</button>
 </nav>
 <img src="mockups/assets/fuego.jpg" class="side-art side-art-left" alt="">
 <img src="mockups/assets/hannya.jpg" class="side-art side-art-right" alt="">
@@ -387,6 +413,41 @@ textarea{resize:vertical;min-height:80px}
 <script>
 const today=new Date().toISOString().slice(0,10);
 const SK='siget_f4h_v6';
+
+// ── Auth UI ──────────────────────────────────────────────────────────────────
+function showLoginForm(){document.getElementById('auth-loading').style.display='none';document.getElementById('auth-card').style.display='';}
+function hideAuthScreen(){document.getElementById('auth-screen').style.display='none';}
+async function doSignIn(){
+  const email=(document.getElementById('auth-email').value||'').trim();
+  const msgEl=document.getElementById('auth-msg');
+  const btn=document.getElementById('auth-btn');
+  if(!email){if(msgEl)msgEl.textContent='Ingres\xE1 tu email';return;}
+  if(btn)btn.disabled=true;
+  if(msgEl)msgEl.textContent='Enviando...';
+  const err=await dbSignIn(email);
+  if(btn)btn.disabled=false;
+  if(err){if(msgEl)msgEl.textContent='Error: '+err;return;}
+  const sentEl=document.getElementById('auth-email-sent');if(sentEl)sentEl.textContent=email;
+  document.getElementById('auth-form').style.display='none';
+  document.getElementById('auth-sent').style.display='';
+}
+async function doSignOut(){await dbSignOut();window.location.reload();}
+function initAuthUI(){
+  const signoutBtn=document.getElementById('nav-signout');
+  let ready=false;
+  dbOnAuthChange(function(event,session){
+    if(session&&!ready){
+      ready=true;hideAuthScreen();
+      if(signoutBtn)signoutBtn.style.display='';
+      load();renderAll();
+    }
+    if(event==='INITIAL_SESSION'&&!session){
+      // solo mostrar login si no hay token en la URL (evita flash en redirect de magic link)
+      if(!window.location.hash.includes('access_token'))showLoginForm();
+    }
+    if(event==='SIGNED_OUT'){ready=false;if(signoutBtn)signoutBtn.style.display='none';window.location.reload();}
+  });
+}
 let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
 const ESTILOS=['American Traditional','Neo Traditional','New School','Blackwork','Realismo','Fine Line','Minimalista','Geométrico','Japonés (Irezumi)','Lettering','Acuarela','Chicano','Tribal','Dark / Horror','Ilustración','Otro'];
 let curTab='dash',sesView='nueva',tattooView='lista',fCat=[],fSt='',editingId=null,selectedTattooId=null;
@@ -1454,8 +1515,7 @@ function renderEgresos(){
 function exportJSON(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='siget-'+today+'.json';a.click();}
 
 toggleNewFields();
-load();
-renderAll();
+initAuthUI();
 </script>
 </body>
 </html>

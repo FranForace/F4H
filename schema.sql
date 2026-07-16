@@ -178,7 +178,7 @@ $$ language plpgsql;
 create trigger trg_movimiento_aplicar before insert on movimientos
   for each row execute function fn_movimiento_aplicar();
 
--- ── RLS (MVP single-user: política permisiva; endurecer al sumar auth) ─────
+-- ── RLS (single-user: solo franforace@gmail.com vía Supabase Auth) ──────────
 
 alter table productos                enable row level security;
 alter table tatuajes                 enable row level security;
@@ -189,6 +189,12 @@ alter table sesion_agujas_testeadas  enable row level security;
 alter table movimientos              enable row level security;
 alter table config                   enable row level security;
 
+-- Después de configurar Auth: reemplazar estas policies con las de abajo.
+-- (Durante deploy inicial se usan permisivas hasta que auth esté configurado)
+-- create policy p_all_productos  on productos               for all using (auth.email() = 'franforace@gmail.com') with check (auth.email() = 'franforace@gmail.com');
+-- ... (igual para todas las tablas)
+
+-- Políticas temporales permisivas (reemplazar con SQL del README tras configurar Auth):
 create policy p_all_productos  on productos               for all using (true) with check (true);
 create policy p_all_tatuajes   on tatuajes                for all using (true) with check (true);
 create policy p_all_kits       on kits                    for all using (true) with check (true);

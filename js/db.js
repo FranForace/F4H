@@ -7,6 +7,24 @@ const SUPA_URL = 'https://minletiyftpmufqpmviv.supabase.co';
 const SUPA_KEY = 'sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH';
 const _db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+async function dbSignIn(email) {
+  const { error } = await _db.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+  });
+  return error ? error.message : null;
+}
+
+async function dbSignOut() {
+  await _db.auth.signOut();
+}
+
+function dbOnAuthChange(cb) {
+  return _db.auth.onAuthStateChange((event, session) => cb(event, session));
+}
+
 // ── UI helpers ───────────────────────────────────────────────────────────────
 
 function dbError(m) {
