@@ -9,11 +9,8 @@ const _db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-async function dbSignIn(email) {
-  const { error } = await _db.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname },
-  });
+async function dbSignIn(email, password) {
+  const { error } = await _db.auth.signInWithPassword({ email, password });
   return error ? error.message : null;
 }
 
