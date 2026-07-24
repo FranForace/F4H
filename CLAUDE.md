@@ -45,15 +45,24 @@ S = {
 - **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 2)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
-- **Auth**: Supabase magic link YA implementado en código (`dbSignIn`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`, commits `bf6df39`/`c62e1df`/`f0a6381`). Verificado en `pg_policies` (2026-07-23): RLS sigue permisiva en las 8 tablas (`USING (true)`, rol `public`). Pendiente: endurecer con `auth.email() = 'franforace@gmail.com'` (NO `auth.uid()` — el diseño ya elegido usa email, ver plantilla comentada en `schema.sql:194`).
-- **Deploy**: Vercel deploya de `main` (verificado 2026-07-23 comparando hash del HTML servido en `f4-h.vercel.app` contra `origin/main`/`origin/dev`). `dev` puede estar adelantado a `main` sin que eso se refleje en producción — confirmar con el mismo método antes de asumir que un fix ya está en vivo.
+- **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Usuario único: `franforace@gmail.com`.
+- **RLS**: diseño de un solo usuario, policies por `auth.email() = 'franforace@gmail.com'` (NO `auth.uid()`). Verificar el estado real (no asumir por este archivo):
+  ```sql
+  select tablename, policyname, qual from pg_policies where schemaname = 'public';
+  ```
+- **Deploy**: Vercel construye desde `main` (config del proyecto en Vercel, no en este repo). Para confirmar qué commit está realmente en producción:
+  ```bash
+  curl -s https://f4-h.vercel.app/F4H_Sistema_Beta_v6.html | sha256sum
+  git show origin/main:F4H_Sistema_Beta_v6.html | sha256sum   # comparar
+  ```
 - **IDs**: `bigint` en DB → `String(id)` en S → `Number(id)` al escribir en DB.
 - **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje` — mapean columnas DB a campos cortos de S. No modificar render functions.
 - **Error de stock**: `error.code === '23514'` (violación de CHECK constraint `stock >= 0`).
 
-> **El estado de git se verifica, no se declara.** Antes de afirmar qué está pusheado, mergeado o
-> deployado, correr `git status`, `git log origin/<rama>..<rama>` y comparar contra el remoto real.
-> No repetir el estado que dice la última nota sin volver a comprobarlo.
+> **Git, producción y RLS se verifican con comandos, no se declaran en este archivo.** Este documento
+> describe arquitectura y decisiones estables — no el estado del momento. Para saber qué está pusheado,
+> deployado o qué policies corren de verdad, ejecutar los comandos de arriba / `git log`, no confiar en
+> una afirmación escrita acá con fecha.
 
 ## Módulos del sistema (tabs en la UI)
 1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo watermark
@@ -150,7 +159,7 @@ S = {
 - Mutations de kits: `dbSaveKitItems`, `dbRenameKit`, `dbAddKit`, `dbDeleteKit` en `js/db.js`
 
 ## Próximas features pendientes
-- **RLS lockdown**: Auth magic link ya está implementado (ver sección Backend arriba) — falta aplicar las policies por `auth.email()` en `schema.sql`, hoy siguen permisivas
+- **RLS lockdown**: aplicar en `schema.sql` las policies por `auth.email()` descriptas en la sección Backend (hoy solo existen como plantilla comentada) — verificar el estado real con la query de `pg_policies` antes de asumir que ya corren
 - **FASE 5**: Bot Telegram con Supabase Edge Function (Deno) — `/stock`, `/dash`, `/entrada`, `/salida`
 - Layout responsive para móvil
 - Modo carga rápida de sesión
