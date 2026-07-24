@@ -227,15 +227,11 @@ textarea{resize:vertical;min-height:80px}
     <div id="auth-card" style="display:none;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:14px;padding:2rem">
       <div id="auth-form">
         <div style="font-size:20px;font-weight:700;color:#f0f0ee;margin-bottom:6px">Acceder</div>
-        <div style="font-size:13px;color:#888;margin-bottom:1.5rem">Ingres&#xE1; tu email para recibir un enlace de acceso</div>
+        <div style="font-size:13px;color:#888;margin-bottom:1.5rem">Ingres&#xE1; tu email y contrase&#xF1;a</div>
         <input id="auth-email" type="email" placeholder="tu@email.com" style="width:100%;padding:10px 14px;background:#141414;border:1.5px solid #2e2e2e;border-radius:8px;color:#f0f0ee;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px" onkeydown="if(event.key==='Enter')doSignIn()">
-        <button id="auth-btn" onclick="doSignIn()" style="width:100%;padding:11px;background:#c8a96e;color:#111;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Enviar enlace</button>
+        <input id="auth-password" type="password" placeholder="Contrase&#xF1;a" style="width:100%;padding:10px 14px;background:#141414;border:1.5px solid #2e2e2e;border-radius:8px;color:#f0f0ee;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button id="auth-btn" onclick="doSignIn()" style="width:100%;padding:11px;background:#c8a96e;color:#111;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Ingresar</button>
         <div id="auth-msg" style="margin-top:10px;font-size:12px;text-align:center;color:#888"></div>
-      </div>
-      <div id="auth-sent" style="display:none;text-align:center">
-        <div style="font-size:48px;margin-bottom:12px;line-height:1">&#x1F4E7;</div>
-        <div style="font-size:16px;font-weight:600;color:#f0f0ee;margin-bottom:8px">Revis&#xE1; tu email</div>
-        <div style="font-size:13px;color:#888;line-height:1.5">Enviamos un enlace a <span id="auth-email-sent" style="color:#c8a96e;font-weight:600"></span>. Hac&#xE9; clic en el enlace para ingresar.</div>
       </div>
     </div>
   </div>
@@ -446,17 +442,16 @@ function showLoginForm(){document.getElementById('auth-loading').style.display='
 function hideAuthScreen(){document.getElementById('auth-screen').style.display='none';}
 async function doSignIn(){
   const email=(document.getElementById('auth-email').value||'').trim();
+  const password=document.getElementById('auth-password').value||'';
   const msgEl=document.getElementById('auth-msg');
   const btn=document.getElementById('auth-btn');
-  if(!email){if(msgEl)msgEl.textContent='Ingres\xE1 tu email';return;}
+  if(!email||!password){if(msgEl)msgEl.textContent='Ingres\xE1 email y contrase\xF1a';return;}
   if(btn)btn.disabled=true;
-  if(msgEl)msgEl.textContent='Enviando...';
-  const err=await dbSignIn(email);
+  if(msgEl)msgEl.textContent='Ingresando...';
+  const err=await dbSignIn(email,password);
   if(btn)btn.disabled=false;
   if(err){if(msgEl)msgEl.textContent='Error: '+err;return;}
-  const sentEl=document.getElementById('auth-email-sent');if(sentEl)sentEl.textContent=email;
-  document.getElementById('auth-form').style.display='none';
-  document.getElementById('auth-sent').style.display='';
+  if(msgEl)msgEl.textContent='';
 }
 async function doSignOut(){await dbSignOut();window.location.reload();}
 function initAuthUI(){
