@@ -45,10 +45,15 @@ S = {
 - **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 2)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
-- **RLS**: permisiva MVP (`USING (true)`). Pendiente: endurecer con `auth.uid() IS NOT NULL` al agregar Supabase Auth (magic link).
+- **Auth**: Supabase magic link YA implementado en código (`dbSignIn`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`, commits `bf6df39`/`c62e1df`/`f0a6381`). Verificado en `pg_policies` (2026-07-23): RLS sigue permisiva en las 8 tablas (`USING (true)`, rol `public`). Pendiente: endurecer con `auth.email() = 'franforace@gmail.com'` (NO `auth.uid()` — el diseño ya elegido usa email, ver plantilla comentada en `schema.sql:194`).
+- **Deploy**: Vercel deploya de `main` (verificado 2026-07-23 comparando hash del HTML servido en `f4-h.vercel.app` contra `origin/main`/`origin/dev`). `dev` puede estar adelantado a `main` sin que eso se refleje en producción — confirmar con el mismo método antes de asumir que un fix ya está en vivo.
 - **IDs**: `bigint` en DB → `String(id)` en S → `Number(id)` al escribir en DB.
 - **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje` — mapean columnas DB a campos cortos de S. No modificar render functions.
 - **Error de stock**: `error.code === '23514'` (violación de CHECK constraint `stock >= 0`).
+
+> **El estado de git se verifica, no se declara.** Antes de afirmar qué está pusheado, mergeado o
+> deployado, correr `git status`, `git log origin/<rama>..<rama>` y comparar contra el remoto real.
+> No repetir el estado que dice la última nota sin volver a comprobarlo.
 
 ## Módulos del sistema (tabs en la UI)
 1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo watermark
@@ -145,7 +150,7 @@ S = {
 - Mutations de kits: `dbSaveKitItems`, `dbRenameKit`, `dbAddKit`, `dbDeleteKit` en `js/db.js`
 
 ## Próximas features pendientes
-- **Auth**: Supabase magic link — endurecer RLS antes de compartir URL ampliamente
+- **RLS lockdown**: Auth magic link ya está implementado (ver sección Backend arriba) — falta aplicar las policies por `auth.email()` en `schema.sql`, hoy siguen permisivas
 - **FASE 5**: Bot Telegram con Supabase Edge Function (Deno) — `/stock`, `/dash`, `/entrada`, `/salida`
 - Layout responsive para móvil
 - Modo carga rápida de sesión
