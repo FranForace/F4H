@@ -113,4 +113,13 @@ drop trigger if exists trg_tenant_bootstrap on auth.users;
 create trigger trg_tenant_bootstrap after insert on auth.users
   for each row execute function fn_tenant_bootstrap();
 
+-- 5. fn_tenant_bootstrap is a trigger function (returns trigger) — Postgres
+--    refuses to run it if called directly outside a real trigger context,
+--    but Supabase's security linter still flags it as reachable via
+--    PostgREST RPC (/rest/v1/rpc/fn_tenant_bootstrap) for anon/authenticated.
+--    Revoking EXECUTE closes that off; it does not affect the trigger
+--    itself, which fires through the trigger manager, not a role's
+--    EXECUTE grant.
+revoke execute on function public.fn_tenant_bootstrap() from anon, authenticated;
+
 commit;
