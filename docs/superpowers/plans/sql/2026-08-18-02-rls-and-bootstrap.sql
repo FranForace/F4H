@@ -107,7 +107,7 @@ begin
 
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql set search_path = public, pg_temp security definer;
 
 drop trigger if exists trg_tenant_bootstrap on auth.users;
 create trigger trg_tenant_bootstrap after insert on auth.users
