@@ -1,6 +1,6 @@
 -- 2026-08-18 — Multi-tenancy: schema (tenant_id columns, config PK, unique fixes)
--- Run inside a single transaction. Replace <FRANCESCO_UID> with the value
--- captured in Task 1 Step 2 before running.
+-- Run inside a single transaction.
+-- Francesco's UID (94238974-9389-486b-ba3c-9915f4988496) is already substituted below.
 
 begin;
 
