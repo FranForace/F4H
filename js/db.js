@@ -361,7 +361,7 @@ async function dbUpdateProducto(id, fields) {
 
 async function dbSetConfig(clave, valor) {
   const { error } = await _db.from('config')
-    .upsert({ clave, valor, updated_at: new Date().toISOString() }, { onConflict: 'clave' });
+    .upsert({ clave, valor, updated_at: new Date().toISOString() }, { onConflict: 'tenant_id,clave' });
   if (error) { dbError('Error guardando configuración: ' + error.message); return false; }
   return true;
 }

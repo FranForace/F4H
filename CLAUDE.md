@@ -45,11 +45,14 @@ S = {
 - **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 2)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
-- **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Usuario único: `franforace@gmail.com`.
-- **RLS**: diseño de un solo usuario, policies por `auth.email() = 'franforace@gmail.com'` (NO `auth.uid()`). Verificar el estado real (no asumir por este archivo):
+- **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Cuenta original / tenant #1: `franforace@gmail.com`. Altas de tenants nuevos se crean manualmente en el dashboard de Supabase Auth — no hay signup in-app todavía (ver roadmap de onboarding por invitación).
+- **RLS**: multi-tenant. Todas las tablas de datos (`productos`, `tatuajes`, `kits`, `sesiones`, `movimientos`, `config`) tienen columna `tenant_id uuid not null references auth.users(id) default auth.uid()`; las policies `tenant_isolation` filtran por `tenant_id = auth.uid()`. `kit_items` y `sesion_agujas_testeadas` no tienen `tenant_id` propio — su policy `tenant_isolation` es un join a su tabla padre (`kits`/`sesiones`). Un trigger `trg_tenant_bootstrap` (`fn_tenant_bootstrap`, `SECURITY DEFINER`) en `auth.users` siembra el catálogo base (37 productos, 1 kit, 2 config) para cada usuario nuevo. Verificar el estado real (no asumir por este archivo):
   ```sql
   select tablename, policyname, qual from pg_policies where schemaname = 'public';
   ```
+  **Multi-tenancy**: diseño completo en `docs/superpowers/specs/2026-08-18-multi-tenancy-design.md`.
+  Esta fase solo cubrió aislamiento de datos por `tenant_id`; **onboarding por invitación** y
+  **cobro/billing** son los próximos dos proyectos planeados y todavía NO están construidos.
 - **Deploy**: Vercel construye desde `main` (config del proyecto en Vercel, no en este repo). Para confirmar qué commit está realmente en producción:
   ```bash
   curl -s https://f4-h.vercel.app/F4H_Sistema_Beta_v6.html | sha256sum
@@ -159,7 +162,8 @@ S = {
 - Mutations de kits: `dbSaveKitItems`, `dbRenameKit`, `dbAddKit`, `dbDeleteKit` en `js/db.js`
 
 ## Próximas features pendientes
-- **RLS lockdown**: aplicar en `schema.sql` las policies por `auth.email()` descriptas en la sección Backend (hoy solo existen como plantilla comentada) — verificar el estado real con la query de `pg_policies` antes de asumir que ya corren
+- **Onboarding por invitación**: siguiente proyecto planeado sobre multi-tenancy — ver `docs/superpowers/specs/2026-08-18-multi-tenancy-design.md`. Todavía no está construido.
+- **Cobro / billing**: proyecto planeado después de onboarding — ver mismo doc. Todavía no está construido.
 - **FASE 5**: Bot Telegram con Supabase Edge Function (Deno) — `/stock`, `/dash`, `/entrada`, `/salida`
 - Layout responsive para móvil
 - Modo carga rápida de sesión

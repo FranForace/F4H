@@ -2,13 +2,17 @@
 -- F4H Sistema — Schema Supabase (PostgreSQL)
 -- Decisiones: IDs bigint identity en todas las tablas, FKs enteras,
 -- sin columnas legacy. Stock vive en productos.stock, mantenido por trigger.
+-- Multi-tenant: cada tabla de datos (excepto las tablas puente kit_items y
+-- sesion_agujas_testeadas, que heredan el tenant de su padre) lleva
+-- tenant_id = auth.uid() del dueño de la fila; ver sección RLS al final.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── Tablas ──────────────────────────────────────────────────────────────────
 
 create table productos (
   id                bigint generated always as identity primary key,
-  nombre            text not null unique,
+  tenant_id         uuid not null references auth.users(id) default auth.uid(),
+  nombre            text not null,
   categoria         text not null check (categoria in ('Activo','Descartable','Consumible','Aguja')),
   subcategoria      text,
   tipo_consumo      text not null default 'UNIDAD'
@@ -23,11 +27,13 @@ create table productos (
   practica          boolean not null default false,
   notas             text,
   created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  updated_at        timestamptz not null default now(),
+  constraint productos_tenant_nombre_key unique (tenant_id, nombre)
 );
 
 create table tatuajes (
   id           bigint generated always as identity primary key,
+  tenant_id    uuid not null references auth.users(id) default auth.uid(),
   numero       integer,
   cliente      text,
   diseno       text not null,
@@ -45,8 +51,10 @@ create table tatuajes (
 
 create table kits (
   id         bigint generated always as identity primary key,
-  nombre     text not null unique,
-  created_at timestamptz not null default now()
+  tenant_id  uuid not null references auth.users(id) default auth.uid(),
+  nombre     text not null,
+  created_at timestamptz not null default now(),
+  constraint kits_tenant_nombre_key unique (tenant_id, nombre)
 );
 
 create table kit_items (
@@ -58,6 +66,7 @@ create table kit_items (
 
 create table sesiones (
   id                 bigint generated always as identity primary key,
+  tenant_id          uuid not null references auth.users(id) default auth.uid(),
   fecha              date not null default current_date,
   cliente            text,
   zona               text,
@@ -88,6 +97,7 @@ create table sesion_agujas_testeadas (
 
 create table movimientos (
   id               bigint generated always as identity primary key,
+  tenant_id        uuid not null references auth.users(id) default auth.uid(),
   fecha            date not null default current_date,
   producto_id      bigint not null references productos(id),
   tipo             text not null check (tipo in ('entrada','salida')),
@@ -99,9 +109,11 @@ create table movimientos (
 );
 
 create table config (
-  clave      text primary key,
+  tenant_id  uuid not null references auth.users(id) default auth.uid(),
+  clave      text not null,
   valor      jsonb not null,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (tenant_id, clave)
 );
 
 -- ── Índices ─────────────────────────────────────────────────────────────────
@@ -178,7 +190,7 @@ $$ language plpgsql;
 create trigger trg_movimiento_aplicar before insert on movimientos
   for each row execute function fn_movimiento_aplicar();
 
--- ── RLS (single-user: solo franforace@gmail.com vía Supabase Auth) ──────────
+-- ── RLS (multi-tenant: aislamiento por tenant_id = auth.uid()) ─────────────
 
 alter table productos                enable row level security;
 alter table tatuajes                 enable row level security;
@@ -189,17 +201,108 @@ alter table sesion_agujas_testeadas  enable row level security;
 alter table movimientos              enable row level security;
 alter table config                   enable row level security;
 
--- Después de configurar Auth: reemplazar estas policies con las de abajo.
--- (Durante deploy inicial se usan permisivas hasta que auth esté configurado)
--- create policy p_all_productos  on productos               for all using (auth.email() = 'franforace@gmail.com') with check (auth.email() = 'franforace@gmail.com');
--- ... (igual para todas las tablas)
+-- Tenant-scoped policies en las 6 tablas que llevan tenant_id propio.
+create policy tenant_isolation on productos   for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+create policy tenant_isolation on tatuajes    for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+create policy tenant_isolation on kits        for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+create policy tenant_isolation on sesiones    for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+create policy tenant_isolation on movimientos for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+create policy tenant_isolation on config      for all using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
 
--- Políticas temporales permisivas (reemplazar con SQL del README tras configurar Auth):
-create policy p_all_productos  on productos               for all using (true) with check (true);
-create policy p_all_tatuajes   on tatuajes                for all using (true) with check (true);
-create policy p_all_kits       on kits                    for all using (true) with check (true);
-create policy p_all_kit_items  on kit_items               for all using (true) with check (true);
-create policy p_all_sesiones   on sesiones                for all using (true) with check (true);
-create policy p_all_sat        on sesion_agujas_testeadas for all using (true) with check (true);
-create policy p_all_movs       on movimientos             for all using (true) with check (true);
-create policy p_all_config     on config                  for all using (true) with check (true);
+-- Policies basadas en join para las dos tablas puente (no tienen tenant_id
+-- propio — el aislamiento viene de su tabla padre).
+create policy tenant_isolation on kit_items for all
+  using (exists (select 1 from kits where kits.id = kit_items.kit_id and kits.tenant_id = auth.uid()))
+  with check (exists (select 1 from kits where kits.id = kit_items.kit_id and kits.tenant_id = auth.uid()));
+
+create policy tenant_isolation on sesion_agujas_testeadas for all
+  using (exists (select 1 from sesiones where sesiones.id = sesion_agujas_testeadas.sesion_id and sesiones.tenant_id = auth.uid()))
+  with check (exists (select 1 from sesiones where sesiones.id = sesion_agujas_testeadas.sesion_id and sesiones.tenant_id = auth.uid()));
+
+-- ── Trigger: bootstrap de tenant nuevo ──────────────────────────────────────
+-- Al crearse un usuario en auth.users (signup), este trigger le siembra el
+-- mismo catálogo base que seed.sql (37 productos, 1 kit, 2 config). Corre
+-- como SECURITY DEFINER porque en el momento del signup no existe todavía
+-- una sesión autenticada, así que auth.uid() sería NULL y las policies de
+-- arriba bloquearían todos los inserts.
+
+create or replace function fn_tenant_bootstrap() returns trigger as $$
+declare
+  v_kit_id bigint;
+begin
+  insert into config (tenant_id, clave, valor) values
+    (new.id, 'tipo_cambio', '1500'::jsonb),
+    (new.id, 'sesiones_por_mes', '8'::jsonb);
+
+  insert into productos
+    (tenant_id, nombre, categoria, subcategoria, tipo_consumo, unidad_medida,
+     stock, stock_minimo, moneda, costo_unitario, usos_por_unidad,
+     vida_util_meses, practica)
+  values
+    (new.id, 'Pen Garage', 'Activo', 'Maquina', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 25000, 1, 24, false),
+    (new.id, 'Ambition Soldier', 'Activo', 'Maquina', 'UNIDAD', 'Unidad', 1, 0, 'USD', 147.36, 1, 36, false),
+    (new.id, 'Fuente Critical', 'Activo', 'Fuente', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 205000, 1, 36, false),
+    (new.id, 'Pedal', 'Activo', 'Otros', 'UNIDAD', 'Unidad', 0, 0, 'ARS', 0, 1, 60, false),
+    (new.id, 'iPad A16 + Apple Pen', 'Activo', 'Tecnologia', 'UNIDAD', 'Unidad', 1, 0, 'USD', 505, 1, 24, false),
+    (new.id, 'Inkless Printer', 'Activo', 'Impresora', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 150000, 1, 36, false),
+    (new.id, 'Tornito Bate Pintura', 'Activo', 'Otros', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 15000, 1, 60, false),
+    (new.id, 'Mesita', 'Activo', 'Mobiliario', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 55000, 1, 60, false),
+    (new.id, 'Apoyabrazos plegable', 'Activo', 'Mobiliario', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 82700, 1, 60, false),
+    (new.id, 'Trípode Genki', 'Activo', 'Mobiliario', 'UNIDAD', 'Unidad', 1, 0, 'ARS', 39600, 1, 60, false),
+    (new.id, 'Cups Medianos (100u)', 'Descartable', 'Cups', 'UNIDAD', 'Caja', 2, 1, 'ARS', 2000, 100, null, false),
+    (new.id, 'Papel Stencil', 'Descartable', 'Papel', 'UNIDAD', 'Unidad', 15, 4, 'ARS', 2000, 1, null, false),
+    (new.id, 'Grip p/ Pen', 'Descartable', 'Otros', 'UNIDAD', 'Unidad', 9, 5, 'ARS', 1700, 3, null, false),
+    (new.id, 'Cinta para Grip (pack)', 'Descartable', 'Otros', 'UNIDAD', 'Pack', 3, 1, 'ARS', 5000, 3, null, false),
+    (new.id, 'Guantes Nitrilo Ref (100u)', 'Descartable', 'Guantes', 'UNIDAD', 'Caja', 4, 1, 'ARS', 7400, 100, null, false),
+    (new.id, 'Compresas Negras (50u)', 'Descartable', 'Compresas', 'UNIDAD', 'Caja', 4, 1, 'ARS', 7400, 50, null, false),
+    (new.id, 'Guantes Latex Negros (100u)', 'Descartable', 'Guantes', 'UNIDAD', 'Caja', 4, 1, 'ARS', 3400, 100, null, false),
+    (new.id, 'Papel de Cocina', 'Descartable', 'Papel cocina', 'UNIDAD', 'Unidad', 2, 1, 'ARS', 2600, 200, null, false),
+    (new.id, 'Film para Pen (100u)', 'Descartable', 'Film', 'UNIDAD', 'Caja', 1, 1, 'ARS', 2500, 100, null, false),
+    (new.id, 'Tinta Dynamic Triple Black', 'Consumible', 'Tinta', 'VARIABLE', 'Onza', 1, 1, 'ARS', 27000, 30, null, false),
+    (new.id, 'Piel Sintética Gruesa', 'Consumible', 'Piel sint.', 'UNIDAD', 'Unidad', 2, 6, 'ARS', 6000, 1, null, false),
+    (new.id, 'Stencil Stuff', 'Consumible', 'Stencil', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 40, null, false),
+    (new.id, 'Vaselina Grande', 'Consumible', 'Vaselina', 'SESION', 'Frasco', 1, 1, 'ARS', 12000, 60, null, false),
+    (new.id, 'Green Soap', 'Consumible', 'Green Soap', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 50, null, false),
+    (new.id, 'Diluyente', 'Consumible', 'Diluyente', 'SESION', 'Frasco', 1, 1, 'ARS', 8000, 50, null, false),
+    (new.id, 'Levanta Lengua (100u)', 'Consumible', 'Otros', 'SESION', 'Caja', 1, 1, 'ARS', 6000, 100, null, false),
+    (new.id, 'Remove Stencil', 'Consumible', 'Limpieza', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 20, null, false),
+    (new.id, 'RS 7', 'Aguja', 'RS', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'Magnum 7', 'Aguja', 'MG', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'Magnum 13', 'Aguja', 'MG', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 3', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 4, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 5', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 7', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 3, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 9', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 11', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 14', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
+    (new.id, 'RL 15', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false);
+
+  insert into kits (tenant_id, nombre) values (new.id, 'Kit base')
+    returning id into v_kit_id;
+
+  insert into kit_items (kit_id, producto_id, cantidad) values
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Papel Stencil'), 1),
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Stencil Stuff'), 1),
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Vaselina Grande'), 1),
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Green Soap'), 1),
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Diluyente'), 1),
+    (v_kit_id, (select id from productos where tenant_id = new.id and nombre = 'Levanta Lengua (100u)'), 2);
+
+  return new;
+end;
+$$ language plpgsql set search_path = public, pg_temp security definer;
+
+drop trigger if exists trg_tenant_bootstrap on auth.users;
+create trigger trg_tenant_bootstrap after insert on auth.users
+  for each row execute function fn_tenant_bootstrap();
+
+-- fn_tenant_bootstrap es una trigger function (returns trigger) — Postgres
+-- rechaza ejecutarla fuera de un contexto de trigger real, pero el linter de
+-- seguridad de Supabase igual la marca como alcanzable vía PostgREST RPC
+-- (/rest/v1/rpc/fn_tenant_bootstrap) para anon/authenticated. Postgres otorga
+-- EXECUTE al pseudo-rol PUBLIC por defecto al crear una función, así que
+-- revocar de los roles anon/authenticated individualmente NO elimina ese
+-- grant heredado — ambos roles igual ejecutan la función vía PUBLIC. Revocar
+-- de PUBLIC directamente cierra esa vía; no afecta al trigger en sí, que se
+-- dispara por el trigger manager, no por un grant de EXECUTE de un rol.
+revoke execute on function public.fn_tenant_bootstrap() from public;
