@@ -1,4 +1,23 @@
 -- ═══════════════════════════════════════════════════════════
+-- ⚠ SUPERADO por fn_tenant_bootstrap() — NO ejecutar tal cual
+-- ═══════════════════════════════════════════════════════════
+-- Desde la migración de multi-tenancy, schema.sql define el trigger
+-- fn_tenant_bootstrap() (AFTER INSERT ON auth.users) que siembra este
+-- mismo catálogo (37 productos, 1 kit, 2 config) automáticamente para
+-- cada usuario nuevo de Supabase Auth. Un alta fresca hoy NO necesita
+-- correr este archivo a mano: basta con crear el primer usuario desde
+-- el dashboard de Supabase Auth y el bootstrap se dispara solo.
+--
+-- Además, este archivo FALLA si se corre hoy desde el SQL Editor:
+-- productos/kits/config tienen `tenant_id uuid not null default auth.uid()`,
+-- y el SQL Editor corre como service_role sin sesión autenticada, por lo
+-- que auth.uid() resuelve a NULL ahí — cada INSERT viola el NOT NULL.
+--
+-- Se conserva por valor histórico/de referencia: documenta la data de
+-- seed original de single-tenant que fn_tenant_bootstrap ahora reproduce
+-- por-tenant (útil, por ejemplo, para diffear contra la lista hardcodeada
+-- del trigger y verificar que coincide). No ejecutar as-is.
+-- ═══════════════════════════════════════════════════════════
 -- F4H — Seed inicial (asiento de apertura)
 -- Generado desde F4H_Carga_Inicial.xlsx
 -- Ejecutar DESPUÉS de schema.sql

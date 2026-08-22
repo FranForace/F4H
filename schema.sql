@@ -299,7 +299,10 @@ create trigger trg_tenant_bootstrap after insert on auth.users
 -- fn_tenant_bootstrap es una trigger function (returns trigger) — Postgres
 -- rechaza ejecutarla fuera de un contexto de trigger real, pero el linter de
 -- seguridad de Supabase igual la marca como alcanzable vía PostgREST RPC
--- (/rest/v1/rpc/fn_tenant_bootstrap) para anon/authenticated. Revocar EXECUTE
--- cierra esa vía; no afecta al trigger en sí, que se dispara por el trigger
--- manager, no por un grant de EXECUTE de un rol.
-revoke execute on function public.fn_tenant_bootstrap() from anon, authenticated;
+-- (/rest/v1/rpc/fn_tenant_bootstrap) para anon/authenticated. Postgres otorga
+-- EXECUTE al pseudo-rol PUBLIC por defecto al crear una función, así que
+-- revocar de los roles anon/authenticated individualmente NO elimina ese
+-- grant heredado — ambos roles igual ejecutan la función vía PUBLIC. Revocar
+-- de PUBLIC directamente cierra esa vía; no afecta al trigger en sí, que se
+-- dispara por el trigger manager, no por un grant de EXECUTE de un rol.
+revoke execute on function public.fn_tenant_bootstrap() from public;
