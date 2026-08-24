@@ -43,7 +43,7 @@ S = {
 - **Publishable key** (en `js/db.js`, safe para frontend): `sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH`
 - **service_role key**: NUNCA en frontend. NUNCA en el repo.
 - **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
-- **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 2)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
+- **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 4)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
 - **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Cuenta original / tenant #1: `franforace@gmail.com`. Altas de tenants nuevos se crean manualmente en el dashboard de Supabase Auth — no hay signup in-app todavía (ver roadmap de onboarding por invitación).
 - **RLS**: multi-tenant. Todas las tablas de datos (`productos`, `tatuajes`, `kits`, `sesiones`, `movimientos`, `config`) tienen columna `tenant_id uuid not null references auth.users(id) default auth.uid()`; las policies `tenant_isolation` filtran por `tenant_id = auth.uid()`. `kit_items` y `sesion_agujas_testeadas` no tienen `tenant_id` propio — su policy `tenant_isolation` es un join a su tabla padre (`kits`/`sesiones`). Un trigger `trg_tenant_bootstrap` (`fn_tenant_bootstrap`, `SECURITY DEFINER`) en `auth.users` siembra el catálogo base (37 productos, 1 kit, 2 config) para cada usuario nuevo. Verificar el estado real (no asumir por este archivo):
@@ -78,9 +78,17 @@ S = {
 8. **Config** — TC, sesiones/mes, kits de insumos, backup JSON
 
 ## Lógica de costos clave
-- `cxu(p)` = costo por uso = `p.cu / p.upu`
+- **Stock se mide en usos, no en envases** (migrado 2026-08-24). `productos.stock`,
+  `stock_minimo` y `costo_unitario` están en usos/costo-por-uso en DB. `p.upu`
+  (`usos_por_unidad`) sigue siendo el factor de conversión envase↔uso.
+- `cxu(p)` = costo por uso = `cuARS(p)` (ya no divide por `upu`; `costo_unitario` ya viene
+  expresado por uso desde la migración)
+- `cEnv(p)` = costo por envase = `cuARS(p) * p.upu` (derivado, para mostrar en UI)
 - `amortSesion(p)` = `cuARS(p) / p.vum / S.spm`
-- WAC en entradas: trigger PostgreSQL `round((stock × cu + qty × costo) / (stock + qty), 2)`
+- WAC en entradas: trigger PostgreSQL `round((stock × cu + qty × costo) / (stock + qty), 4)`
+- Movimientos: el form carga en **envases** (cantidad y precio por envase); `addMov()`
+  convierte a usos (`cantidad*upu`) y costo por uso (`precio/upu`) antes del INSERT.
+  Ya no existe el selector "unidad de salida" (usos vs. unidad) — todo es uniforme.
 - Score global = promedio de 5 dimensiones (sL, sR, sT, sD, sC) del 1 al 10
 
 ## Scoring — 5 dimensiones
@@ -155,7 +163,6 @@ S = {
 - Activos excluidos de alertas: `if(p.cat==='Activo') return 'ok'`
 - Alertas: stock ESTRICTO < mínimo (no <=)
 - Agujas `practica:true` no descuentan stock
-- Salidas en "usos": `qtyFinal = qty / p.upu`
 - Kit base: se descuenta automáticamente en cada sesión si checkbox activo
 - costoAlMomento: trigger sella el valor vigente si no se informa en el INSERT
 - `globalScore(s)` — NO modificar esta función

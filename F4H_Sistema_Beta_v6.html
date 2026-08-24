@@ -359,17 +359,15 @@ textarea{resize:vertical;min-height:80px}
     <div class="fgrid">
       <div class="fg"><label class="fl">Producto</label><select id="mv-prod" onchange="onMovChange()"></select></div>
       <div class="fg"><label class="fl">Tipo</label><select id="mv-tipo" onchange="onMovChange()"><option value="entrada">Entrada (+)</option><option value="salida">Salida (−)</option></select></div>
-      <div class="fg"><label class="fl">Cantidad</label><input id="mv-qty" type="number" min="1" value="1"></div>
-      <div class="fg" id="mv-unidad-wrap" style="display:none"><label class="fl">Unidad de salida</label>
-        <select id="mv-unidad"><option value="unidad">Unidad / caja completa</option><option value="uso">Usos individuales</option></select>
-      </div>
+      <div class="fg"><label class="fl">Cantidad (envases)</label><input id="mv-qty" type="number" min="0.01" step="0.01" value="1" oninput="onMovChange()"></div>
       <div class="fg" id="mv-costo-wrap" style="display:none">
-        <label class="fl">Costo unitario de esta compra <span style="color:var(--accent)">(actualiza promedio)</span></label>
-        <input id="mv-costo" type="number" min="0" step="1" placeholder="Vacío = mantener actual">
+        <label class="fl">Precio por envase <span style="color:var(--accent)">(actualiza promedio)</span></label>
+        <input id="mv-costo" type="number" min="0" step="0.01" placeholder="Vacío = mantener actual" oninput="onMovChange()">
       </div>
       <div class="fg" style="grid-column:1/-1"><label class="fl">Referencia</label><input id="mv-ref" placeholder="Ej: Compra MeLi, proveedor, fecha"></div>
     </div>
     <div id="mv-info" class="hint" style="margin:.4rem 0"></div>
+    <div id="mv-preview" class="hint" style="margin:.4rem 0"></div>
     <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center">
       <button class="btn btn-p" onclick="addMov()">Registrar</button><span id="mv-msg"></span>
     </div>
@@ -536,9 +534,10 @@ function seedKits(){S.kits=[{id:'K_base',nombre:'Kit base',items:[{pid:'P09',qty
 // ─── Core calculations ───────────────────────────────────────────────────────
 function stockOf(pid){const p=S.productos.find(x=>x.id===String(pid));return p?p.stock:0;}
 function cuARS(p){return p.mon==='USD'?p.cu*S.tc:p.cu;}
+function cEnv(p){return cuARS(p)*p.upu;}
 function amortMensual(p){return p.vum>0?cuARS(p)/p.vum:0;}
 function amortSesion(p){return S.spm>0?amortMensual(p)/S.spm:0;}
-function cxu(p){return p.upu>0?cuARS(p)/p.upu:cuARS(p);}
+function cxu(p){return cuARS(p);}
 function status(p){if(p.cat==='Activo')return'ok';const s=stockOf(p.id);if(s<=0)return'critical';if(s<p.sm)return'low';return'ok';}
 function amortTotalSes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortSesion(p),0);}
 function amortTotalMes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortMensual(p),0);}
@@ -562,6 +561,8 @@ function tattooHrs(tid){return tattooSesiones(tid).reduce((a,s)=>a+(s.hrs||0),0)
 
 function badge(st){if(st==='critical')return'<span class="badge b-crit">Cr\xEDtico</span>';if(st==='low')return'<span class="badge b-low">Bajo</span>';return'<span class="badge b-ok">OK</span>';}
 function ars(n){return'$'+Math.round(n).toLocaleString('es-AR');}
+function arsD(n,d){return'$'+(n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function numAR(n,d){return(n||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
 function fdate(iso){return iso?iso.slice(5).replace('-','/'):'—';}
 function msg(id,txt,type){const el=document.getElementById(id);if(!el)return;el.textContent=txt;el.className=type;setTimeout(()=>{if(el)el.textContent='';},3000);}
 function scorePill(v){if(!v)return'<span class="sp" style="background:#eee;color:#aaa">—</span>';const cl=v>=7?'sp-hi':v>=4?'sp-md':'sp-lo';return`<span class="sp ${cl}">${v}</span>`;}
@@ -948,13 +949,20 @@ function renderInv(){
   const rows=prods.map(p=>{
     const st=status(p);const isEd=p.id===editingId;
     const rowBg=isEd?'background:rgba(200,169,110,.07)':st!=='ok'?'background:rgba(226,75,74,.05)':'';
-    const cxuVal=p.cu>0?'<span style="font-weight:700;color:var(--accent)">'+ars(cxu(p))+'</span>':'--';
+    const stkUsos=stockOf(p.id);
+    const stkEnv=p.upu>0?stkUsos/p.upu:stkUsos;
+    const stockCell=p.upu>1
+      ?'<span style="font-weight:700;font-size:14px">'+numAR(stkUsos,2)+'</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">usos</span><div style="font-size:11px;color:var(--text-3)">('+numAR(stkEnv,2)+' '+p.um+')</div>'
+      :'<span style="font-weight:700;font-size:14px">'+numAR(stkUsos,2)+'</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">'+p.um+'</span>';
+    const cxuVal=p.cu>0
+      ?'<span style="font-weight:700;color:var(--accent)">'+ars(cEnv(p))+'</span><div style="font-size:11px;color:var(--text-3)">'+arsD(cxu(p),2)+'/uso</div>'
+      :'--';
     const editBtn=isEd
       ?'<button style="padding:6px 13px;font-size:12px;font-weight:600;background:rgba(200,169,110,.12);color:var(--accent);border:1.5px solid var(--accent);border-radius:7px;cursor:pointer">✏ Editando</button>'
       :'<button style="padding:6px 13px;font-size:12px;font-weight:600;background:transparent;color:var(--text-3);border:1.5px solid var(--border);border-radius:7px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-3)\'" onclick="editingId=\''+p.id+'\';renderInv()">✏ Editar</button>';
     return '<tr style="border-bottom:1px solid var(--border);'+rowBg+'">'
       +'<td style="padding:14px 18px;vertical-align:middle"><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:3px">'+p.nom+(p.practica?' <span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,143,212,.15);color:#4a8fd4">pr\xE1ctica</span>':'')+'</div><div style="font-size:11px;color:var(--text-3)">'+p.cat+' \xB7 '+p.sub+'</div></td>'
-      +'<td style="padding:14px 18px;vertical-align:middle"><span style="font-weight:700;font-size:14px">'+stockOf(p.id)+'</span><span style="font-size:11px;color:var(--text-3);margin-left:3px">'+p.um+'</span></td>'
+      +'<td style="padding:14px 18px;vertical-align:middle">'+stockCell+'</td>'
       +'<td style="padding:14px 18px;vertical-align:middle;color:var(--text-2);font-size:14px">'+p.sm+'</td>'
       +'<td style="padding:14px 18px;vertical-align:middle">'+badge(st)+'</td>'
       +'<td style="padding:14px 18px;vertical-align:middle">'+cxuVal+'</td>'
@@ -988,7 +996,7 @@ function renderInv(){
           <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Stock</th>
           <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">M\xEDn.</th>
           <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Estado</th>
-          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Costo / uso</th>
+          <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Costo / envase</th>
           <th style="padding:13px 18px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)">Usos / un.</th>
           <th></th>
         </tr></thead>
@@ -1150,7 +1158,7 @@ function buildNuevaSes(){
     </div>
 
     <div style="display:flex;align-items:center;gap:8px;margin:.75rem 0 .5rem">
-      <span style="font-size:12px;font-weight:500">Insumos adicionales</span>
+      <span style="font-size:12px;font-weight:500">Insumos adicionales <span class="hint">(usos)</span></span>
       <button class="btn btn-sm" onclick="addExtra()">+ Agregar</button>
     </div>
     <div id="extras-sec">${renderExtras()}</div>
@@ -1433,12 +1441,24 @@ function onMovChange(){
   const pid=document.getElementById('mv-prod')?.value;
   const p=S.productos.find(x=>x.id===pid);
   const cw=document.getElementById('mv-costo-wrap');
-  const uw=document.getElementById('mv-unidad-wrap');
   const info=document.getElementById('mv-info');
+  const prev=document.getElementById('mv-preview');
   if(cw)cw.style.display=tipo==='entrada'?'':'none';
-  if(uw)uw.style.display=(tipo==='salida'&&p&&p.upu>1)?'':'none';
-  if(info&&p){const stk=stockOf(p.id);info.textContent='Stock actual: '+stk+' '+p.um+' · Costo vigente: $'+Math.round(cuARS(p)).toLocaleString('es-AR')+(p.upu>1?' · '+p.upu+' usos/unidad':'');}
-  else if(info)info.textContent='';
+  if(info&&p){
+    const stkUsos=stockOf(p.id);const stkEnv=p.upu>0?stkUsos/p.upu:stkUsos;
+    info.textContent='Stock actual: '+numAR(stkUsos,2)+' usos'+(p.upu>1?' ('+numAR(stkEnv,2)+' '+p.um+')':'')
+      +' · Costo vigente: '+arsD(cxu(p),2)+'/uso'+(p.upu>1?' ('+ars(cEnv(p))+'/'+p.um+')':'');
+  } else if(info)info.textContent='';
+  if(prev&&p){
+    const qty=parseFloat(document.getElementById('mv-qty')?.value)||0;
+    const usos=qty*p.upu;
+    let txt=numAR(qty,2)+' '+p.um+' = '+numAR(usos,2)+' usos';
+    if(tipo==='entrada'){
+      const precioEnvase=parseFloat(document.getElementById('mv-costo')?.value)||0;
+      if(precioEnvase>0&&p.upu>0)txt+=' a '+arsD(precioEnvase/p.upu,2)+' c/u';
+    }
+    prev.textContent=txt;
+  } else if(prev)prev.textContent='';
 }
 function fillMovSel(){const sel=document.getElementById('mv-prod');const cur=sel.value;sel.innerHTML=S.productos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>[${p.cat}] ${p.nom}</option>`).join('');}
 function renderMovTable(){
@@ -1448,20 +1468,20 @@ function renderMovTable(){
 async function addMov(){
   const pid=document.getElementById('mv-prod').value;
   const tipo=document.getElementById('mv-tipo').value;
-  const qty=parseInt(document.getElementById('mv-qty').value)||1;
+  const qtyEnv=parseFloat(document.getElementById('mv-qty').value)||0;
   const ref=document.getElementById('mv-ref').value.trim();
-  const costoInput=parseFloat(document.getElementById('mv-costo')?.value)||0;
-  const unidad=document.getElementById('mv-unidad')?.value||'unidad';
+  const costoEnvase=parseFloat(document.getElementById('mv-costo')?.value)||0;
   if(!pid){msg('mv-msg','Seleccioná un producto','err');return;}
+  if(qtyEnv<=0){msg('mv-msg','Cantidad inválida','err');return;}
   const p=S.productos.find(x=>x.id===String(pid));
-  let qtyFinal=qty;
-  let refExtra='';
-  if(tipo==='salida'&&unidad==='uso'&&p&&p.upu>1){qtyFinal=Math.round((qty/p.upu)*1000)/1000;refExtra=' ['+qty+' usos]';}
-  if(tipo==='salida'&&stockOf(pid)<qtyFinal){msg('mv-msg','Stock insuficiente ('+stockOf(pid)+')','err');return;}
+  if(!p)return;
+  const qtyFinal=Math.round(qtyEnv*p.upu*10000)/10000;
+  const costoUso=tipo==='entrada'&&costoEnvase>0&&p.upu>0?Math.round((costoEnvase/p.upu)*10000)/10000:null;
+  if(tipo==='salida'&&stockOf(pid)<qtyFinal){msg('mv-msg','Stock insuficiente ('+numAR(stockOf(pid),2)+' usos)','err');return;}
   const mov=await dbAddMovimiento({
     productoId:pid,tipo,cantidad:qtyFinal,
-    costoAlMomento:tipo==='entrada'&&costoInput>0?costoInput:null,
-    referencia:ref+refExtra,
+    costoAlMomento:costoUso,
+    referencia:ref,
   });
   if(!mov)return;
   S.movimientos.unshift(mov);
