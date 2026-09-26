@@ -848,6 +848,65 @@ function AGeditarTurno(id){
   AG.panel='turno';renderAgenda();
 }
 
+function buildPanelTurno(){
+  const f=AGturnoForm;if(!f)return'';
+  const fecha=f.fecha;
+  const mesKey=fecha.slice(0,7);
+  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false};
+  const tatOpts=S.tatuajes.filter(t=>t.estado!=='Finalizado');
+  const cupoAgotado=S.cupos&&S.cupos.disponibles<=0;
+  const sesionesFecha=S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id&&t.id!==f.id));
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--text)">'+(f.id?'Editar turno':'Nuevo turno')+'</div><button class="btn btn-xs" onclick="AGturnoForm=null;AG.panel=\'dia\';renderAgenda()">✕</button></div>'
+    +(!info.abierto?'<div style="background:rgba(212,135,42,.1);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text)">Este d\xEDa est\xE1 cerrado.</div>':'')
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Fecha</label><input id="tf-fecha" type="date" value="'+fecha+'"></div>'
+    +'<div class="fgrid" style="margin-bottom:8px">'
+      +'<div class="fg"><label class="fl">Hora</label><input id="tf-hora" type="time" value="'+(f.hora||'')+'"></div>'
+      +'<div class="fg"><label class="fl">Duraci\xF3n (min)</label><input id="tf-dur" type="number" min="0" step="15" value="'+(f.dur||'')+'"></div>'
+    +'</div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Cliente *</label><input id="tf-cli" value="'+(f.cli||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Contacto</label><input id="tf-contacto" value="'+(f.contacto||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Tatuaje vinculado</label><select id="tf-tid"><option value="">— ninguno —</option>'+tatOpts.map(t=>'<option value="'+t.id+'"'+(f.tid===t.id?' selected':'')+'>#'+t.num+' '+t.diseno+'</option>').join('')+'</select></div>'
+    +(sesionesFecha.length?('<div class="fg" style="margin-bottom:8px"><label class="fl">Vincular sesi\xF3n existente</label><select id="tf-sesion-existente"><option value="">— ninguna —</option>'+sesionesFecha.map(s=>'<option value="'+s.id+'">'+(s.cliente||'sin cliente')+' \xB7 '+(s.zona||'sin zona')+'</option>').join('')+'</select></div>'):'')
+    +'<div class="fg" style="margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2)"><input type="checkbox" id="tf-cupo" style="width:auto"'+(f.cupo?' checked':'')+'> Usa cupo de lanzamiento'+(cupoAgotado?' <span style="color:var(--red)">(agotado)</span>':'')+'</label></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Se\xF1a (ARS)</label><input id="tf-sena" type="number" min="0" step="500" value="'+(f.sena||0)+'"></div>'
+    +'<div class="fg" style="margin-bottom:12px"><label class="fl">Notas</label><textarea id="tf-notas" rows="2">'+(f.notas||'')+'</textarea></div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn btn-p" id="tf-save" onclick="AGguardarTurno()">Guardar'+(!info.abierto?' igual':'')+'</button>'
+    +(f.id?'<button class="btn btn-danger" onclick="AGborrarTurno(\''+f.id+'\')">Eliminar</button>':'')
+    +'<span id="tf-msg"></span></div>'
+  +'</div>';
+}
+
+async function AGguardarTurno(){
+  const btn=document.getElementById('tf-save');if(btn)btn.disabled=true;
+  const cli=document.getElementById('tf-cli').value.trim();
+  if(!cli){msg('tf-msg','El cliente es obligatorio','err');if(btn)btn.disabled=false;return;}
+  const sesionExistenteSel=document.getElementById('tf-sesion-existente');
+  const sesionExistente=sesionExistenteSel?sesionExistenteSel.value:'';
+  const payload={
+    id:AGturnoForm.id,
+    fecha:document.getElementById('tf-fecha').value,
+    hora:document.getElementById('tf-hora').value,
+    dur:parseInt(document.getElementById('tf-dur').value)||null,
+    cli,
+    contacto:document.getElementById('tf-contacto').value.trim(),
+    tid:document.getElementById('tf-tid').value,
+    cupo:document.getElementById('tf-cupo').checked,
+    sena:parseFloat(document.getElementById('tf-sena').value)||0,
+    notas:document.getElementById('tf-notas').value.trim(),
+  };
+  const id=await dbSaveTurno(payload);
+  if(!id){if(btn)btn.disabled=false;return;}
+  if(sesionExistente)await dbVincularSesionTurno(id,sesionExistente);
+  AG.dias={};await AGloadMes(AG.mes);
+  AGturnoForm=null;AG.dia=payload.fecha;AG.panel='dia';
+  renderAgenda();
+}
+async function AGborrarTurno(id){
+  if(!confirm('\xBFEliminar este turno?'))return;
+  if(await dbDeleteTurno(id)){AGturnoForm=null;AG.panel='dia';renderAgenda();}
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
   const n=S.sesiones.length;
