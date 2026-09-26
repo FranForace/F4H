@@ -755,6 +755,99 @@ function buildAgendaPanel(){
   return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 20px;text-align:center;color:var(--text-3);font-size:13px">Seleccion\xE1 un d\xEDa del calendario.</div>';
 }
 
+function buildPanelDia(fecha){
+  const mesKey=fecha.slice(0,7);
+  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false,turnos_activos:0,regla_id:null,regla_motivo:''};
+  const [y,m,dd]=fecha.split('-').map(Number);
+  const fechaLarga=new Date(y,m-1,dd).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const turnosDia=S.turnos.filter(t=>t.fecha===fecha).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const sesionesSinTurno=S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id));
+  return '<div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text);text-transform:capitalize">'+fechaLarga+'</div>'
+        +'<button class="btn btn-xs" onclick="AG.dia=null;AG.panel=null;renderAgenda()">✕</button>'
+      +'</div>'
+      +'<div style="margin-bottom:6px"><span class="badge" style="background:'+(info.abierto?'rgba(74,154,58,.15)':'rgba(226,75,74,.15)')+';color:'+(info.abierto?'var(--green)':'var(--red)')+'">'+(info.abierto?'ABIERTO':'CERRADO')+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:12px">'+(info.abierto?'Abierto por: ':(info.regla_id?'Cerrado por: ':'Cerrado (sin reglas)'))+(info.regla_id?(info.regla_motivo||'—'):'')+'</div>'
+      +(AGavisoCierre===fecha
+        ?'<div style="background:rgba(226,75,74,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text)">Este d\xEDa tiene '+info.turnos_activos+' turno(s) activo(s).'
+          +'<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-xs btn-danger" onclick="AGtoggleDia(\''+fecha+'\')">Cerrar igual</button><button class="btn btn-xs" onclick="AGavisoCierre=null;renderAgenda()">Cancelar</button></div></div>'
+        :'<button class="btn btn-sm" onclick="AGtoggleDia(\''+fecha+'\')">'+(info.abierto?'Cerrar este d\xEDa':'Abrir este d\xEDa')+'</button>')
+    +'</div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:700;color:var(--text)">Turnos</div>'
+        +'<button class="btn btn-xs btn-p" onclick="AGnuevoTurno(\''+fecha+'\')">+ Turno</button></div>'
+      +(turnosDia.length?turnosDia.map(buildTurnoRow).join(''):'<div class="empty">Sin turnos este d\xEDa.</div>')
+    +'</div>'
+    +(sesionesSinTurno.length?('<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">Sesiones registradas sin turno</div>'
+      +sesionesSinTurno.map(s=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:12px"><span>'+(s.cliente||'—')+' \xB7 '+(s.zona||'—')+'</span><button class="btn btn-xs" onclick="editSesFromTattoo(\''+s.id+'\')">Ver sesi\xF3n</button></div>').join('')
+    +'</div>'):'')
+  +'</div>';
+}
+
+function buildTurnoRow(t){
+  const tat=t.tid?S.tatuajes.find(x=>x.id===t.tid):null;
+  const colorMap={Reservado:'var(--amber)',Confirmado:'var(--green)',Realizado:'var(--text-3)',Cancelado:'var(--red)','No vino':'var(--red)'};
+  const tachado=['Cancelado','No vino'].includes(t.estado);
+  let acciones='';
+  if(t.estado==='Reservado')acciones+='<button class="btn btn-xs" onclick="AGsetEstado(\''+t.id+'\',\'Confirmado\')">Confirmar</button>';
+  if(!['Cancelado','No vino','Realizado'].includes(t.estado)){
+    acciones+='<button class="btn btn-xs btn-danger" onclick="AGsetEstado(\''+t.id+'\',\'Cancelado\')">Cancelar</button>';
+    acciones+='<button class="btn btn-xs" onclick="AGsetEstado(\''+t.id+'\',\'No vino\')">No vino</button>';
+  }
+  acciones+='<button class="btn btn-xs" onclick="AGeditarTurno(\''+t.id+'\')">Editar</button>';
+  acciones+=(t.estado!=='Realizado')
+    ?'<button class="btn btn-xs btn-p" onclick="AGregistrarSesion(\''+t.id+'\')">Registrar sesi\xF3n</button>'
+    :('<button class="btn btn-xs" onclick="editSesFromTattoo(\''+t.sid+'\')">Ver sesi\xF3n</button>'
+      +'<button class="btn btn-xs btn-ghost" onclick="AGdesvincular(\''+t.id+'\')">Desvincular</button>');
+  return '<div style="padding:8px 0;border-top:1px solid var(--border)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<span style="font-size:12px;font-weight:700;color:'+colorMap[t.estado]+(tachado?';text-decoration:line-through':'')+'">'+(t.hora||'--:--')+' \xB7 '+t.cli+'</span>'
+      +'<span class="hint">'+t.estado+'</span>'
+    +'</div>'
+    +(tat?'<div class="hint" style="margin-bottom:4px">'+tat.diseno+'</div>':'')
+    +(t.cupo?'<div class="hint" style="margin-bottom:4px;color:var(--accent)">Cupo de lanzamiento</div>':'')
+    +'<div style="display:flex;gap:4px;flex-wrap:wrap">'+acciones+'</div>'
+  +'</div>';
+}
+
+async function AGsetEstado(id,estado){if(await dbSetEstadoTurno(id,estado))renderAgenda();}
+async function AGdesvincular(id){
+  if(!confirm('\xBFDesvincular la sesi\xF3n de este turno? El turno vuelve a Confirmado.'))return;
+  if(await dbDesvincularSesionTurno(id))renderAgenda();
+}
+
+async function AGtoggleDia(fecha){
+  const mesKey=fecha.slice(0,7);
+  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false,turnos_activos:0,regla_id:null};
+  if(info.abierto&&info.turnos_activos>0&&AGavisoCierre!==fecha){
+    AGavisoCierre=fecha;renderAgenda();return;
+  }
+  AGavisoCierre=null;
+  const r=info.regla_id?S.reglas.find(x=>x.id===String(info.regla_id)):null;
+  if(r&&r.desde===fecha&&r.hasta===fecha&&!r.dias){
+    await dbDeleteRegla(r.id);
+  }else{
+    await dbSaveRegla({efecto:info.abierto?'cerrar':'abrir',dias:null,desde:fecha,hasta:fecha,hDesde:'',hHasta:'',motivo:'Manual'});
+  }
+  AG.dias={};
+  await AGloadMes(AG.mes);
+  renderAgenda();
+}
+
+function AGnuevoTurno(fecha){
+  AGturnoForm={id:null,fecha,hora:'',dur:60,cli:'',contacto:'',tid:'',
+    cupo:!!(S.cupos&&S.cupos.disponibles>0&&(!S.cupos.hasta||fecha<=S.cupos.hasta)),sena:0,notas:''};
+  AG.panel='turno';renderAgenda();
+}
+function AGeditarTurno(id){
+  const t=S.turnos.find(x=>x.id===String(id));if(!t)return;
+  AGturnoForm={...t};
+  AG.panel='turno';renderAgenda();
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
   const n=S.sesiones.length;
