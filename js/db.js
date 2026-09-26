@@ -99,9 +99,11 @@ function adaptSesion(s) {
     Object.entries(SCORE_COLS).forEach(([k, col]) => { o[k] = r[col] || 0; });
     return o;
   });
-  const agujas = (s.sesion_agujas || []).map(r => ({ pid: String(r.producto_id), qty: Number(r.cantidad) || 1 }));
+  // tid = tatuaje al que corresponde dentro de la sesión ('' = práctica / sin tatuaje)
+  const agujas = (s.sesion_agujas || []).slice().sort((a, b) => a.id - b.id)
+    .map(r => ({ tid: r.tatuaje_id ? String(r.tatuaje_id) : '', pid: String(r.producto_id), qty: Number(r.cantidad) || 1 }));
   const tecnicas = (s.sesion_tecnicas || []).slice().sort((a, b) => a.orden - b.orden)
-    .map(r => ({ tec: r.tecnica, pid: r.producto_id ? String(r.producto_id) : '', volt: r.voltaje != null ? Number(r.voltaje) : '' }));
+    .map(r => ({ tid: r.tatuaje_id ? String(r.tatuaje_id) : '', tec: r.tecnica, pid: r.producto_id ? String(r.producto_id) : '', volt: r.voltaje != null ? Number(r.voltaje) : '' }));
   return {
     tats, agujas, tecnicas,
     id:          String(s.id),
@@ -142,6 +144,8 @@ function adaptTatuaje(t) {
     precio:  Number(t.precio) || 0,
     fotoUrl: t.url_referencia || '',
     notas:   t.notas          || '',
+    fotos:   (t.tatuaje_fotos || []).slice().sort((a, b) => a.id - b.id)
+      .map(r => ({ id: String(r.id), path: r.path, tipo: r.tipo, sesionId: r.sesion_id ? String(r.sesion_id) : null, fecha: r.created_at })),
   };
 }
 
@@ -172,7 +176,7 @@ async function getSesiones() {
 }
 
 async function getTatuajes() {
-  const { data, error } = await _db.from('tatuajes').select('*').order('id');
+  const { data, error } = await _db.from('tatuajes').select('*, tatuaje_fotos(*)').order('id');
   if (error) { dbError('Error cargando tatuajes: ' + error.message); return null; }
   return data.map(adaptTatuaje);
 }
@@ -227,7 +231,12 @@ async function dbAddMovimiento({ productoId, tipo, cantidad, costoAlMomento = nu
 // params.tats: [{tid, sL..sC}] · params.agujas: [{pid, qty}] · params.tecnicas: [{tec, pid, volt}]
 async function dbSaveSesion(params) {
   const tats     = (params.tats     || []).filter(t => t.tid);
-  const agujas   = (params.agujas   || []).filter(a => a.pid && a.qty > 0);
+  const agMap = {};
+  (params.agujas || []).filter(a => a.pid && a.qty > 0).forEach(a => {
+    const k = (a.tid || '') + '|' + a.pid;
+    agMap[k] = agMap[k] ? { ...agMap[k], qty: agMap[k].qty + a.qty } : { ...a };
+  });
+  const agujas   = Object.values(agMap);
   const tecnicas = (params.tecnicas || []).filter(t => t.tec);
   // Puntaje de la sesión: con tatuajes = promedio de ellos; sin tatuajes = el cargado directo
   const sc = tats.length ? avgScores(tats) : params;
@@ -273,9 +282,9 @@ async function dbSaveSesion(params) {
     Object.entries(SCORE_COLS).forEach(([k, col]) => { row[col] = t[k] || 0; });
     return row;
   }))]);
-  if (agujas.length) inserts.push(['agujas', _db.from('sesion_agujas').insert(agujas.map(a => ({ sesion_id: sid, producto_id: Number(a.pid), cantidad: a.qty })))]);
+  if (agujas.length) inserts.push(['agujas', _db.from('sesion_agujas').insert(agujas.map(a => ({ sesion_id: sid, tatuaje_id: a.tid ? Number(a.tid) : null, producto_id: Number(a.pid), cantidad: a.qty })))]);
   if (tecnicas.length) inserts.push(['técnicas', _db.from('sesion_tecnicas').insert(tecnicas.map((t, i) => ({
-    sesion_id: sid, orden: i, tecnica: t.tec,
+    sesion_id: sid, tatuaje_id: t.tid ? Number(t.tid) : null, orden: i, tecnica: t.tec,
     producto_id: t.pid ? Number(t.pid) : null,
     voltaje: t.volt !== '' && t.volt != null ? Number(t.volt) : null,
   })))]);
@@ -471,4 +480,69 @@ async function initDB() {
     showOfflineBanner();
     return false;
   }
+}
+
+// ── Fotos (Storage bucket privado 'fotos', ruta {uid}/{tatuaje_id}/{archivo}) ──────
+
+// Reduce la imagen en el navegador (lado mayor 1600px, JPEG 0.82) para cuidar el espacio
+function comprimirImagen(file, max = 1600, calidad = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo comprimir')), 'image/jpeg', calidad);
+    };
+    img.onerror = () => reject(new Error('Archivo de imagen inválido'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function dbUploadFoto(file, tatuajeId, { sesionId = null, tipo = 'Resultado' } = {}) {
+  const { data: { user } } = await _db.auth.getUser();
+  if (!user) { dbError('Sesión expirada — volvé a ingresar'); return null; }
+  let blob;
+  try { blob = await comprimirImagen(file); } catch (e) { dbError(e.message); return null; }
+  const path = user.id + '/' + Number(tatuajeId) + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+  const up = await _db.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg' });
+  if (up.error) { dbError('Error subiendo foto: ' + up.error.message); return null; }
+  const { data, error } = await _db.from('tatuaje_fotos').insert({
+    tatuaje_id: Number(tatuajeId), sesion_id: sesionId ? Number(sesionId) : null, tipo, path,
+  }).select().single();
+  if (error) {
+    await _db.storage.from('fotos').remove([path]);
+    dbError('Error registrando foto: ' + error.message); return null;
+  }
+  const t = S.tatuajes.find(x => x.id === String(tatuajeId));
+  const foto = { id: String(data.id), path, tipo, sesionId: sesionId ? String(sesionId) : null, fecha: data.created_at };
+  if (t) (t.fotos = t.fotos || []).push(foto);
+  return foto;
+}
+
+async function dbDeleteFoto(tatuajeId, fotoId) {
+  const t = S.tatuajes.find(x => x.id === String(tatuajeId));
+  const foto = t && (t.fotos || []).find(f => f.id === String(fotoId));
+  if (!foto) return false;
+  const { error } = await _db.from('tatuaje_fotos').delete().eq('id', Number(fotoId));
+  if (error) { dbError('Error eliminando foto: ' + error.message); return false; }
+  await _db.storage.from('fotos').remove([foto.path]);
+  t.fotos = t.fotos.filter(f => f.id !== String(fotoId));
+  return true;
+}
+
+// URLs firmadas (el bucket es privado). Cache en memoria hasta 5 min antes de vencer.
+const _fotoUrls = {};
+async function fotoUrls(paths) {
+  const ahora = Date.now();
+  const faltan = [...new Set(paths)].filter(p => !_fotoUrls[p] || _fotoUrls[p].exp < ahora);
+  if (faltan.length) {
+    const { data, error } = await _db.storage.from('fotos').createSignedUrls(faltan, 3600);
+    if (!error) (data || []).forEach(d => { if (d.signedUrl) _fotoUrls[d.path] = { url: d.signedUrl, exp: ahora + 55 * 60 * 1000 }; });
+  }
+  const out = {};
+  paths.forEach(p => { if (_fotoUrls[p]) out[p] = _fotoUrls[p].url; });
+  return out;
 }

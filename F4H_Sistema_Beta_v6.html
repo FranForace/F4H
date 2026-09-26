@@ -586,7 +586,9 @@ function setZona(id,val){
   if(s){if(b&&![...s.options].some(o=>o.value===b))s.add(new Option(b+' (anterior)',b));s.value=b;}
   const sl=document.getElementById(id+'-lado');if(sl)sl.value=l;
 }
-function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCosto(s)/Math.max(1,(s.tats||[]).length),0);}
+// Costo de una sesión atribuible a un tatuaje: sus agujas + parte igual del resto (kit, extras, amortización)
+function sesionCostoTat(s,tid){const n=Math.max(1,(s.tats||[]).length);const ag=s.agujas||[];return (sesionCosto(s)-calcAgujasCost(ag))/n+calcAgujasCost(ag.filter(a=>a.tid===tid));}
+function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCostoTat(s,tid),0);}
 function globalScore(s){const vals=[s.sL,s.sR,s.sT,s.sD,s.sC].filter(v=>v>0);return vals.length?+(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;}
 function tattooMargen(t){return t.precio?(t.precio-tattooCosto(t.id)):null;}
 function tattooHrs(tid){return tattooSesiones(tid).reduce((a,s)=>a+(s.hrs||0),0);}
@@ -727,6 +729,7 @@ function renderTattoos(){
       <button class="btn btn-sm btn-p" onclick="tattooView='nuevo';renderTattoos()">+ Nuevo tatuaje</button>
     </div>
     ${isSplit?('<div style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">'+buildListaTattoos()+(selectedTattooId?buildDetalleTattoo(selectedTattooId):'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 28px;text-align:center;color:var(--text-3);font-size:14px">Seleccion\xE1 un proyecto de la lista.</div>')+'</div>'):tattooView==='nuevo'?buildNuevoTattoo():buildStatsTattoos()}`;
+  sfHydrateThumbs(el);
 }
 
 function buildListaTattoos(){
@@ -786,10 +789,11 @@ function buildDetalleTattoo(tid){
   const pct=t.precio?Math.min(100,Math.round((costo/t.precio)*100)):null;
   const sesTbl=sess.length
     ?'<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Zona</th><th>M\xE1q.</th><th>Aguja</th><th>L</th><th>R</th><th>T</th><th>D</th><th>C</th><th>Global</th><th>Costo</th><th></th></tr></thead><tbody>'
-      +sess.map(s=>{const ag=S.productos.find(p=>p.id===s.agujaId);const sc=scoresFor(s,tid);
-        return'<tr><td>'+fdate(s.fecha)+'</td><td>'+(s.zona||'--')+'</td><td class="hint">'+(s.maquina||'--')+'</td><td class="hint">'+(ag?ag.nom:'--')+'</td>'
+      +sess.map(s=>{const sc=scoresFor(s,tid);
+        const ags=(s.agujas||[]).filter(a=>a.tid===tid).map(a=>{const p=S.productos.find(x=>x.id===a.pid);return (p?p.nom:'?')+(a.qty>1?' \xD7'+a.qty:'');}).join(', ');
+        return'<tr><td>'+fdate(s.fecha)+'</td><td>'+(t.zona||'--')+'</td><td class="hint">'+(s.maquina||'--')+'</td><td class="hint">'+(ags||'--')+'</td>'
           +'<td>'+scorePill(sc.sL)+'</td><td>'+scorePill(sc.sR)+'</td><td>'+scorePill(sc.sT)+'</td><td>'+scorePill(sc.sD)+'</td><td>'+scorePill(sc.sC)+'</td>'
-          +'<td>'+scorePill(globalScore(sc))+'</td><td>'+ars(sesionCosto(s)/Math.max(1,(s.tats||[]).length))+((s.tats||[]).length>1?'<div class="hint" style="font-size:10px">1/'+(s.tats||[]).length+' de la sesión</div>':'')+'</td>'
+          +'<td>'+scorePill(globalScore(sc))+'</td><td>'+ars(sesionCostoTat(s,tid))+((s.tats||[]).length>1?'<div class="hint" style="font-size:10px">sesi\xF3n compartida ('+(s.tats||[]).length+' tatuajes)</div>':'')+'</td>'
           +'<td><button class="btn btn-xs btn-ghost" onclick="editSesFromTattoo(\''+s.id+'\')">✏</button></td></tr>';
       }).join('')+'</tbody><tfoot><tr class="total-row"><td colspan="10">Total</td><td>'+ars(costo)+'</td><td></td></tr></tfoot></table></div>'
     :'<div class="empty">Sin sesiones a\xFAn. Al crear una sesi\xF3n, seleccion\xE1 este tatuaje.</div>';
@@ -820,7 +824,38 @@ function buildDetalleTattoo(tid){
       +'<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:700;color:var(--text)">Sesiones vinculadas</div>'
         +'<button class="btn btn-sm" onclick="go(\'ses\')">+ Nueva sesi\xF3n</button></div>'
       +sesTbl
+    +'</div>'
+    +buildFotosTattoo(t)
+    +'</div>';
+}
+
+// Galería del tatuaje (bucket privado; las miniaturas se completan con sfHydrateThumbs)
+function buildFotosTattoo(t){
+  const fotos=t.fotos||[];
+  const orden=['Resultado','Proceso','Referencia'];
+  const grupos=orden.map(tp=>[tp,fotos.filter(f=>f.tipo===tp)]).filter(([,l])=>l.length);
+  const ses=id=>{const s=S.sesiones.find(x=>x.id===id);return s?' \xB7 ses. '+fdate(s.fecha):'';};
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:16px 20px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:700;color:var(--text)">Fotos ('+fotos.length+')</div>'
+      +'<div style="display:flex;gap:6px;align-items:center"><select id="tf-tipo" style="width:auto;font-size:12px;padding:4px 8px">'+orden.map(o=>'<option>'+o+'</option>').join('')+'</select>'
+      +'<label class="btn btn-sm" style="cursor:pointer"><span id="tf-btn">+ Subir foto</span><input type="file" accept="image/*" multiple style="display:none" onchange="uploadFotosTattoo(\''+t.id+'\',this)"></label></div></div>'
+    +'<div style="padding:16px 20px">'
+    +(grupos.length?grupos.map(([tp,l])=>'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin:4px 0 8px">'+tp+'</div>'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+l.map(f=>fotoThumb('<img data-path="'+f.path+'">',fdate((f.fecha||'').slice(0,10))+ses(f.sesionId),'deleteFotoTattoo(\''+t.id+'\',\''+f.id+'\')')).join('')+'</div>').join('')
+      :'<div class="empty" style="padding:1rem">Sin fotos. Sub\xED el resultado o fotos del proceso.</div>')
     +'</div></div>';
+}
+async function uploadFotosTattoo(tid,input){
+  const tipo=document.getElementById('tf-tipo')?.value||'Resultado';
+  const files=[...input.files];if(!files.length)return;
+  const lbl=document.getElementById('tf-btn');
+  let n=0;if(lbl)lbl.textContent='Subiendo 0/'+files.length+'...';
+  for(const f of files){if(await dbUploadFoto(f,tid,{tipo}))n++;if(lbl)lbl.textContent='Subiendo '+n+'/'+files.length+'...';}
+  renderTattoos();
+}
+async function deleteFotoTattoo(tid,fid){
+  if(!confirm('\xBFEliminar esta foto? No se puede deshacer.'))return;
+  if(await dbDeleteFoto(tid,fid))renderTattoos();
 }
 
 
@@ -1130,8 +1165,10 @@ function renderSes(){
 }
 
 // ── Form de sesión (nueva y edición comparten estado SF) ──────────────────────
-// SF.tats: [{tid,sL..sC}] (puntaje por tatuaje) · SF.agujas: [{pid,qty}] (descuentan stock)
-// SF.tecnicas: [{tec,pid,volt}] (bitácora, no tocan stock) · SF.sc: puntaje de práctica (sin tatuajes)
+// Una tarjeta por tatuaje (o una de "Práctica" si no hay tatuajes). Cada tarjeta tiene
+// sus agujas (descuentan stock), técnicas+voltaje (bitácora), puntaje y fotos.
+// SF.tats: [{tid,sL..sC}] · SF.agujas/SF.tecnicas: [{tid,...}] (tid '' = práctica)
+// SF.sc: puntaje de práctica · SF.fotos: fotos a subir al guardar [{tid,file,tipo,url}]
 let SF=null;
 function sfInit(s,mode){
   const z={sL:0,sR:0,sT:0,sD:0,sC:0};
@@ -1139,41 +1176,12 @@ function sfInit(s,mode){
     tats:s?(s.tats||[]).map(t=>({...t})):[],
     agujas:s?(s.agujas||[]).map(a=>({...a})):[],
     tecnicas:s?(s.tecnicas||[]).map(t=>({...t})):[],
-    sc:s&&!(s.tats||[]).length?{sL:s.sL,sR:s.sR,sT:s.sT,sD:s.sD,sC:s.sC}:{...z}};
+    sc:s&&!(s.tats||[]).length?{sL:s.sL,sR:s.sR,sT:s.sT,sD:s.sD,sC:s.sC}:{...z},
+    pz:s&&!(s.tats||[]).length?(s.zona||''):'', pcli:s&&!(s.tats||[]).length?(s.cliente||''):'',
+    zonaEdit:{}, fotos:[], fotosBorrar:[]};
 }
-function sfTatLabel(t){return '#'+t.num+' \xB7 '+t.cliente+' — '+t.diseno;}
-
-function sfRenderTats(){
-  const el=document.getElementById('sf-tats');if(!el)return;
-  const linked=SF.tats.map((x,i)=>{const t=S.tatuajes.find(y=>y.id===x.tid);
-    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-elevated);border-radius:8px;margin-bottom:6px">'
-      +'<span style="flex:1;font-size:13px;color:var(--text)">'+(t?sfTatLabel(t):'Tatuaje '+x.tid)+'</span>'
-      +'<button type="button" class="btn btn-xs" onclick="sfDelTat('+i+')">✕</button></div>';}).join('');
-  const libres=S.tatuajes.filter(t=>!SF.tats.some(x=>x.tid===t.id));
-  const opt=t=>'<option value="'+t.id+'">'+sfTatLabel(t)+'</option>';
-  const ab=libres.filter(t=>t.estado!=='Finalizado'),fin=libres.filter(t=>t.estado==='Finalizado');
-  const sel=libres.length?'<select onchange="sfAddTat(this.value)"><option value="">'+(SF.tats.length?'+ Agregar otro tatuaje a esta sesi\xF3n':'— Pr\xE1ctica / sin proyecto (eleg\xED para vincular) —')+'</option>'
-    +(ab.length?'<optgroup label="En curso / pendientes">'+ab.map(opt).join('')+'</optgroup>':'')
-    +(fin.length?'<optgroup label="Finalizados">'+fin.map(opt).join('')+'</optgroup>':'')+'</select>':'';
-  el.innerHTML=linked+sel;
-}
-function sfAddTat(tid){if(!tid||SF.tats.some(t=>t.tid===tid))return;SF.tats.push({tid,sL:0,sR:0,sT:0,sD:0,sC:0});sfSyncFromTats();sfRenderTats();sfRenderScores();}
-function sfDelTat(i){SF.tats.splice(i,1);sfSyncFromTats();sfRenderTats();sfRenderScores();}
-// Cliente y zona salen de los tatuajes vinculados y quedan bloqueados (✎ para editar)
-function sfSyncFromTats(){
-  const ts=SF.tats.map(x=>S.tatuajes.find(t=>t.id===x.tid)).filter(Boolean);
-  const c=document.getElementById(SF.p+'-cli');
-  if(c)c.value=ts.length?[...new Set(ts.map(t=>t.cliente).filter(Boolean))].join(' / '):(SF.mode==='new'?'':c.value);
-  if(ts.length)setZona(SF.p+'-zona',ts[0].zona);else if(SF.mode==='new')setZona(SF.p+'-zona','');
-  lockSesField('cli',!!ts.length);lockSesField('zona',!!ts.length);
-}
-function lockSesField(f,on){
-  const p=SF?SF.p:'sf';
-  const ids=f==='zona'?[p+'-zona',p+'-zona-lado']:[p+'-cli'];
-  ids.forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=on;el.style.opacity=on?'.6':'';}});
-  const b=document.getElementById(p+'-'+f+'-unlock');if(b)b.style.display=on?'inline-flex':'none';
-}
-function unlockSesField(f){lockSesField(f,false);const el=document.getElementById(SF.p+(f==='zona'?'-zona':'-cli'));if(el)el.focus();}
+function sfTatLabel(t){return '#'+t.num+' \xB7 '+t.cliente+' \u2014 '+t.diseno;}
+function sfKeys(){return SF.tats.length?SF.tats.map(t=>t.tid):[''];}
 
 // Agujas: agrupadas por tipo y ordenadas por medida
 const AG_TIPOS=[['RL','Liner (RL)'],['RS','Shader (RS)'],['RM','Magnum curvo (RM)'],['M','Magnum (M)'],['?','Otras']];
@@ -1183,80 +1191,158 @@ function agujaOpts(sel,withStock){
   const ags=S.productos.filter(p=>p.cat==='Aguja');
   return AG_TIPOS.map(([tp,lbl])=>{
     const g=ags.filter(a=>agTipo(a.nom)===tp).sort((a,b)=>agSize(a.nom)-agSize(b.nom)||a.nom.localeCompare(b.nom));
-    return g.length?'<optgroup label="'+lbl+'">'+g.map(a=>'<option value="'+a.id+'"'+(a.id===sel?' selected':'')+'>'+a.nom+(a.practica?' ★':'')+(withStock?' (stock: '+stockOf(a.id)+')':'')+'</option>').join('')+'</optgroup>':'';
+    return g.length?'<optgroup label="'+lbl+'">'+g.map(a=>'<option value="'+a.id+'"'+(a.id===sel?' selected':'')+'>'+a.nom+(a.practica?' \u2605':'')+(withStock?' (stock: '+stockOf(a.id)+')':'')+'</option>').join('')+'</optgroup>':'';
   }).join('');
 }
-function sfRenderAgujas(){
-  const el=document.getElementById('sf-agujas');if(!el)return;
-  el.innerHTML=SF.agujas.length?SF.agujas.map((a,i)=>{const p=S.productos.find(x=>x.id===a.pid);
-    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
-      +'<select style="flex:1" onchange="SF.agujas['+i+'].pid=this.value;sfRenderAgujas();updateSesTotal()"><option value="">— Aguja —</option>'+agujaOpts(a.pid,true)+'</select>'
-      +'<input type="number" min="1" value="'+a.qty+'" style="width:60px" title="Cantidad" onchange="SF.agujas['+i+'].qty=parseInt(this.value)||1;sfRenderAgujas();updateSesTotal()">'
-      +'<button type="button" class="btn btn-xs" onclick="SF.agujas.splice('+i+',1);sfRenderAgujas();updateSesTotal()">✕</button>'
-      +'<span class="hint" style="min-width:60px;text-align:right">'+(p&&p.cu>0?ars(cxu(p)*a.qty):'—')+'</span></div>';
-  }).join(''):'<p class="hint" style="padding:4px 0">Sin agujas cargadas.</p>';
-}
-function sfAddAguja(){SF.agujas.push({pid:'',qty:1});sfRenderAgujas();}
-
 const TECNICAS=['L\xEDnea','L\xEDnea fina','L\xEDnea de agua','Puntillismo','Sombreado (whip)','Sombreado suave','Relleno s\xF3lido','Color','Blanco / realces','Textura','Sin especificar'];
-function sfRenderTecs(){
-  const el=document.getElementById('sf-tecs');if(!el)return;
-  el.innerHTML=SF.tecnicas.length?SF.tecnicas.map((t,i)=>{
-    const tecs=TECNICAS.includes(t.tec)||!t.tec?TECNICAS:[t.tec,...TECNICAS];
-    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
-      +'<select style="flex:1.2" onchange="SF.tecnicas['+i+'].tec=this.value">'+tecs.map(x=>'<option'+(x===t.tec?' selected':'')+'>'+x+'</option>').join('')+'</select>'
-      +'<select style="flex:1" onchange="SF.tecnicas['+i+'].pid=this.value"><option value="">— Aguja —</option>'+agujaOpts(t.pid,false)+'</select>'
-      +'<input type="number" min="0" step="0.1" placeholder="Volt." value="'+(t.volt===''||t.volt==null?'':t.volt)+'" style="width:80px" onchange="SF.tecnicas['+i+'].volt=this.value===\'\'?\'\':parseFloat(this.value)">'
-      +'<span class="hint">V</span>'
-      +'<button type="button" class="btn btn-xs" onclick="SF.tecnicas.splice('+i+',1);sfRenderTecs()">✕</button></div>';
-  }).join(''):'<p class="hint" style="padding:4px 0">Sin t\xE9cnicas cargadas.</p>';
-}
-function sfAddTec(){const last=SF.tecnicas[SF.tecnicas.length-1];SF.tecnicas.push({tec:TECNICAS[0],pid:last?last.pid:(SF.agujas[0]?SF.agujas[0].pid:''),volt:last?last.volt:''});sfRenderTecs();}
-
-// Puntajes: uno por tatuaje vinculado, o uno de práctica si no hay tatuajes
 function scoreClass(v){return v>=7?'on-green':v>=4?'on-amber':'on-red';}
-function sfScoreObj(ti){return ti==='p'?SF.sc:SF.tats[ti];}
-function sfScoreBlock(ti,title){
-  const o=sfScoreObj(ti);
-  return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">'+title+'</div>'
-    +DIMS.map(({k,lbl})=>'<div class="sc-dim-card"><div class="sc-dim-title">'+lbl+'</div><div>'
-      +[1,2,3,4,5,6,7,8,9,10].map(n=>'<button type="button" class="sc-btn'+(o[k]===n?' '+scoreClass(n):'')+'" onclick="sfSetScore(\''+ti+'\',\''+k+'\','+n+')">'+n+'</button>').join('')
-      +'</div></div>').join('')+'</div>';
-}
-function sfRenderScores(){
-  const el=document.getElementById('sf-scores');if(!el)return;
-  el.innerHTML=SF.tats.length
-    ?SF.tats.map((x,i)=>{const t=S.tatuajes.find(y=>y.id===x.tid);return sfScoreBlock(i,t?sfTatLabel(t):'Tatuaje');}).join('')
-    :sfScoreBlock('p','Pr\xE1ctica / sin proyecto');
-}
-function sfSetScore(ti,k,n){const o=sfScoreObj(ti);o[k]=o[k]===n?0:n;sfRenderScores();}
 
-// Secciones compartidas por ambos formularios
-function sfSections(){
-  return `<div style="margin-bottom:1rem">
-      <div class="fl" style="margin-bottom:6px">Tatuajes de esta sesi\xF3n <span class="hint">— pod\xE9s vincular varios</span></div>
-      <div id="sf-tats"></div>
-    </div>
-    <div style="margin-bottom:1rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="fl" style="margin:0">Agujas usadas</span><span class="hint">descuentan stock</span><button type="button" class="btn btn-sm" onclick="sfAddAguja()">+ Aguja</button></div>
-      <div id="sf-agujas"></div>
-    </div>
-    <div style="margin-bottom:1rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="fl" style="margin:0">T\xE9cnicas y voltajes</span><span class="hint">bit\xE1cora, no tocan stock</span><button type="button" class="btn btn-sm" onclick="sfAddTec()">+ T\xE9cnica</button></div>
-      <div id="sf-tecs"></div>
-    </div>`;
+// ── Tarjetas ──
+function sfRender(){
+  const el=document.getElementById('sf-cards');if(!el)return;
+  el.innerHTML=sfKeys().map(k=>sfCard(k)).join('')+sfAddTatSelect();
+  sfHydrateThumbs();
+  updateSesTotal();
 }
-function sfAfterRender(){
-  if(!SF)return;
-  sfRenderTats();sfRenderAgujas();sfRenderTecs();sfRenderScores();
-  const on=SF.tats.length>0;lockSesField('cli',on);lockSesField('zona',on);
+function sfAddTatSelect(){
+  const libres=S.tatuajes.filter(t=>!SF.tats.some(x=>x.tid===t.id));
+  if(!libres.length)return '';
+  const opt=t=>'<option value="'+t.id+'">'+sfTatLabel(t)+'</option>';
+  const ab=libres.filter(t=>t.estado!=='Finalizado'),fin=libres.filter(t=>t.estado==='Finalizado');
+  return '<select style="margin-bottom:1rem" onchange="sfAddTat(this.value)"><option value="">'
+    +(SF.tats.length?'+ Agregar otro tatuaje a esta sesi\xF3n':'+ Vincular un tatuaje (si no, queda como pr\xE1ctica)')+'</option>'
+    +(ab.length?'<optgroup label="En curso / pendientes">'+ab.map(opt).join('')+'</optgroup>':'')
+    +(fin.length?'<optgroup label="Finalizados">'+fin.map(opt).join('')+'</optgroup>':'')+'</select>';
 }
-// Arma los parámetros de guardado a partir de SF (agujas repetidas se suman)
+function sfCard(key){
+  const ti=SF.tats.findIndex(x=>x.tid===key);
+  const t=key?S.tatuajes.find(x=>x.id===key):null;
+  const secTitle=(txt,hint,btn)=>'<div style="display:flex;align-items:center;gap:8px;margin:12px 0 6px"><span class="fl" style="margin:0">'+txt+'</span><span class="hint">'+hint+'</span>'+btn+'</div>';
+  let head;
+  if(key){
+    const zEdit=SF.zonaEdit[key]!==undefined;
+    head='<div style="display:flex;align-items:start;gap:8px">'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--accent)">'+(t?sfTatLabel(t):'Tatuaje '+key)+'</div>'
+      +(zEdit?'<div style="margin-top:6px;max-width:360px" onchange="SF.zonaEdit[\''+key+'\']=readZona(\'sf-z'+key+'\')">'+zonaField('sf-z'+key,SF.zonaEdit[key])+'<div class="hint" style="margin-top:4px">Se actualiza la zona del tatuaje al guardar.</div></div>'
+        :'<div style="font-size:12px;color:var(--text-2);margin-top:2px">Zona: '+((t&&t.zona)||'sin zona')+' <button type="button" class="lock-btn" style="display:inline-flex" title="Cambiar zona" onclick="SF.zonaEdit[\''+key+'\']=\''+((t&&t.zona)||'').replace(/'/g,"\\'")+'\';sfRender()">&#x270E;</button></div>')
+      +'</div><button type="button" class="btn btn-xs" title="Quitar de la sesi\xF3n" onclick="sfDelTat(\''+key+'\')">\u2715</button></div>';
+  }else{
+    head='<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">Pr\xE1ctica / sin proyecto</div>'
+      +'<div class="fgrid"><div class="fg"><label class="fl">Cliente</label><input value="'+(SF.pcli||'').replace(/"/g,'&quot;')+'" placeholder="Yo mismo, piel sint\xE9tica..." onchange="SF.pcli=this.value"></div>'
+      +'<div class="fg" onchange="SF.pz=readZona(\'sf-pz\')"><label class="fl">Zona</label>'+zonaField('sf-pz',SF.pz)+'</div></div>';
+  }
+  // agujas de esta tarjeta
+  const ags=SF.agujas.map((a,i)=>({a,i})).filter(x=>(x.a.tid||'')===key);
+  const agRows=ags.length?ags.map(({a,i})=>{const p=S.productos.find(x=>x.id===a.pid);
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<select style="flex:1" onchange="SF.agujas['+i+'].pid=this.value;sfRender()"><option value="">\u2014 Aguja \u2014</option>'+agujaOpts(a.pid,true)+'</select>'
+      +'<input type="number" min="1" value="'+a.qty+'" style="width:60px" title="Cantidad" onchange="SF.agujas['+i+'].qty=parseInt(this.value)||1;sfRender()">'
+      +'<button type="button" class="btn btn-xs" onclick="SF.agujas.splice('+i+',1);sfRender()">\u2715</button>'
+      +'<span class="hint" style="min-width:60px;text-align:right">'+(p&&p.cu>0?ars(cxu(p)*a.qty):'\u2014')+'</span></div>';}).join('')
+    :'<p class="hint" style="padding:2px 0">Sin agujas.</p>';
+  // técnicas de esta tarjeta
+  const tecs=SF.tecnicas.map((t,i)=>({t,i})).filter(x=>(x.t.tid||'')===key);
+  const tecRows=tecs.length?tecs.map(({t:tc,i})=>{
+    const lista=TECNICAS.includes(tc.tec)||!tc.tec?TECNICAS:[tc.tec,...TECNICAS];
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<select style="flex:1.2" onchange="SF.tecnicas['+i+'].tec=this.value">'+lista.map(x=>'<option'+(x===tc.tec?' selected':'')+'>'+x+'</option>').join('')+'</select>'
+      +'<select style="flex:1" onchange="SF.tecnicas['+i+'].pid=this.value"><option value="">\u2014 Aguja \u2014</option>'+agujaOpts(tc.pid,false)+'</select>'
+      +'<input type="number" min="0" step="0.1" placeholder="Volt." value="'+(tc.volt===''||tc.volt==null?'':tc.volt)+'" style="width:80px" onchange="SF.tecnicas['+i+'].volt=this.value===\'\'?\'\':parseFloat(this.value)">'
+      +'<span class="hint">V</span><button type="button" class="btn btn-xs" onclick="SF.tecnicas.splice('+i+',1);sfRender()">\u2715</button></div>';}).join('')
+    :'<p class="hint" style="padding:2px 0">Sin t\xE9cnicas.</p>';
+  // puntaje
+  const o=ti>=0?SF.tats[ti]:SF.sc;const tiArg=ti>=0?ti:"'p'";
+  const scores=DIMS.map(({k,lbl})=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><span style="font-size:12px;color:var(--text-2);width:130px">'+lbl+'</span><div>'
+    +[1,2,3,4,5,6,7,8,9,10].map(n=>'<button type="button" class="sc-btn'+(o[k]===n?' '+scoreClass(n):'')+'" onclick="sfSetScore('+tiArg+',\''+k+'\','+n+')">'+n+'</button>').join('')+'</div></div>').join('');
+  // fotos (solo tatuajes): existentes de esta sesión + pendientes de subir
+  let fotos='';
+  if(key){
+    const exist=SF.sid&&t?(t.fotos||[]).filter(f=>f.sesionId===SF.sid&&!SF.fotosBorrar.includes(f.id)):[];
+    const pend=SF.fotos.map((f,i)=>({f,i})).filter(x=>x.f.tid===key);
+    fotos=secTitle('Fotos','se suben al guardar','<select id="sf-ftipo-'+key+'" style="width:auto;font-size:11px;padding:3px 6px"><option>Resultado</option><option>Proceso</option><option>Referencia</option></select>'
+        +'<label class="btn btn-sm" style="cursor:pointer">+ Foto<input type="file" accept="image/*" multiple style="display:none" onchange="sfAddFotos(\''+key+'\',this)"></label>')
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +exist.map(f=>fotoThumb('<img data-path="'+f.path+'">',f.tipo,'SF.fotosBorrar.push(\''+f.id+'\');sfRender()')).join('')
+      +pend.map(({f,i})=>fotoThumb('<img src="'+f.url+'">',f.tipo+' \xB7 nueva','URL.revokeObjectURL(SF.fotos['+i+'].url);SF.fotos.splice('+i+',1);sfRender()')).join('')
+      +(!exist.length&&!pend.length?'<p class="hint" style="padding:2px 0">Sin fotos.</p>':'')+'</div>';
+  }
+  return '<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--bg-card)">'
+    +head
+    +secTitle('Agujas usadas','descuentan stock','<button type="button" class="btn btn-sm" onclick="sfAddAguja(\''+key+'\')">+ Aguja</button>')+agRows
+    +secTitle('T\xE9cnicas y voltajes','no tocan stock','<button type="button" class="btn btn-sm" onclick="sfAddTec(\''+key+'\')">+ T\xE9cnica</button>')+tecRows
+    +secTitle('Evaluaci\xF3n (1\u201310)','','')+scores
+    +fotos
+    +'</div>';
+}
+function fotoThumb(img,label,onDel){
+  return '<div style="position:relative;width:96px">'
+    +'<div style="width:96px;height:96px;border-radius:8px;overflow:hidden;background:var(--bg-elevated)">'+img.replace('<img','<img style="width:100%;height:100%;object-fit:cover"')+'</div>'
+    +'<div class="hint" style="font-size:10px;margin-top:2px">'+label+'</div>'
+    +(onDel?'<button type="button" class="btn btn-xs" style="position:absolute;top:4px;right:4px;padding:0 5px" onclick="'+onDel+'">\u2715</button>':'')+'</div>';
+}
+// Completa los <img data-path> con URLs firmadas del bucket privado
+async function sfHydrateThumbs(root){
+  const imgs=[...(root||document).querySelectorAll('img[data-path]')];if(!imgs.length)return;
+  const urls=await fotoUrls(imgs.map(i=>i.dataset.path));
+  imgs.forEach(i=>{const u=urls[i.dataset.path];if(u){i.src=u;i.style.cursor='zoom-in';i.onclick=()=>window.open(u,'_blank');}});
+}
+
+function sfAddTat(tid){
+  if(!tid||SF.tats.some(t=>t.tid===tid))return;
+  const primero=!SF.tats.length;
+  SF.tats.push({tid,sL:0,sR:0,sT:0,sD:0,sC:0});
+  // lo cargado en la tarjeta de práctica pasa al primer tatuaje
+  if(primero){SF.agujas.forEach(a=>{if(!a.tid)a.tid=tid;});SF.tecnicas.forEach(t=>{if(!t.tid)t.tid=tid;});
+    const t0=SF.tats[0];Object.assign(t0,{sL:SF.sc.sL,sR:SF.sc.sR,sT:SF.sc.sT,sD:SF.sc.sD,sC:SF.sc.sC});}
+  sfRender();
+}
+function sfDelTat(tid){
+  SF.tats=SF.tats.filter(t=>t.tid!==tid);
+  if(SF.tats.length){
+    // quedan otros tatuajes: se descarta lo cargado en esta tarjeta
+    SF.agujas=SF.agujas.filter(a=>a.tid!==tid);SF.tecnicas=SF.tecnicas.filter(t=>t.tid!==tid);
+  }else{
+    // era el último: lo cargado vuelve a la tarjeta de práctica
+    SF.agujas.forEach(a=>{if(a.tid===tid)a.tid='';});SF.tecnicas.forEach(t=>{if(t.tid===tid)t.tid='';});
+  }
+  SF.fotos=SF.fotos.filter(f=>f.tid!==tid);delete SF.zonaEdit[tid];
+  sfRender();
+}
+function sfAddAguja(key){SF.agujas.push({tid:key,pid:'',qty:1});sfRender();}
+function sfAddTec(key){
+  const prev=SF.tecnicas.filter(t=>(t.tid||'')===key).pop();
+  const ag=SF.agujas.find(a=>(a.tid||'')===key&&a.pid);
+  SF.tecnicas.push({tid:key,tec:TECNICAS[0],pid:prev?prev.pid:(ag?ag.pid:''),volt:prev?prev.volt:''});sfRender();
+}
+function sfSetScore(ti,k,n){const o=ti==='p'?SF.sc:SF.tats[ti];o[k]=o[k]===n?0:n;sfRender();}
+function sfAddFotos(key,input){
+  const tipo=document.getElementById('sf-ftipo-'+key)?.value||'Resultado';
+  [...input.files].forEach(file=>SF.fotos.push({tid:key,file,tipo,url:URL.createObjectURL(file)}));
+  sfRender();
+}
+function sfAfterRender(){if(SF)sfRender();}
+
+// Cliente/zona de la sesión: de los tatuajes, o de la tarjeta de práctica
+function sfCliZona(){
+  const ts=SF.tats.map(x=>S.tatuajes.find(t=>t.id===x.tid)).filter(Boolean);
+  if(!ts.length)return{cliente:SF.pcli.trim(),zona:SF.pz};
+  const zona=k=>SF.zonaEdit[k]!==undefined?SF.zonaEdit[k]:(S.tatuajes.find(t=>t.id===k)||{}).zona||'';
+  return{cliente:[...new Set(ts.map(t=>t.cliente).filter(Boolean))].join(' / '),zona:zona(ts[0].id)};
+}
 function sfCollect(){
-  const ag={};SF.agujas.filter(a=>a.pid).forEach(a=>{ag[a.pid]=(ag[a.pid]||0)+(a.qty||1);});
-  return {tats:SF.tats,agujas:Object.entries(ag).map(([pid,qty])=>({pid,qty})),tecnicas:SF.tecnicas,
+  return {tats:SF.tats,agujas:SF.agujas.filter(a=>a.pid),tecnicas:SF.tecnicas,...sfCliZona(),
     sL:SF.sc.sL,sR:SF.sc.sR,sT:SF.sc.sT,sD:SF.sc.sD,sC:SF.sc.sC};
+}
+// Después de guardar la sesión: zonas editadas, fotos nuevas y fotos quitadas
+async function sfPostSave(sesId){
+  for(const [tid,zona] of Object.entries(SF.zonaEdit)){
+    const t=S.tatuajes.find(x=>x.id===tid);
+    if(t&&zona!==t.zona)await dbSaveTatuaje({...t,zona});
+  }
+  for(const fid of SF.fotosBorrar){const t=S.tatuajes.find(x=>(x.fotos||[]).some(f=>f.id===fid));if(t)await dbDeleteFoto(t.id,fid);}
+  let ok=0;
+  for(const f of SF.fotos){if(await dbUploadFoto(f.file,f.tid,{sesionId:sesId,tipo:f.tipo}))ok++;URL.revokeObjectURL(f.url);}
+  return ok;
 }
 
 function onKitSelChange(){nKitExcludes.clear();renderKitItems();updateSesTotal();}
@@ -1279,19 +1365,19 @@ function buildNuevaSes(){
   const amortS=amortTotalSes();const kitC=calcKitCostStatic();
   return`<div class="card">
     <div class="ct">Nueva sesión</div>
-    ${sfSections()}
     <div class="fgrid" style="margin-bottom:1rem">
       <div class="fg"><label class="fl">Fecha</label><input id="sf-fecha" type="date" value="${today}"></div>
-      <div class="fg"><label class="fl">Cliente <button type="button" id="sf-cli-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('cli')" title="Editar">&#x270E;</button></label><input id="sf-cli" placeholder="Nombre o 'Yo mismo'"></div>
-      <div class="fg"><label class="fl">Zona <button type="button" id="sf-zona-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('zona')" title="Editar">&#x270E;</button></label>${zonaField('sf-zona','')}</div>
-      <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="sf-hrs" type="number" min="0.25" step="0.25" value="2"></div>
+      <div class="fg"><label class="fl">Tiempo total (hrs)</label><input id="sf-hrs" type="number" min="0.25" step="0.25" value="2"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="sf-maq"><option value="">— Seleccionar —</option>${maquinas.map(m=>`<option value="${m.nom}">${m.nom}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">Stroke</label><input id="sf-stroke" placeholder="Ej: 3.8 o 'fijo'"></div>
     </div>
 
+    <div class="fl" style="margin-bottom:6px">Tatuajes de esta sesión <span class="hint">— cada uno con sus agujas, técnicas, puntaje y fotos</span></div>
+    <div id="sf-cards"></div>
+
     <div style="margin-bottom:.5rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:500">Kit de insumos</span>
+        <span style="font-size:12px;font-weight:500">Kit de insumos <span class="hint">(de toda la sesión)</span></span>
         <select id="sf-kit-sel" style="flex:1;font-size:12px" onchange="onKitSelChange()">
           <option value="">— Ninguno —</option>
           ${S.kits.map(k=>`<option value="${k.id}"${k.id===S.kits[0]?.id?' selected':''}>${k.nombre}</option>`).join('')}
@@ -1306,9 +1392,6 @@ function buildNuevaSes(){
     </div>
     <div id="extras-sec">${renderExtras()}</div>
 
-    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span> <span class="hint">— cada tatuaje se punt\xFAa por separado</span></div>
-    <div id="sf-scores"></div>
-
     <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
     <textarea id="sf-notas" placeholder="¿Qué funcionó? ¿Qué cambiarías?"></textarea>
 
@@ -1318,7 +1401,7 @@ function buildNuevaSes(){
       <div class="cost-total" id="ses-total">${ars(amortS+kitC+calcExtrasCost())}</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-p" onclick="saveSes()">Guardar sesión</button>
+      <button class="btn btn-p" id="sf-save" onclick="saveSes()">Guardar sesión</button>
       <span id="ses-msg"></span>
     </div>
   </div>`;
@@ -1333,23 +1416,20 @@ function buildEditSes(sid){
   if(!SF||SF.mode!=='edit'||SF.sid!==sid)sfInit(s,'edit');
   const maquinas=S.productos.filter(p=>p.cat==='Activo'&&p.sub==='Maquina');
   return`<div class="card-blue">
-    <div class="ct" style="color:var(--accent)">✏ Editando sesión — ${fdate(s.fecha)} · ${s.zona||'sin zona'}</div>
+    <div class="ct" style="color:var(--accent)">✏ Editando sesión — ${fdate(s.fecha)}</div>
     <div class="edit-hint">Podés corregir todos los campos incluidos los scores. Los movimientos de stock NO se recalculan — solo los datos de la bitácora.</div>
-    ${sfSections()}
     <div class="fgrid" style="margin-bottom:1rem">
       <div class="fg"><label class="fl">Fecha</label><input id="es-fecha" type="date" value="${s.fecha}"></div>
-      <div class="fg"><label class="fl">Cliente <button type="button" id="es-cli-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('cli')" title="Editar">&#x270E;</button></label><input id="es-cli" value="${s.cliente||''}"></div>
-      <div class="fg"><label class="fl">Zona <button type="button" id="es-zona-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('zona')" title="Editar">&#x270E;</button></label>${zonaField('es-zona',s.zona)}</div>
-      <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="es-hrs" type="number" min="0.25" step="0.25" value="${s.hrs||1}"></div>
+      <div class="fg"><label class="fl">Tiempo total (hrs)</label><input id="es-hrs" type="number" min="0.25" step="0.25" value="${s.hrs||1}"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="es-maq"><option value="">— —</option>${maquinas.map(m=>`<option value="${m.nom}"${s.maquina===m.nom?' selected':''}>${m.nom}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">Stroke</label><input id="es-stroke" value="${s.stroke||''}"></div>
     </div>
-    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span></div>
-    <div id="sf-scores"></div>
+    <div class="fl" style="margin-bottom:6px">Tatuajes de esta sesión</div>
+    <div id="sf-cards"></div>
     <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
     <textarea id="es-notas" rows="4">${s.notas||''}</textarea>
     <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
-      <button class="btn btn-p" onclick="saveEditSes('${sid}')">Guardar cambios</button>
+      <button class="btn btn-p" id="es-save" onclick="saveEditSes('${sid}')">Guardar cambios</button>
       <button class="btn btn-ghost" onclick="editSesionId=null;SF=null;sesView='bit';renderSes()">Cancelar</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSes('${sid}')">Eliminar sesión</button>
       <span id="es-msg-${sid}"></span>
@@ -1359,11 +1439,10 @@ function buildEditSes(sid){
 
 async function saveEditSes(sid){
   const s=S.sesiones.find(x=>x.id===String(sid));if(!s)return;
+  const btn=document.getElementById('es-save');if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   const ok=await dbSaveSesion({
     id:sid,
     fecha:document.getElementById('es-fecha').value||s.fecha,
-    cliente:document.getElementById('es-cli').value.trim(),
-    zona:readZona('es-zona'),
     hrs:parseFloat(document.getElementById('es-hrs').value)||s.hrs,
     maquina:document.getElementById('es-maq').value,
     stroke:document.getElementById('es-stroke').value,
@@ -1371,7 +1450,8 @@ async function saveEditSes(sid){
     notas:document.getElementById('es-notas').value.trim(),
     ...sfCollect(),
   });
-  if(!ok)return;
+  if(!ok){if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}return;}
+  await sfPostSave(sid);
   editSesionId=null;SF=null;sesView='bit';renderSes();
 }
 
@@ -1387,6 +1467,9 @@ function buildBitacora(){
   const avgGlobal=(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1);
   const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):'—';};
   const nom=pid=>{const p=S.productos.find(x=>x.id===pid);return p?p.nom:'?';};
+  // agujas y técnicas agrupadas por tatuaje (prefijo #N cuando la sesión tiene más de uno)
+  const porTat=(s,list,fmt)=>{const multi=(s.tats||[]).length>1;
+    return list.map(x=>{const t=multi&&x.tid?S.tatuajes.find(y=>y.id===x.tid):null;return (t?'#'+t.num+' ':'')+fmt(x);}).join('<br>');};
   return`<div class="g4">
     <div class="metric"><div class="ml">Sesiones</div><div class="mv">${n}</div></div>
     <div class="metric"><div class="ml">Score global</div><div class="mv">${avgGlobal}</div></div>
@@ -1394,15 +1477,15 @@ function buildBitacora(){
     <div class="metric"><div class="ml">Relleno</div><div class="mv">${avgDim('sR')}</div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden"><table>
-    <thead><tr><th>Fecha</th><th>Zona</th><th>Proyecto</th><th>Agujas</th><th>Técnicas</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Proyecto / zona</th><th>Agujas</th><th>Técnicas</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
     <tbody>${[...S.sesiones].reverse().map(s=>{
       const proys=(s.tats||[]).map(x=>S.tatuajes.find(t=>t.id===x.tid)).filter(Boolean);
-      const ags=(s.agujas||[]).map(a=>nom(a.pid)+(a.qty>1?' \xD7'+a.qty:'')).join(', ');
-      const tecs=(s.tecnicas||[]).map(t=>t.tec+(t.pid?' '+nom(t.pid):'')+(t.volt!==''&&t.volt!=null?' '+t.volt+'V':'')).join('<br>');
+      const ags=porTat(s,s.agujas||[],a=>nom(a.pid)+(a.qty>1?' \xD7'+a.qty:''));
+      const tecs=porTat(s,s.tecnicas||[],t=>t.tec+(t.pid?' '+nom(t.pid):'')+(t.volt!==''&&t.volt!=null?' '+t.volt+'V':''));
       return`<tr>
-        <td>${fdate(s.fecha)}</td><td>${s.zona||'—'}</td>
-        <td>${proys.length?proys.map(t=>`<div style="font-size:11px;color:var(--accent)">#${t.num} ${t.diseno}</div>`).join(''):'<span class="hint">práctica</span>'}</td>
-        <td class="hint" style="font-size:11px">${ags||'—'}</td>
+        <td>${fdate(s.fecha)}</td>
+        <td>${proys.length?proys.map(t=>`<div style="font-size:11px;color:var(--accent)">#${t.num} ${t.diseno}</div><div class="hint" style="font-size:10px">${t.zona||'sin zona'}</div>`).join(''):`<span class="hint">práctica${s.zona?' · '+s.zona:''}</span>`}</td>
+        <td class="hint" style="font-size:11px;white-space:nowrap">${ags||'—'}</td>
         <td class="hint" style="font-size:11px;white-space:nowrap">${tecs||'—'}</td>
         <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
         <td>${scorePill(globalScore(s))}</td>
@@ -1435,13 +1518,12 @@ function updateSesTotal(){
   if(el)el.textContent=ars(amortS+kitC+extC);if(eli)eli.textContent=ars(kitC+extC);
 }
 async function saveSes(){
+  const btn=document.getElementById('sf-save');if(btn){btn.disabled=true;btn.textContent='Guardando...';}
   const fecha=document.getElementById('sf-fecha').value||today;
   const kitId=document.getElementById('sf-kit-sel').value||null;
   const kitExcludes=[...nKitExcludes];
   const sesId=await dbSaveSesion({
     fecha,
-    cliente:document.getElementById('sf-cli').value.trim(),
-    zona:readZona('sf-zona'),
     hrs:parseFloat(document.getElementById('sf-hrs').value)||0,
     maquina:document.getElementById('sf-maq').value,
     stroke:document.getElementById('sf-stroke').value,
@@ -1449,8 +1531,9 @@ async function saveSes(){
     notas:document.getElementById('sf-notas').value.trim(),
     ...sfCollect(),
   });
-  if(!sesId)return;
-  msg('ses-msg','Sesión guardada','ok');
+  if(!sesId){if(btn){btn.disabled=false;btn.textContent='Guardar sesión';}return;}
+  const nf=SF.fotos.length;const subidas=await sfPostSave(sesId);
+  msg('ses-msg','Sesión guardada'+(nf?' · '+subidas+'/'+nf+' fotos':''),'ok');
   nExtras=[];nKitExcludes=new Set();SF=null;
   setTimeout(()=>setSesView('bit'),1000);
 }

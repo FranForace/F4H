@@ -421,3 +421,36 @@ create policy tenant_isolation on public.sesion_tecnicas for all
   using (exists (select 1 from sesiones where sesiones.id = sesion_tecnicas.sesion_id and sesiones.tenant_id = auth.uid()))
   with check (exists (select 1 from sesiones where sesiones.id = sesion_tecnicas.sesion_id and sesiones.tenant_id = auth.uid()));
 revoke all on public.sesion_tatuajes, public.sesion_agujas, public.sesion_tecnicas from anon;
+
+-- ── Agujas/técnicas por tatuaje + fotos (2026-09) ───────────────────────────
+-- sesion_agujas y sesion_tecnicas llevan tatuaje_id (null = práctica / sin tatuaje)
+alter table public.sesion_agujas drop constraint sesion_agujas_pkey;
+alter table public.sesion_agujas add column id bigint generated always as identity primary key;
+alter table public.sesion_agujas add column tatuaje_id bigint references tatuajes(id) on delete set null;
+create unique index uq_sesion_agujas on public.sesion_agujas (sesion_id, coalesce(tatuaje_id, 0), producto_id);
+alter table public.sesion_tecnicas add column tatuaje_id bigint references tatuajes(id) on delete set null;
+
+-- Fotos: archivo en Storage (bucket privado 'fotos', ruta {uid}/{tatuaje_id}/{archivo})
+create table public.tatuaje_fotos (
+  id         bigint generated always as identity primary key,
+  tenant_id  uuid not null references auth.users(id) default auth.uid(),
+  tatuaje_id bigint not null references tatuajes(id) on delete cascade,
+  sesion_id  bigint references sesiones(id) on delete set null,
+  tipo       text not null default 'Resultado' check (tipo in ('Resultado','Proceso','Referencia')),
+  path       text not null unique,
+  created_at timestamptz not null default now()
+);
+create index idx_tatuaje_fotos_tatuaje on public.tatuaje_fotos(tatuaje_id);
+alter table public.tatuaje_fotos enable row level security;
+create policy tenant_isolation on public.tatuaje_fotos for all
+  using (tenant_id = auth.uid()) with check (tenant_id = auth.uid());
+revoke all on public.tatuaje_fotos from anon;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('fotos', 'fotos', false, 5242880, array['image/jpeg','image/png','image/webp']);
+create policy fotos_select on storage.objects for select to authenticated
+  using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy fotos_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy fotos_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text);
