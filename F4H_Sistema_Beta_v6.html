@@ -608,6 +608,7 @@ function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En 
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function go(t){
+  if(curTab==='ses'&&t!=='ses'&&pendingTurnoId)pendingTurnoId=null;
   curTab=t;editingId=null;
   document.querySelectorAll('.sidebar-item').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
   ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg','agenda'].forEach(x=>{
@@ -1792,6 +1793,19 @@ function buildNuevaSes(){
 }
 
 function editSesFromTattoo(sid){go('ses');setTimeout(()=>{editSesionId=sid;sesView='edit';SF=null;renderSes();},60);}
+let pendingTurnoId=null;
+function AGregistrarSesion(turnoId){
+  const t=S.turnos.find(x=>x.id===String(turnoId));if(!t)return;
+  pendingTurnoId=turnoId;
+  go('ses');
+  setTimeout(()=>{
+    sesView='nueva';SF=null;renderSes();
+    setTimeout(()=>{
+      const fEl=document.getElementById('sf-fecha');if(fEl)fEl.value=t.fecha;
+      if(t.tid)sfAddTat(t.tid);
+    },30);
+  },60);
+}
 function startEditSes(sid){editSesionId=sid;sesView='edit';SF=null;renderSes();}
 
 function buildEditSes(sid){
@@ -1916,8 +1930,15 @@ async function saveSes(){
     ...sfCollect(),
   });
   if(!sesId){if(btn){btn.disabled=false;btn.textContent='Guardar sesión';}return;}
+  let vinculoError=false;
+  if(pendingTurnoId){
+    const ok=await dbVincularSesionTurno(pendingTurnoId,sesId);
+    if(!ok)vinculoError=true;
+    pendingTurnoId=null;
+  }
   const nf=SF.fotos.length;const subidas=await sfPostSave(sesId);
-  msg('ses-msg','Sesión guardada'+(nf?' · '+subidas+'/'+nf+' fotos':''),'ok');
+  if(vinculoError)msg('ses-msg','Sesión guardada, pero no se pudo vincular al turno — vinculala desde la Agenda','err');
+  else msg('ses-msg','Sesión guardada'+(nf?' · '+subidas+'/'+nf+' fotos':''),'ok');
   nExtras=[];nKitExcludes=new Set();SF=null;
   setTimeout(()=>setSesView('bit'),1000);
 }
