@@ -714,7 +714,7 @@ function buildAgendaCalendario(){
     const sesionesSinTurno=fecha<today?S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id)):[];
     const titleTxt=abierto?('Abierto por: '+(info.regla_motivo||'—')):((info&&info.regla_id)?('Cerrado por: '+(info.regla_motivo||'—')):'Cerrado (sin reglas)');
     const bg=abierto?'var(--bg-card)':'var(--bg)';
-    const bgHover=abierto?'#22201a':'#1a1712';
+    const bgHover=abierto?'#1f1c15':'#16140f';
     const border=abierto?'1.5px solid var(--accent)':'1px solid var(--border)';
     const numColor=abierto?'var(--text)':'var(--text-3)';
     const numHtml=esHoy
