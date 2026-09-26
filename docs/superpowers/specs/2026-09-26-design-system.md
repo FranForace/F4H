@@ -165,6 +165,13 @@ orden sugerido (a confirmar con Francesco antes de cada uno):
 3. **Tatuajes** — patrón imagen + info (sección 2) en el detalle de tatuaje.
 4. **Dashboard** — tratamiento de métricas (sección 4) en los stat-cards existentes, y remover
    la marca de agua vieja (sección 5) si el rollout 1 todavía no la sacó.
-5. Resto de módulos (Inventario, Activos, Sesiones, Egresos, Movimientos, Config) — aplicar
-   espaciado + transición estándar; evaluar caso a caso si algo se beneficia del patrón
-   imagen+info o de métricas visuales.
+5. Resto de módulos (Inventario, Activos, Sesiones, Egresos, Movimientos, Config) —
+   **completado con alcance reducido, a pedido explícito de Francesco (2026-09-26).** Estos
+   módulos usan tablas genéricas (`table`/`td`/`th` globales), no cards clickeables como
+   Agenda/Tatuajes, y ya tenían su propio hover funcional (`tr:hover td{background:var(--bg-elevated)}`,
+   sin movimiento, cumple el mismo principio que la transición estándar). Se decidió un
+   **toque liviano**: solo se aumentó el padding global de `td`/`th` (7px 8px / 6px 8px →
+   10px 11px / 9px 11px) para que las tablas respiren más — el hover existente se dejó **sin
+   tocar** a propósito (retrofitearlo al dorado con tinte de la sección 3 tocaría cada tabla del
+   sistema de una sola vez; se descartó esa opción). Inventario ya usaba un padding inline propio
+   más generoso (14px 18px) y no se vio afectado por este cambio.
