@@ -907,6 +907,105 @@ async function AGborrarTurno(id){
   if(await dbDeleteTurno(id)){AGturnoForm=null;AG.panel='dia';renderAgenda();}
 }
 
+function AGabrirReglas(){AGreglaForm=AGreglaFormDefault();AG.panel='reglas';renderAgenda();}
+
+function AGtoggleDiaChip(n){
+  if(AGreglaForm.dias.has(n))AGreglaForm.dias.delete(n);else AGreglaForm.dias.add(n);
+  renderAgenda();
+}
+
+function AGpreviewRegla(f){
+  if(!f.todos&&!f.dias.size)return'Seleccion\xE1 al menos un d\xEDa.';
+  const dias=f.todos?null:[...f.dias];
+  const start=new Date(today+'T00:00:00');
+  const matches=[];
+  for(let i=0;i<90&&matches.length<6;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);
+    const fecha=AGymd(d);
+    if(f.desde&&fecha<f.desde)continue;
+    if(f.hasta&&fecha>f.hasta)continue;
+    const iso=((d.getDay()+6)%7)+1;
+    if(dias&&!dias.includes(iso))continue;
+    matches.push(d.getDate()+'/'+(d.getMonth()+1));
+  }
+  if(!matches.length)return'Esta regla no toca ning\xFAn d\xEDa en los pr\xF3ximos 90.';
+  return'Esta regla toca los pr\xF3ximos 90 d\xEDas as\xED: '+matches.join(', ')+(matches.length>=6?'…':'');
+}
+
+function buildPanelReglas(){
+  const f=AGreglaForm;
+  const diasChips=DIAS_SEM.map((lbl,i)=>{
+    const n=i+1;const on=!f.todos&&f.dias.has(n);
+    return '<button type="button" class="btn btn-xs'+(on?' btn-p':'')+'" onclick="AGtoggleDiaChip('+n+')">'+lbl+'</button>';
+  }).join('');
+  return '<div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--text)">Nueva regla</div><button class="btn btn-xs" onclick="AG.panel=null;AG.dia=null;renderAgenda()">✕</button></div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:10px">'
+        +'<button class="btn btn-sm'+(f.efecto==='abrir'?' btn-p':'')+'" onclick="AGreglaForm.efecto=\'abrir\';renderAgenda()">Abrir</button>'
+        +'<button class="btn btn-sm'+(f.efecto==='cerrar'?' btn-p':'')+'" onclick="AGreglaForm.efecto=\'cerrar\';renderAgenda()">Cerrar</button>'
+      +'</div>'
+      +'<div class="fl" style="margin-bottom:4px">Qu\xE9 d\xEDas</div>'
+      +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+diasChips+'</div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);margin-bottom:10px"><input type="checkbox" style="width:auto"'+(f.todos?' checked':'')+' onchange="AGreglaForm.todos=this.checked;renderAgenda()"> Todos los d\xEDas</label>'
+      +'<div class="fgrid" style="margin-bottom:6px">'
+        +'<div class="fg"><label class="fl">Desde</label><input id="rg-desde" type="date" value="'+f.desde+'" onchange="AGreglaForm.desde=this.value;renderAgenda()"></div>'
+        +'<div class="fg"><label class="fl">Hasta</label><input id="rg-hasta" type="date" value="'+f.hasta+'" onchange="AGreglaForm.hasta=this.value;renderAgenda()"></div>'
+      +'</div>'
+      +'<button type="button" class="btn btn-xs" style="margin-bottom:10px" onclick="AGreglaForm.hasta=AGreglaForm.desde;renderAgenda()">Solo un d\xEDa</button>'
+      +(f.efecto==='abrir'?('<div class="fgrid" style="margin-bottom:10px">'
+        +'<div class="fg"><label class="fl">Horario desde</label><input id="rg-hdesde" type="time" value="'+f.hDesde+'" onchange="AGreglaForm.hDesde=this.value"></div>'
+        +'<div class="fg"><label class="fl">Horario hasta</label><input id="rg-hhasta" type="time" value="'+f.hHasta+'" onchange="AGreglaForm.hHasta=this.value"></div>'
+      +'</div>'):'')
+      +'<div class="fg" style="margin-bottom:10px"><label class="fl">Motivo</label><input id="rg-motivo" value="'+(f.motivo||'').replace(/"/g,'&quot;')+'" onchange="AGreglaForm.motivo=this.value"></div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:10px">'+AGpreviewRegla(f)+'</div>'
+      +'<button class="btn btn-p" id="rg-save" onclick="AGguardarRegla()">Guardar regla</button>'
+      +'<span id="rg-msg"></span>'
+    +'</div>'
+    +buildListaReglas()
+  +'</div>';
+}
+
+async function AGguardarRegla(){
+  const f=AGreglaForm;
+  if(!f.todos&&!f.dias.size){msg('rg-msg','Eleg\xED al menos un d\xEDa o marc\xE1 "Todos los d\xEDas"','err');return;}
+  if(f.desde&&f.hasta&&f.hasta<f.desde){msg('rg-msg','"Hasta" no puede ser anterior a "Desde"','err');return;}
+  const btn=document.getElementById('rg-save');if(btn)btn.disabled=true;
+  const id=await dbSaveRegla({
+    efecto:f.efecto,
+    dias:f.todos?null:[...f.dias].sort((a,b)=>a-b),
+    desde:f.desde||null,hasta:f.hasta||null,
+    hDesde:f.efecto==='abrir'?(f.hDesde||''):'',
+    hHasta:f.efecto==='abrir'?(f.hHasta||''):'',
+    motivo:f.motivo.trim(),
+  });
+  if(!id){if(btn)btn.disabled=false;return;}
+  AG.dias={};await AGloadMes(AG.mes);
+  AGreglaForm=AGreglaFormDefault();
+  renderAgenda();
+}
+
+function AGdescribeRegla(r){
+  const diasTxt=r.dias?r.dias.map(n=>DIAS_SEM_LARGO[n]).join(', '):'todos los d\xEDas';
+  const rango=(r.desde&&r.hasta&&r.desde===r.hasta)?('el '+fdate(r.desde))
+    :((r.desde?('desde '+fdate(r.desde)):'')+(r.hasta?(' hasta '+fdate(r.hasta)):'')||'sin l\xEDmite');
+  const horario=r.hDesde?(' \xB7 '+r.hDesde+'–'+r.hHasta):'';
+  return(r.efecto==='abrir'?'Abrir':'Cerrar')+' \xB7 '+diasTxt+' \xB7 '+rango+horario+(r.motivo?(' \xB7 ‘'+r.motivo+'’'):'');
+}
+function buildListaReglas(){
+  const vigentes=S.reglas.filter(r=>!r.hasta||r.hasta>=today);
+  const vencidas=S.reglas.filter(r=>r.hasta&&r.hasta<today);
+  const row=r=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:12px"><span>'+AGdescribeRegla(r)+'</span><button class="btn btn-xs btn-danger" onclick="AGeliminarRegla(\''+r.id+'\')">✕</button></div>';
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Reglas vigentes</div>'
+    +(vigentes.length?vigentes.map(row).join(''):'<div class="empty">Sin reglas vigentes.</div>')
+    +(vencidas.length?('<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;color:var(--text-3)">Reglas vencidas ('+vencidas.length+')</summary>'+vencidas.map(row).join('')+'</details>'):'')
+  +'</div>';
+}
+async function AGeliminarRegla(id){
+  if(await dbDeleteRegla(id)){AG.dias={};await AGloadMes(AG.mes);renderAgenda();}
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
   const n=S.sesiones.length;
