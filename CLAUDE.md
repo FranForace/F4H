@@ -42,7 +42,8 @@ S = {
 - **Proyecto**: `https://minletiyftpmufqpmviv.supabase.co`
 - **Publishable key** (en `js/db.js`, safe para frontend): `sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH`
 - **service_role key**: NUNCA en frontend. NUNCA en el repo.
-- **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
+- **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_tatuajes`, `sesion_agujas`, `sesion_tecnicas`, `movimientos`, `config` (`sesion_agujas_testeadas` es legacy, ya no se escribe)
+- **Sesión N:M**: una sesión puede tener varios tatuajes (`sesion_tatuajes`, con puntaje propio por tatuaje). Puntaje de la sesión = promedio de sus tatuajes; puntaje de un tatuaje = promedio de sus sesiones. Costo de la sesión se reparte en partes iguales entre sus tatuajes. `sesion_agujas` (aguja + cantidad) es lo único de agujas que descuenta stock; `sesion_tecnicas` (técnica + aguja + voltaje) es bitácora. `sesiones.tatuaje_id`/`aguja_principal_id`/`voltaje` se completan con el primer elemento (compat V5)
 - **Vista `v_inversion`** (`security_invoker`): invertido (activos/insumos), consumido (práctica/cliente/histórico), en stock, recuperado y saldo a recuperar, en ARS con `tipo_cambio`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 4)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.

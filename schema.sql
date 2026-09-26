@@ -369,3 +369,55 @@ left join tc  t on t.tenant_id = a.tenant_id;
 
 revoke all on public.v_inversion from anon;
 grant select on public.v_inversion to authenticated;
+
+-- ── Sesión: varios tatuajes, agujas usadas y técnicas (2026-09) ─────────────
+-- Reemplazan a sesiones.tatuaje_id / aguja_principal_id / voltaje y a
+-- sesion_agujas_testeadas. Las columnas viejas se siguen completando con el
+-- primer elemento de cada lista (compat V5), pero la fuente de verdad son estas.
+
+-- Sesión ↔ varios tatuajes, con puntaje por tatuaje
+create table public.sesion_tatuajes (
+  sesion_id         bigint not null references sesiones(id) on delete cascade,
+  tatuaje_id        bigint not null references tatuajes(id) on delete cascade,
+  score_linea       smallint not null default 0 check (score_linea between 0 and 10),
+  score_relleno     smallint not null default 0 check (score_relleno between 0 and 10),
+  score_tecnica     smallint not null default 0 check (score_tecnica between 0 and 10),
+  score_diseno      smallint not null default 0 check (score_diseno between 0 and 10),
+  score_conformidad smallint not null default 0 check (score_conformidad between 0 and 10),
+  primary key (sesion_id, tatuaje_id)
+);
+create index idx_sesion_tatuajes_tatuaje on public.sesion_tatuajes(tatuaje_id);
+
+-- Agujas usadas en la sesión (esto es lo que descuenta stock)
+create table public.sesion_agujas (
+  sesion_id   bigint not null references sesiones(id) on delete cascade,
+  producto_id bigint not null references productos(id),
+  cantidad    numeric not null default 1 check (cantidad > 0),
+  primary key (sesion_id, producto_id)
+);
+
+-- Técnicas de la sesión: técnica + aguja + voltaje (bitácora, no toca stock)
+create table public.sesion_tecnicas (
+  id          bigint generated always as identity primary key,
+  sesion_id   bigint not null references sesiones(id) on delete cascade,
+  orden       smallint not null default 0,
+  tecnica     text not null,
+  producto_id bigint references productos(id),
+  voltaje     numeric
+);
+create index idx_sesion_tecnicas_sesion on public.sesion_tecnicas(sesion_id);
+
+alter table public.sesion_tatuajes enable row level security;
+alter table public.sesion_agujas   enable row level security;
+alter table public.sesion_tecnicas enable row level security;
+create policy tenant_isolation on public.sesion_tatuajes for all
+  using (exists (select 1 from sesiones where sesiones.id = sesion_tatuajes.sesion_id and sesiones.tenant_id = auth.uid()))
+  with check (exists (select 1 from sesiones where sesiones.id = sesion_tatuajes.sesion_id and sesiones.tenant_id = auth.uid())
+          and exists (select 1 from tatuajes where tatuajes.id = sesion_tatuajes.tatuaje_id and tatuajes.tenant_id = auth.uid()));
+create policy tenant_isolation on public.sesion_agujas for all
+  using (exists (select 1 from sesiones where sesiones.id = sesion_agujas.sesion_id and sesiones.tenant_id = auth.uid()))
+  with check (exists (select 1 from sesiones where sesiones.id = sesion_agujas.sesion_id and sesiones.tenant_id = auth.uid()));
+create policy tenant_isolation on public.sesion_tecnicas for all
+  using (exists (select 1 from sesiones where sesiones.id = sesion_tecnicas.sesion_id and sesiones.tenant_id = auth.uid()))
+  with check (exists (select 1 from sesiones where sesiones.id = sesion_tecnicas.sesion_id and sesiones.tenant_id = auth.uid()));
+revoke all on public.sesion_tatuajes, public.sesion_agujas, public.sesion_tecnicas from anon;

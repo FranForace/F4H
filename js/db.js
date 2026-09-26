@@ -80,27 +80,50 @@ function adaptMovimiento(m) {
   };
 }
 
+const SCORE_COLS = { sL: 'score_linea', sR: 'score_relleno', sT: 'score_tecnica', sD: 'score_diseno', sC: 'score_conformidad' };
+
+// Promedio por dimensión de los puntajes de cada tatuaje (0 = sin puntuar, no cuenta)
+function avgScores(tats) {
+  const out = {};
+  Object.keys(SCORE_COLS).forEach(k => {
+    const vals = tats.map(t => t[k]).filter(v => v > 0);
+    out[k] = vals.length ? Math.round(vals.reduce((a, v) => a + v, 0) / vals.length) : 0;
+  });
+  return out;
+}
+
 function adaptSesion(s) {
+  // Hijos: varios tatuajes (con puntaje propio), agujas usadas, técnicas
+  const tats = (s.sesion_tatuajes || []).map(r => {
+    const o = { tid: String(r.tatuaje_id) };
+    Object.entries(SCORE_COLS).forEach(([k, col]) => { o[k] = r[col] || 0; });
+    return o;
+  });
+  const agujas = (s.sesion_agujas || []).map(r => ({ pid: String(r.producto_id), qty: Number(r.cantidad) || 1 }));
+  const tecnicas = (s.sesion_tecnicas || []).slice().sort((a, b) => a.orden - b.orden)
+    .map(r => ({ tec: r.tecnica, pid: r.producto_id ? String(r.producto_id) : '', volt: r.voltaje != null ? Number(r.voltaje) : '' }));
   return {
+    tats, agujas, tecnicas,
     id:          String(s.id),
     fecha:       s.fecha,
     cliente:     s.cliente           || '',
     zona:        s.zona              || '',
     hrs:         s.horas             || 0,
     maquina:     s.maquina           || '',
-    agujaId:     s.aguja_principal_id ? String(s.aguja_principal_id) : null,
+    agujaId:     agujas[0] ? agujas[0].pid : (s.aguja_principal_id ? String(s.aguja_principal_id) : null),
     voltaje:     s.voltaje           || 0,
     stroke:      s.stroke            || '',
-    tattooId:    s.tatuaje_id  ? String(s.tatuaje_id)  : null,
+    tattooId:    tats[0] ? tats[0].tid : (s.tatuaje_id ? String(s.tatuaje_id) : null),
     kitId:       s.kit_id      ? String(s.kit_id)      : null,
-    sL:          s.score_linea       || 0,
-    sR:          s.score_relleno     || 0,
-    sT:          s.score_tecnica     || 0,
-    sD:          s.score_diseno      || 0,
-    sC:          s.score_conformidad || 0,
+    // Con tatuajes: puntaje de sesión = promedio de los tatuajes. Sin tatuajes (práctica): columnas propias
+    ...(tats.length ? avgScores(tats) : {
+      sL: s.score_linea || 0, sR: s.score_relleno || 0, sT: s.score_tecnica || 0,
+      sD: s.score_diseno || 0, sC: s.score_conformidad || 0,
+    }),
     practica:    s.practica,
     notas:       s.notas             || '',
-    agujasTested: (s.sesion_agujas_testeadas || []).map(r => String(r.producto_id)),
+    // compat: vistas que muestran "la" aguja / "el" tatuaje / "el" voltaje usan el primero
+    agujasTested: agujas.map(a => a.pid),
     kitOn:       !!s.kit_id,
     extras:      [],
   };
@@ -142,10 +165,10 @@ async function getMovimientos() {
 async function getSesiones() {
   const { data, error } = await _db
     .from('sesiones')
-    .select('*, sesion_agujas_testeadas(producto_id)')
+    .select('*, sesion_tatuajes(*), sesion_agujas(*), sesion_tecnicas(*)')
     .order('fecha', { ascending: false });
   if (error) { dbError('Error cargando sesiones: ' + error.message); return null; }
-  return data.map(s => adaptSesion({ ...s, sesion_agujas_testeadas: s.sesion_agujas_testeadas || [] }));
+  return data.map(adaptSesion);
 }
 
 async function getTatuajes() {
@@ -201,24 +224,31 @@ async function dbAddMovimiento({ productoId, tipo, cantidad, costoAlMomento = nu
   return adaptMovimiento(data);
 }
 
+// params.tats: [{tid, sL..sC}] · params.agujas: [{pid, qty}] · params.tecnicas: [{tec, pid, volt}]
 async function dbSaveSesion(params) {
+  const tats     = (params.tats     || []).filter(t => t.tid);
+  const agujas   = (params.agujas   || []).filter(a => a.pid && a.qty > 0);
+  const tecnicas = (params.tecnicas || []).filter(t => t.tec);
+  // Puntaje de la sesión: con tatuajes = promedio de ellos; sin tatuajes = el cargado directo
+  const sc = tats.length ? avgScores(tats) : params;
   const payload = {
     fecha:              params.fecha,
     cliente:            params.cliente   || null,
     zona:               params.zona      || null,
     horas:              params.hrs       || null,
     maquina:            params.maquina   || null,
-    aguja_principal_id: params.agujaId   ? Number(params.agujaId)  : null,
-    voltaje:            params.voltaje   || null,
+    // columnas legacy (V5): se completan con el primer elemento de cada lista
+    aguja_principal_id: agujas[0]   ? Number(agujas[0].pid) : null,
+    voltaje:            tecnicas.find(t => t.volt !== '' && t.volt != null)?.volt ?? null,
+    tatuaje_id:         tats[0]     ? Number(tats[0].tid)   : null,
     stroke:             params.stroke    || null,
-    tatuaje_id:         params.tattooId  ? Number(params.tattooId) : null,
     kit_id:             params.kitId     ? Number(params.kitId)    : null,
-    score_linea:        params.sL        || 0,
-    score_relleno:      params.sR        || 0,
-    score_tecnica:      params.sT        || 0,
-    score_diseno:       params.sD        || 0,
-    score_conformidad:  params.sC        || 0,
-    practica:           params.practica  ?? false,
+    score_linea:        sc.sL        || 0,
+    score_relleno:      sc.sR        || 0,
+    score_tecnica:      sc.sT        || 0,
+    score_diseno:       sc.sD        || 0,
+    score_conformidad:  sc.sC        || 0,
+    practica:           tats.length === 0,
     notas:              params.notas     || null,
   };
 
@@ -227,19 +257,31 @@ async function dbSaveSesion(params) {
     const { error } = await _db.from('sesiones').update(payload).eq('id', Number(params.id));
     if (error) { dbError('Error actualizando sesión: ' + error.message); return null; }
     sesionId = params.id;
-    await _db.from('sesion_agujas_testeadas').delete().eq('sesion_id', Number(sesionId));
+    await Promise.all(['sesion_tatuajes', 'sesion_agujas', 'sesion_tecnicas']
+      .map(tb => _db.from(tb).delete().eq('sesion_id', Number(sesionId))));
   } else {
     const { data, error } = await _db.from('sesiones').insert(payload).select().single();
     if (error) { dbError('Error guardando sesión: ' + error.message); return null; }
     sesionId = String(data.id);
   }
 
-  // Agujas testeadas (tabla puente, sin descuento de stock)
-  const testedIds = params.agujasTested || [];
-  if (testedIds.length > 0) {
-    const rows = testedIds.map(pid => ({ sesion_id: Number(sesionId), producto_id: Number(pid) }));
-    const { error } = await _db.from('sesion_agujas_testeadas').insert(rows);
-    if (error) dbError('Error guardando agujas testeadas: ' + error.message);
+  // Hijos
+  const sid = Number(sesionId);
+  const inserts = [];
+  if (tats.length) inserts.push(['tatuajes', _db.from('sesion_tatuajes').insert(tats.map(t => {
+    const row = { sesion_id: sid, tatuaje_id: Number(t.tid) };
+    Object.entries(SCORE_COLS).forEach(([k, col]) => { row[col] = t[k] || 0; });
+    return row;
+  }))]);
+  if (agujas.length) inserts.push(['agujas', _db.from('sesion_agujas').insert(agujas.map(a => ({ sesion_id: sid, producto_id: Number(a.pid), cantidad: a.qty })))]);
+  if (tecnicas.length) inserts.push(['técnicas', _db.from('sesion_tecnicas').insert(tecnicas.map((t, i) => ({
+    sesion_id: sid, orden: i, tecnica: t.tec,
+    producto_id: t.pid ? Number(t.pid) : null,
+    voltaje: t.volt !== '' && t.volt != null ? Number(t.volt) : null,
+  })))]);
+  for (const [nom, q] of inserts) {
+    const { error } = await q;
+    if (error) dbError('Error guardando ' + nom + ' de la sesión: ' + error.message);
   }
 
   // Movimientos (solo para sesiones nuevas — las ediciones no regeneran stock)
@@ -261,12 +303,9 @@ async function dbSaveSesion(params) {
       if (ex.pid && ex.qty > 0)
         await dbAddMovimiento({ productoId: ex.pid, tipo: 'salida', cantidad: ex.qty, sesionId, referencia: 'ses-' + sesionId + ' (extra)' });
     }
-    // Aguja principal (siempre descuenta — las de práctica también cuestan plata)
-    if (params.agujaId) {
-      const ap = S.productos.find(x => x.id === String(params.agujaId));
-      if (ap)
-        await dbAddMovimiento({ productoId: params.agujaId, tipo: 'salida', cantidad: 1, sesionId, referencia: 'ses-' + sesionId + ' (aguja)' });
-    }
+    // Agujas usadas (todas descuentan, incluidas las de práctica)
+    for (const a of agujas)
+      await dbAddMovimiento({ productoId: a.pid, tipo: 'salida', cantidad: a.qty, sesionId, referencia: 'ses-' + sesionId + ' (aguja)' });
   }
 
   // Refrescar cache
@@ -313,7 +352,10 @@ async function dbDeleteTatuaje(id) {
   const { error } = await _db.from('tatuajes').delete().eq('id', Number(id));
   if (error) { dbError('Error eliminando tatuaje: ' + error.message); return false; }
   S.tatuajes = S.tatuajes.filter(t => t.id !== String(id));
-  S.sesiones.forEach(s => { if (s.tattooId === String(id)) s.tattooId = null; });
+  S.sesiones.forEach(s => {
+    s.tats = (s.tats || []).filter(t => t.tid !== String(id));
+    if (s.tattooId === String(id)) s.tattooId = s.tats[0] ? s.tats[0].tid : null;
+  });
   return true;
 }
 

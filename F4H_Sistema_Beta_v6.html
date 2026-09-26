@@ -479,7 +479,7 @@ function initAuthUI(){
 let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
 const ESTILOS=['American Traditional','Neo Traditional','New School','Blackwork','Realismo','Fine Line','Minimalista','Geométrico','Japonés (Irezumi)','Lettering','Acuarela','Chicano','Tribal','Dark / Horror','Ilustración','Otro'];
 let curTab='dash',sesView='nueva',tattooView='lista',fCat=[],fSt='',editingId=null,selectedTattooId=null;
-let nExtras=[],nScores={L:0,R:0,T:0,D:0,C:0},nTestedIds=new Set(),nKitExcludes=new Set(),editSesionId=null;
+let nExtras=[],nKitExcludes=new Set(),editSesionId=null;
 const DIMS=[{k:'sL',lbl:'Calidad de línea'},{k:'sR',lbl:'Solidez del relleno'},{k:'sT',lbl:'Técnica'},{k:'sD',lbl:'Diseño'},{k:'sC',lbl:'Conformidad'}];
 
 const TATUAJES_SEED=[
@@ -553,13 +553,14 @@ function sesionCosto(s){
   if(s.kitId)c+=calcKitCost(s.kitId,s.kitExcludes||[]);
   else if(s.kitOn&&S.kits.length>0)c+=calcKitCost(S.kits[0].id,[]);
   (s.extras||[]).forEach(e=>{const p=S.productos.find(x=>x.id===e.pid);if(p&&p.cu>0)c+=cxu(p)*e.qty;});
-  const ag=S.productos.find(x=>x.id===s.agujaId);
-  if(ag&&ag.cu>0)c+=cxu(ag);
+  c+=calcAgujasCost(s.agujas);
   return c;
 }
 function calcKitCost(kitId,excludes){const kit=S.kits.find(k=>k.id===kitId);if(!kit)return 0;const excl=excludes||[];return kit.items.reduce((a,ki)=>{if(excl.includes(ki.pid))return a;const p=S.productos.find(x=>x.id===ki.pid);return a+(p&&p.cu>0?cxu(p)*ki.qty:0);},0);}
 function calcKitCostStatic(){return S.kits.length?calcKitCost(S.kits[0].id,[]):0;}
-function tattooSesiones(tid){return S.sesiones.filter(s=>s.tattooId===tid);}
+function tattooSesiones(tid){return S.sesiones.filter(s=>(s.tats||[]).some(x=>x.tid===tid));}
+// Puntaje de una sesión para un tatuaje puntual (cada tatuaje se puntúa por separado)
+function scoresFor(s,tid){return (s.tats||[]).find(x=>x.tid===tid)||s;}
 
 // ── Zona del cuerpo: lista cerrada + lado. Se guarda como "Tobillo · Izq" (split por ' · ' para análisis) ──
 const ZONAS=[
@@ -585,7 +586,7 @@ function setZona(id,val){
   if(s){if(b&&![...s.options].some(o=>o.value===b))s.add(new Option(b+' (anterior)',b));s.value=b;}
   const sl=document.getElementById(id+'-lado');if(sl)sl.value=l;
 }
-function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCosto(s),0);}
+function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCosto(s)/Math.max(1,(s.tats||[]).length),0);}
 function globalScore(s){const vals=[s.sL,s.sR,s.sT,s.sD,s.sC].filter(v=>v>0);return vals.length?+(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;}
 function tattooMargen(t){return t.precio?(t.precio-tattooCosto(t.id)):null;}
 function tattooHrs(tid){return tattooSesiones(tid).reduce((a,s)=>a+(s.hrs||0),0);}
@@ -610,12 +611,12 @@ function go(t){
   if(t==='tattoos')renderTattoos();
   if(t==='inv')renderInv();
   if(t==='act')renderActivos();
-  if(t==='ses'){nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();editSesionId=null;editScoresBuf={};renderSes();}
+  if(t==='ses'){nExtras=[];nKitExcludes=new Set();editSesionId=null;SF=null;renderSes();}
   if(t==='egresos')renderEgresos();
   if(t==='mov'){fillMovSel();renderMovTable();}
   if(t==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
 }
-function setSesView(v){sesView=v;editSesionId=null;editScoresBuf={};nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();renderSes();}
+function setSesView(v){sesView=v;editSesionId=null;SF=null;nExtras=[];nKitExcludes=new Set();renderSes();}
 function renderAll(){if(curTab==='dash')renderDash();else if(curTab==='tattoos')renderTattoos();else if(curTab==='inv')renderInv();else if(curTab==='act')renderActivos();else if(curTab==='ses')renderSes();else if(curTab==='egresos')renderEgresos();
   else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}}
 
@@ -746,7 +747,7 @@ function buildListaTattoos(){
 
 function buildNuevoTattoo(){
   const nextNum=(S.tatuajes.length?Math.max(...S.tatuajes.map(t=>t.num||0))+1:1);
-  const orphanSes=S.sesiones.filter(s=>!s.tattooId);
+  const orphanSes=S.sesiones.filter(s=>!(s.tats||[]).length);
   return`<div class="card">
     <div class="ct">Nuevo tatuaje</div>
     <div class="fgrid">
@@ -785,10 +786,10 @@ function buildDetalleTattoo(tid){
   const pct=t.precio?Math.min(100,Math.round((costo/t.precio)*100)):null;
   const sesTbl=sess.length
     ?'<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Zona</th><th>M\xE1q.</th><th>Aguja</th><th>L</th><th>R</th><th>T</th><th>D</th><th>C</th><th>Global</th><th>Costo</th><th></th></tr></thead><tbody>'
-      +sess.map(s=>{const ag=S.productos.find(p=>p.id===s.agujaId);
+      +sess.map(s=>{const ag=S.productos.find(p=>p.id===s.agujaId);const sc=scoresFor(s,tid);
         return'<tr><td>'+fdate(s.fecha)+'</td><td>'+(s.zona||'--')+'</td><td class="hint">'+(s.maquina||'--')+'</td><td class="hint">'+(ag?ag.nom:'--')+'</td>'
-          +'<td>'+scorePill(s.sL)+'</td><td>'+scorePill(s.sR)+'</td><td>'+scorePill(s.sT)+'</td><td>'+scorePill(s.sD)+'</td><td>'+scorePill(s.sC)+'</td>'
-          +'<td>'+scorePill(globalScore(s))+'</td><td>'+ars(sesionCosto(s))+'</td>'
+          +'<td>'+scorePill(sc.sL)+'</td><td>'+scorePill(sc.sR)+'</td><td>'+scorePill(sc.sT)+'</td><td>'+scorePill(sc.sD)+'</td><td>'+scorePill(sc.sC)+'</td>'
+          +'<td>'+scorePill(globalScore(sc))+'</td><td>'+ars(sesionCosto(s)/Math.max(1,(s.tats||[]).length))+((s.tats||[]).length>1?'<div class="hint" style="font-size:10px">1/'+(s.tats||[]).length+' de la sesión</div>':'')+'</td>'
           +'<td><button class="btn btn-xs btn-ghost" onclick="editSesFromTattoo(\''+s.id+'\')">✏</button></td></tr>';
       }).join('')+'</tbody><tfoot><tr class="total-row"><td colspan="10">Total</td><td>'+ars(costo)+'</td><td></td></tr></tfoot></table></div>'
     :'<div class="empty">Sin sesiones a\xFAn. Al crear una sesi\xF3n, seleccion\xE1 este tatuaje.</div>';
@@ -824,7 +825,8 @@ function buildDetalleTattoo(tid){
 
 
 function buildStatsTattoos(){
-  const allSes=S.sesiones.filter(s=>s.tattooId);
+  // un registro por par (sesión, tatuaje), con el puntaje propio de ese tatuaje
+  const allSes=S.sesiones.flatMap(s=>(s.tats||[]).map(x=>({...s,...x,tattooId:x.tid})));
   if(!allSes.length)return'<div class="empty" style="padding:2.5rem">Sin sesiones vinculadas a tatuajes todavía.</div>';
   // Group by estilo
   const estiloMap={};
@@ -902,10 +904,15 @@ async function addTattoo(){
   const linked=[];
   document.querySelectorAll('input[name="link-ses"]:checked').forEach(cb=>{
     const s=S.sesiones.find(x=>x.id===cb.value);
-    if(s){s.tattooId=newId;s.practica=false;linked.push(Number(cb.value));}
+    if(s){linked.push(s);}
   });
   if(linked.length){
-    await Promise.all(linked.map(sid=>_db.from('sesiones').update({tatuaje_id:Number(newId),practica:false}).eq('id',sid)));
+    // la sesión era práctica: su puntaje pasa a ser el de este tatuaje
+    await Promise.all(linked.map(s=>Promise.all([
+      _db.from('sesiones').update({tatuaje_id:Number(newId),practica:false}).eq('id',Number(s.id)),
+      _db.from('sesion_tatuajes').insert({sesion_id:Number(s.id),tatuaje_id:Number(newId),
+        score_linea:s.sL||0,score_relleno:s.sR||0,score_tecnica:s.sT||0,score_diseno:s.sD||0,score_conformidad:s.sC||0})
+    ])));
     const nuevasSes=await getSesiones();if(nuevasSes)S.sesiones=nuevasSes;
   }
   selectedTattooId=newId;tattooView='detalle';renderTattoos();
@@ -1118,23 +1125,140 @@ function renderSes(){
       <button class="btn btn-sm btn-p" onclick="setSesView('nueva')">+ Nueva sesión</button>
     </div>
     ${sesView==='nueva'?buildNuevaSes():sesView==='edit'&&editSesionId?buildEditSes(editSesionId):buildBitacora()}`;
-  if(sesView==='nueva'){applyScores();renderKitItems();}
+  if(sesView==='nueva')renderKitItems();
+  if(sesView==='nueva'||sesView==='edit'&&editSesionId)sfAfterRender();
 }
 
-// Con tatuaje vinculado, cliente y zona vienen del tatuaje y quedan bloqueados (✎ para editar)
-function onTattooSelChange(){
-  const tid=document.getElementById('sf-tattoo').value;const t=S.tatuajes.find(x=>x.id===tid);
-  const c=document.getElementById('sf-cli');
-  if(c)c.value=t?(t.cliente||''):'';
-  setZona('sf-zona',t?t.zona:'');
-  lockSesField('cli',!!t);lockSesField('zona',!!t);
+// ── Form de sesión (nueva y edición comparten estado SF) ──────────────────────
+// SF.tats: [{tid,sL..sC}] (puntaje por tatuaje) · SF.agujas: [{pid,qty}] (descuentan stock)
+// SF.tecnicas: [{tec,pid,volt}] (bitácora, no tocan stock) · SF.sc: puntaje de práctica (sin tatuajes)
+let SF=null;
+function sfInit(s,mode){
+  const z={sL:0,sR:0,sT:0,sD:0,sC:0};
+  SF={mode,p:mode==='new'?'sf':'es',sid:s?s.id:null,
+    tats:s?(s.tats||[]).map(t=>({...t})):[],
+    agujas:s?(s.agujas||[]).map(a=>({...a})):[],
+    tecnicas:s?(s.tecnicas||[]).map(t=>({...t})):[],
+    sc:s&&!(s.tats||[]).length?{sL:s.sL,sR:s.sR,sT:s.sT,sD:s.sD,sC:s.sC}:{...z}};
+}
+function sfTatLabel(t){return '#'+t.num+' \xB7 '+t.cliente+' — '+t.diseno;}
+
+function sfRenderTats(){
+  const el=document.getElementById('sf-tats');if(!el)return;
+  const linked=SF.tats.map((x,i)=>{const t=S.tatuajes.find(y=>y.id===x.tid);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-elevated);border-radius:8px;margin-bottom:6px">'
+      +'<span style="flex:1;font-size:13px;color:var(--text)">'+(t?sfTatLabel(t):'Tatuaje '+x.tid)+'</span>'
+      +'<button type="button" class="btn btn-xs" onclick="sfDelTat('+i+')">✕</button></div>';}).join('');
+  const libres=S.tatuajes.filter(t=>!SF.tats.some(x=>x.tid===t.id));
+  const opt=t=>'<option value="'+t.id+'">'+sfTatLabel(t)+'</option>';
+  const ab=libres.filter(t=>t.estado!=='Finalizado'),fin=libres.filter(t=>t.estado==='Finalizado');
+  const sel=libres.length?'<select onchange="sfAddTat(this.value)"><option value="">'+(SF.tats.length?'+ Agregar otro tatuaje a esta sesi\xF3n':'— Pr\xE1ctica / sin proyecto (eleg\xED para vincular) —')+'</option>'
+    +(ab.length?'<optgroup label="En curso / pendientes">'+ab.map(opt).join('')+'</optgroup>':'')
+    +(fin.length?'<optgroup label="Finalizados">'+fin.map(opt).join('')+'</optgroup>':'')+'</select>':'';
+  el.innerHTML=linked+sel;
+}
+function sfAddTat(tid){if(!tid||SF.tats.some(t=>t.tid===tid))return;SF.tats.push({tid,sL:0,sR:0,sT:0,sD:0,sC:0});sfSyncFromTats();sfRenderTats();sfRenderScores();}
+function sfDelTat(i){SF.tats.splice(i,1);sfSyncFromTats();sfRenderTats();sfRenderScores();}
+// Cliente y zona salen de los tatuajes vinculados y quedan bloqueados (✎ para editar)
+function sfSyncFromTats(){
+  const ts=SF.tats.map(x=>S.tatuajes.find(t=>t.id===x.tid)).filter(Boolean);
+  const c=document.getElementById(SF.p+'-cli');
+  if(c)c.value=ts.length?[...new Set(ts.map(t=>t.cliente).filter(Boolean))].join(' / '):(SF.mode==='new'?'':c.value);
+  if(ts.length)setZona(SF.p+'-zona',ts[0].zona);else if(SF.mode==='new')setZona(SF.p+'-zona','');
+  lockSesField('cli',!!ts.length);lockSesField('zona',!!ts.length);
 }
 function lockSesField(f,on){
-  const ids=f==='zona'?['sf-zona','sf-zona-lado']:['sf-cli'];
+  const p=SF?SF.p:'sf';
+  const ids=f==='zona'?[p+'-zona',p+'-zona-lado']:[p+'-cli'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=on;el.style.opacity=on?'.6':'';}});
-  const b=document.getElementById('sf-'+f+'-unlock');if(b)b.style.display=on?'inline-flex':'none';
+  const b=document.getElementById(p+'-'+f+'-unlock');if(b)b.style.display=on?'inline-flex':'none';
 }
-function unlockSesField(f){lockSesField(f,false);const el=document.getElementById(f==='zona'?'sf-zona':'sf-cli');if(el)el.focus();}
+function unlockSesField(f){lockSesField(f,false);const el=document.getElementById(SF.p+(f==='zona'?'-zona':'-cli'));if(el)el.focus();}
+
+// Agujas: agrupadas por tipo y ordenadas por medida
+const AG_TIPOS=[['RL','Liner (RL)'],['RS','Shader (RS)'],['RM','Magnum curvo (RM)'],['M','Magnum (M)'],['?','Otras']];
+function agTipo(n){const m=(n||'').toUpperCase().match(/R[LSM]|M/);return m?m[0]:'?';}
+function agSize(n){const m=(n||'').match(/\d+/);return m?parseInt(m[0]):999;}
+function agujaOpts(sel,withStock){
+  const ags=S.productos.filter(p=>p.cat==='Aguja');
+  return AG_TIPOS.map(([tp,lbl])=>{
+    const g=ags.filter(a=>agTipo(a.nom)===tp).sort((a,b)=>agSize(a.nom)-agSize(b.nom)||a.nom.localeCompare(b.nom));
+    return g.length?'<optgroup label="'+lbl+'">'+g.map(a=>'<option value="'+a.id+'"'+(a.id===sel?' selected':'')+'>'+a.nom+(a.practica?' ★':'')+(withStock?' (stock: '+stockOf(a.id)+')':'')+'</option>').join('')+'</optgroup>':'';
+  }).join('');
+}
+function sfRenderAgujas(){
+  const el=document.getElementById('sf-agujas');if(!el)return;
+  el.innerHTML=SF.agujas.length?SF.agujas.map((a,i)=>{const p=S.productos.find(x=>x.id===a.pid);
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<select style="flex:1" onchange="SF.agujas['+i+'].pid=this.value;sfRenderAgujas();updateSesTotal()"><option value="">— Aguja —</option>'+agujaOpts(a.pid,true)+'</select>'
+      +'<input type="number" min="1" value="'+a.qty+'" style="width:60px" title="Cantidad" onchange="SF.agujas['+i+'].qty=parseInt(this.value)||1;sfRenderAgujas();updateSesTotal()">'
+      +'<button type="button" class="btn btn-xs" onclick="SF.agujas.splice('+i+',1);sfRenderAgujas();updateSesTotal()">✕</button>'
+      +'<span class="hint" style="min-width:60px;text-align:right">'+(p&&p.cu>0?ars(cxu(p)*a.qty):'—')+'</span></div>';
+  }).join(''):'<p class="hint" style="padding:4px 0">Sin agujas cargadas.</p>';
+}
+function sfAddAguja(){SF.agujas.push({pid:'',qty:1});sfRenderAgujas();}
+
+const TECNICAS=['L\xEDnea','L\xEDnea fina','L\xEDnea de agua','Puntillismo','Sombreado (whip)','Sombreado suave','Relleno s\xF3lido','Color','Blanco / realces','Textura','Sin especificar'];
+function sfRenderTecs(){
+  const el=document.getElementById('sf-tecs');if(!el)return;
+  el.innerHTML=SF.tecnicas.length?SF.tecnicas.map((t,i)=>{
+    const tecs=TECNICAS.includes(t.tec)||!t.tec?TECNICAS:[t.tec,...TECNICAS];
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+      +'<select style="flex:1.2" onchange="SF.tecnicas['+i+'].tec=this.value">'+tecs.map(x=>'<option'+(x===t.tec?' selected':'')+'>'+x+'</option>').join('')+'</select>'
+      +'<select style="flex:1" onchange="SF.tecnicas['+i+'].pid=this.value"><option value="">— Aguja —</option>'+agujaOpts(t.pid,false)+'</select>'
+      +'<input type="number" min="0" step="0.1" placeholder="Volt." value="'+(t.volt===''||t.volt==null?'':t.volt)+'" style="width:80px" onchange="SF.tecnicas['+i+'].volt=this.value===\'\'?\'\':parseFloat(this.value)">'
+      +'<span class="hint">V</span>'
+      +'<button type="button" class="btn btn-xs" onclick="SF.tecnicas.splice('+i+',1);sfRenderTecs()">✕</button></div>';
+  }).join(''):'<p class="hint" style="padding:4px 0">Sin t\xE9cnicas cargadas.</p>';
+}
+function sfAddTec(){const last=SF.tecnicas[SF.tecnicas.length-1];SF.tecnicas.push({tec:TECNICAS[0],pid:last?last.pid:(SF.agujas[0]?SF.agujas[0].pid:''),volt:last?last.volt:''});sfRenderTecs();}
+
+// Puntajes: uno por tatuaje vinculado, o uno de práctica si no hay tatuajes
+function scoreClass(v){return v>=7?'on-green':v>=4?'on-amber':'on-red';}
+function sfScoreObj(ti){return ti==='p'?SF.sc:SF.tats[ti];}
+function sfScoreBlock(ti,title){
+  const o=sfScoreObj(ti);
+  return '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">'+title+'</div>'
+    +DIMS.map(({k,lbl})=>'<div class="sc-dim-card"><div class="sc-dim-title">'+lbl+'</div><div>'
+      +[1,2,3,4,5,6,7,8,9,10].map(n=>'<button type="button" class="sc-btn'+(o[k]===n?' '+scoreClass(n):'')+'" onclick="sfSetScore(\''+ti+'\',\''+k+'\','+n+')">'+n+'</button>').join('')
+      +'</div></div>').join('')+'</div>';
+}
+function sfRenderScores(){
+  const el=document.getElementById('sf-scores');if(!el)return;
+  el.innerHTML=SF.tats.length
+    ?SF.tats.map((x,i)=>{const t=S.tatuajes.find(y=>y.id===x.tid);return sfScoreBlock(i,t?sfTatLabel(t):'Tatuaje');}).join('')
+    :sfScoreBlock('p','Pr\xE1ctica / sin proyecto');
+}
+function sfSetScore(ti,k,n){const o=sfScoreObj(ti);o[k]=o[k]===n?0:n;sfRenderScores();}
+
+// Secciones compartidas por ambos formularios
+function sfSections(){
+  return `<div style="margin-bottom:1rem">
+      <div class="fl" style="margin-bottom:6px">Tatuajes de esta sesi\xF3n <span class="hint">— pod\xE9s vincular varios</span></div>
+      <div id="sf-tats"></div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="fl" style="margin:0">Agujas usadas</span><span class="hint">descuentan stock</span><button type="button" class="btn btn-sm" onclick="sfAddAguja()">+ Aguja</button></div>
+      <div id="sf-agujas"></div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="fl" style="margin:0">T\xE9cnicas y voltajes</span><span class="hint">bit\xE1cora, no tocan stock</span><button type="button" class="btn btn-sm" onclick="sfAddTec()">+ T\xE9cnica</button></div>
+      <div id="sf-tecs"></div>
+    </div>`;
+}
+function sfAfterRender(){
+  if(!SF)return;
+  sfRenderTats();sfRenderAgujas();sfRenderTecs();sfRenderScores();
+  const on=SF.tats.length>0;lockSesField('cli',on);lockSesField('zona',on);
+}
+// Arma los parámetros de guardado a partir de SF (agujas repetidas se suman)
+function sfCollect(){
+  const ag={};SF.agujas.filter(a=>a.pid).forEach(a=>{ag[a.pid]=(ag[a.pid]||0)+(a.qty||1);});
+  return {tats:SF.tats,agujas:Object.entries(ag).map(([pid,qty])=>({pid,qty})),tecnicas:SF.tecnicas,
+    sL:SF.sc.sL,sR:SF.sc.sR,sT:SF.sc.sT,sD:SF.sc.sD,sC:SF.sc.sC};
+}
+
 function onKitSelChange(){nKitExcludes.clear();renderKitItems();updateSesTotal();}
 function toggleKitExclude(pid){if(nKitExcludes.has(pid))nKitExcludes.delete(pid);else nKitExcludes.add(pid);updateSesTotal();}
 function renderKitItems(){
@@ -1150,43 +1274,19 @@ function renderKitItems(){
 }
 
 function buildNuevaSes(){
+  if(!SF||SF.mode!=='new')sfInit(null,'new');
   const maquinas=S.productos.filter(p=>p.cat==='Activo'&&p.sub==='Maquina');
-  const agujas=S.productos.filter(p=>p.cat==='Aguja');
-  const realAgujas=agujas.filter(p=>!p.practica);
-  const pracAgujas=agujas.filter(p=>p.practica);
   const amortS=amortTotalSes();const kitC=calcKitCostStatic();
-  const testedChips=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${nTestedIds.has(a.id)?' on':''}" onclick="toggleTested('${a.id}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
-  const tatOpt=t=>`<option value="${t.id}">#${t.num} · ${t.cliente} — ${t.diseno}</option>`;
-  const tatAbiertos=S.tatuajes.filter(t=>t.estado!=='Finalizado'),tatFin=S.tatuajes.filter(t=>t.estado==='Finalizado');
-  const tattooOpts=(tatAbiertos.length?`<optgroup label="En curso / pendientes">${tatAbiertos.map(tatOpt).join('')}</optgroup>`:'')
-    +(tatFin.length?`<optgroup label="Finalizados">${tatFin.map(tatOpt).join('')}</optgroup>`:'');
   return`<div class="card">
     <div class="ct">Nueva sesión</div>
+    ${sfSections()}
     <div class="fgrid" style="margin-bottom:1rem">
-      <div class="fg" style="grid-column:1/-1"><label class="fl">Tatuaje vinculado <span class="hint">(opcional)</span></label>
-        <select id="sf-tattoo" onchange="onTattooSelChange()"><option value="">— Práctica / sin proyecto —</option>${tattooOpts}</select>
-      </div>
       <div class="fg"><label class="fl">Fecha</label><input id="sf-fecha" type="date" value="${today}"></div>
       <div class="fg"><label class="fl">Cliente <button type="button" id="sf-cli-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('cli')" title="Editar">&#x270E;</button></label><input id="sf-cli" placeholder="Nombre o 'Yo mismo'"></div>
       <div class="fg"><label class="fl">Zona <button type="button" id="sf-zona-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('zona')" title="Editar">&#x270E;</button></label>${zonaField('sf-zona','')}</div>
       <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="sf-hrs" type="number" min="0.25" step="0.25" value="2"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="sf-maq"><option value="">— Seleccionar —</option>${maquinas.map(m=>`<option value="${m.nom}">${m.nom}</option>`).join('')}</select></div>
-      <div class="fg"><label class="fl">Voltaje (V)</label><input id="sf-volt" type="number" min="0" step="0.1" value="8"></div>
       <div class="fg"><label class="fl">Stroke</label><input id="sf-stroke" placeholder="Ej: 3.8 o 'fijo'"></div>
-    </div>
-
-    <div style="margin-bottom:1rem">
-      <div class="fl" style="margin-bottom:6px">Aguja principal</div>
-      <select id="sf-aguja">
-        <option value="">— Sin registrar —</option>
-        ${realAgujas.length?`<optgroup label="Real (descuenta stock)">${realAgujas.map(a=>`<option value="${a.id}">${a.nom} (stock: ${stockOf(a.id)})</option>`).join('')}</optgroup>`:''}
-        ${pracAgujas.length?`<optgroup label="★ Práctica (no descuenta)">${pracAgujas.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('')}</optgroup>`:''}
-      </select>
-    </div>
-
-    <div style="margin-bottom:1rem">
-      <div class="fl" style="margin-bottom:6px">Agujas testeadas <span class="hint">— todas las que probaste</span></div>
-      <div class="aguja-grid" id="tested-grid">${testedChips}</div>
     </div>
 
     <div style="margin-bottom:.5rem">
@@ -1206,11 +1306,8 @@ function buildNuevaSes(){
     </div>
     <div id="extras-sec">${renderExtras()}</div>
 
-    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span></div>
-    ${DIMS.map(({k,lbl})=>`<div class="sc-dim-card">
-      <div class="sc-dim-title">${lbl}</div>
-      <div>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="sc-btn" id="s${k}${n}" onclick="setScore('${k}',${n})">${n}</button>`).join('')}</div>
-    </div>`).join('')}
+    <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span> <span class="hint">— cada tatuaje se punt\xFAa por separado</span></div>
+    <div id="sf-scores"></div>
 
     <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
     <textarea id="sf-notas" placeholder="¿Qué funcionó? ¿Qué cambiarías?"></textarea>
@@ -1227,128 +1324,61 @@ function buildNuevaSes(){
   </div>`;
 }
 
-
-function editSesFromTattoo(sid){go('ses');setTimeout(()=>{editSesionId=sid;sesView='edit';renderSes();},60);}
-function startEditSes(sid){
-  editSesionId=sid;
-  sesView='edit';
-  renderSes();
-}
+function editSesFromTattoo(sid){go('ses');setTimeout(()=>{editSesionId=sid;sesView='edit';SF=null;renderSes();},60);}
+function startEditSes(sid){editSesionId=sid;sesView='edit';SF=null;renderSes();}
 
 function buildEditSes(sid){
   const s=S.sesiones.find(x=>x.id===sid);
   if(!s)return'<div class="empty">Sesión no encontrada.</div>';
+  if(!SF||SF.mode!=='edit'||SF.sid!==sid)sfInit(s,'edit');
   const maquinas=S.productos.filter(p=>p.cat==='Activo'&&p.sub==='Maquina');
-  const agujas=S.productos.filter(p=>p.cat==='Aguja');
-  const realAgujas=agujas.filter(p=>!p.practica);
-  const pracAgujas=agujas.filter(p=>p.practica);
-  const testedSet=new Set(s.agujasTested||[]);
-  const tattooOpts=S.tatuajes.map(t=>`<option value="${t.id}"${s.tattooId===t.id?' selected':''}>#${t.num} · ${t.cliente} — ${t.diseno}</option>`).join('');
-  const chips=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${testedSet.has(a.id)?' on':''}" onclick="toggleEditTested('${a.id}','${sid}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
-
-  // Pre-fill scores
-  const es={L:s.sL||0,R:s.sR||0,T:s.sT||0,D:s.sD||0,C:s.sC||0};
-  const scoreButtons=DIMS.map(({k,lbl})=>`<div class="sc-dim-card">
-    <div class="sc-dim-title">${lbl}</div>
-    <div>${[1,2,3,4,5,6,7,8,9,10].map(n=>{const on=n===es[k];const cls=on?(n>=7?'on-green':n>=4?'on-amber':'on-red'):'';return`<button class="sc-btn ${cls}" id="es${k}${n}" onclick="setEditScore('${sid}','${k}',${n})">${n}</button>`;}).join('')}</div>
-  </div>`).join('');
-
   return`<div class="card-blue">
     <div class="ct" style="color:var(--accent)">✏ Editando sesión — ${fdate(s.fecha)} · ${s.zona||'sin zona'}</div>
     <div class="edit-hint">Podés corregir todos los campos incluidos los scores. Los movimientos de stock NO se recalculan — solo los datos de la bitácora.</div>
+    ${sfSections()}
     <div class="fgrid" style="margin-bottom:1rem">
       <div class="fg"><label class="fl">Fecha</label><input id="es-fecha" type="date" value="${s.fecha}"></div>
-      <div class="fg"><label class="fl">Cliente</label><input id="es-cli" value="${s.cliente||''}"></div>
-      <div class="fg"><label class="fl">Zona</label>${zonaField('es-zona',s.zona)}
-      </div>
+      <div class="fg"><label class="fl">Cliente <button type="button" id="es-cli-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('cli')" title="Editar">&#x270E;</button></label><input id="es-cli" value="${s.cliente||''}"></div>
+      <div class="fg"><label class="fl">Zona <button type="button" id="es-zona-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('zona')" title="Editar">&#x270E;</button></label>${zonaField('es-zona',s.zona)}</div>
       <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="es-hrs" type="number" min="0.25" step="0.25" value="${s.hrs||1}"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="es-maq"><option value="">— —</option>${maquinas.map(m=>`<option value="${m.nom}"${s.maquina===m.nom?' selected':''}>${m.nom}</option>`).join('')}</select></div>
-      <div class="fg"><label class="fl">Voltaje (V)</label><input id="es-volt" type="number" step="0.1" value="${s.voltaje||0}"></div>
       <div class="fg"><label class="fl">Stroke</label><input id="es-stroke" value="${s.stroke||''}"></div>
-      <div class="fg"><label class="fl">Tatuaje vinculado</label>
-        <select id="es-tattoo"><option value="">— Práctica —</option>${tattooOpts}</select>
-      </div>
-    </div>
-    <div style="margin-bottom:1rem">
-      <div class="fl" style="margin-bottom:6px">Aguja principal</div>
-      <select id="es-aguja">
-        <option value="">— —</option>
-        ${realAgujas.length?`<optgroup label="Real">${realAgujas.map(a=>`<option value="${a.id}"${s.agujaId===a.id?' selected':''}>${a.nom}</option>`).join('')}</optgroup>`:''}
-        ${pracAgujas.length?`<optgroup label="★ Práctica">${pracAgujas.map(a=>`<option value="${a.id}"${s.agujaId===a.id?' selected':''}>${a.nom}</option>`).join('')}</optgroup>`:''}
-      </select>
-    </div>
-    <div style="margin-bottom:1rem">
-      <div class="fl" style="margin-bottom:6px">Agujas testeadas</div>
-      <div class="aguja-grid" id="edit-tested-grid-${sid}">${chips}</div>
     </div>
     <div style="margin:.75rem 0 .5rem"><span class="fl">Evaluación (1–10)</span></div>
-    ${scoreButtons}
+    <div id="sf-scores"></div>
     <div style="margin:.75rem 0 .4rem"><span class="fl">Notas</span></div>
     <textarea id="es-notas" rows="4">${s.notas||''}</textarea>
     <div style="margin-top:1rem;display:flex;gap:8px;align-items:center">
       <button class="btn btn-p" onclick="saveEditSes('${sid}')">Guardar cambios</button>
-      <button class="btn btn-ghost" onclick="editSesionId=null;sesView='bit';renderSes()">Cancelar</button>
+      <button class="btn btn-ghost" onclick="editSesionId=null;SF=null;sesView='bit';renderSes()">Cancelar</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSes('${sid}')">Eliminar sesión</button>
       <span id="es-msg-${sid}"></span>
     </div>
   </div>`;
 }
 
-// Track edited scores separately for edit form
-let editScoresBuf={};
-function setEditScore(sid,k,v){
-  if(!editScoresBuf[sid])editScoresBuf[sid]={L:0,R:0,T:0,D:0,C:0};
-  editScoresBuf[sid][k]=v;
-  // update button UI
-  for(let n=1;n<=10;n++){
-    const b=document.getElementById('es'+k+n);
-    if(!b)continue;
-    const on=n===v;
-    b.className='sc-btn'+(on?' '+(n>=7?'on-green':n>=4?'on-amber':'on-red'):'');
-  }
-}
-
-function toggleEditTested(pid,sid){
-  const grid=document.getElementById('edit-tested-grid-'+sid);
-  if(!grid)return;
-  // toggle in the session object temporarily
-  const s=S.sesiones.find(x=>x.id===sid);if(!s)return;
-  if(!s._editTested)s._editTested=new Set(s.agujasTested||[]);
-  if(s._editTested.has(pid))s._editTested.delete(pid);else s._editTested.add(pid);
-  const agujas=S.productos.filter(p=>p.cat==='Aguja');
-  grid.innerHTML=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${s._editTested.has(a.id)?' on':''}" onclick="toggleEditTested('${a.id}','${sid}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
-}
-
 async function saveEditSes(sid){
   const s=S.sesiones.find(x=>x.id===String(sid));if(!s)return;
-  const buf=editScoresBuf[sid]||{};
-  const params={
+  const ok=await dbSaveSesion({
     id:sid,
     fecha:document.getElementById('es-fecha').value||s.fecha,
     cliente:document.getElementById('es-cli').value.trim(),
     zona:readZona('es-zona'),
     hrs:parseFloat(document.getElementById('es-hrs').value)||s.hrs,
     maquina:document.getElementById('es-maq').value,
-    voltaje:parseFloat(document.getElementById('es-volt').value)||0,
     stroke:document.getElementById('es-stroke').value,
-    agujaId:document.getElementById('es-aguja').value||null,
-    tattooId:document.getElementById('es-tattoo').value||null,
     kitId:s.kitId||null,
     notas:document.getElementById('es-notas').value.trim(),
-    sL:buf.L||s.sL||0,sR:buf.R||s.sR||0,sT:buf.T||s.sT||0,
-    sD:buf.D||s.sD||0,sC:buf.C||s.sC||0,
-    practica:s.practica,
-    agujasTested:s._editTested?[...s._editTested]:(s.agujasTested||[]),
-  };
-  if(s._editTested)delete s._editTested;
-  const ok=await dbSaveSesion(params);if(!ok)return;
-  editSesionId=null;sesView='bit';renderSes();
+    ...sfCollect(),
+  });
+  if(!ok)return;
+  editSesionId=null;SF=null;sesView='bit';renderSes();
 }
 
 async function deleteSes(sid){
   if(!confirm('¿Eliminar esta sesión? Los movimientos de stock generados NO se revierten.'))return;
   const ok=await dbDeleteSesion(sid);if(!ok)return;
-  editSesionId=null;sesView='bit';renderSes();
+  editSesionId=null;SF=null;sesView='bit';renderSes();
 }
 
 function buildBitacora(){
@@ -1356,6 +1386,7 @@ function buildBitacora(){
   const n=S.sesiones.length;
   const avgGlobal=(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1);
   const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):'—';};
+  const nom=pid=>{const p=S.productos.find(x=>x.id===pid);return p?p.nom:'?';};
   return`<div class="g4">
     <div class="metric"><div class="ml">Sesiones</div><div class="mv">${n}</div></div>
     <div class="metric"><div class="ml">Score global</div><div class="mv">${avgGlobal}</div></div>
@@ -1363,15 +1394,16 @@ function buildBitacora(){
     <div class="metric"><div class="ml">Relleno</div><div class="mv">${avgDim('sR')}</div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden"><table>
-    <thead><tr><th>Fecha</th><th>Zona</th><th>Proyecto</th><th>Aguja princ.</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Zona</th><th>Proyecto</th><th>Agujas</th><th>Técnicas</th><th>Línea</th><th>Relleno</th><th>Técnica</th><th>Diseño</th><th>Conform.</th><th>Global</th><th>Notas</th><th></th></tr></thead>
     <tbody>${[...S.sesiones].reverse().map(s=>{
-      const ag=S.productos.find(p=>p.id===s.agujaId);
-      const tattoo=S.tatuajes.find(t=>t.id===s.tattooId);
-      const tested=(s.agujasTested||[]).map(id=>{const p=S.productos.find(x=>x.id===id);return p?`<span class="badge b-prac">${p.nom}</span>`:id;}).join(' ');
+      const proys=(s.tats||[]).map(x=>S.tatuajes.find(t=>t.id===x.tid)).filter(Boolean);
+      const ags=(s.agujas||[]).map(a=>nom(a.pid)+(a.qty>1?' \xD7'+a.qty:'')).join(', ');
+      const tecs=(s.tecnicas||[]).map(t=>t.tec+(t.pid?' '+nom(t.pid):'')+(t.volt!==''&&t.volt!=null?' '+t.volt+'V':'')).join('<br>');
       return`<tr>
         <td>${fdate(s.fecha)}</td><td>${s.zona||'—'}</td>
-        <td>${tattoo?`<span style="font-size:11px;color:var(--accent)">#${tattoo.num} ${tattoo.diseno}</span>`:'<span class="hint">práctica</span>'}</td>
-        <td class="hint">${ag?ag.nom+(ag.practica?' ★':''):'—'}</td>
+        <td>${proys.length?proys.map(t=>`<div style="font-size:11px;color:var(--accent)">#${t.num} ${t.diseno}</div>`).join(''):'<span class="hint">práctica</span>'}</td>
+        <td class="hint" style="font-size:11px">${ags||'—'}</td>
+        <td class="hint" style="font-size:11px;white-space:nowrap">${tecs||'—'}</td>
         <td>${scorePill(s.sL)}</td><td>${scorePill(s.sR)}</td><td>${scorePill(s.sT)}</td><td>${scorePill(s.sD)}</td><td>${scorePill(s.sC)}</td>
         <td>${scorePill(globalScore(s))}</td>
         <td style="font-size:11px;color:var(--text-2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(s.notas||'').replace(/"/g,'&quot;')}">${s.notas||'—'}</td>
@@ -1381,11 +1413,6 @@ function buildBitacora(){
   </table></div>`;
 }
 
-function toggleTested(pid){
-  if(nTestedIds.has(pid))nTestedIds.delete(pid);else nTestedIds.add(pid);
-  const grid=document.getElementById('tested-grid');
-  if(grid){const agujas=S.productos.filter(p=>p.cat==='Aguja');grid.innerHTML=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${nTestedIds.has(a.id)?' on':''}" onclick="toggleTested('${a.id}')">${a.nom}${a.practica?' ★':''}</button>`).join('');}
-}
 function renderExtras(){
   if(!nExtras.length)return`<p class="hint" style="padding:4px 0 .5rem">Sin insumos adicionales.</p>`;
   const opts=S.productos.filter(p=>p.cat!=='Activo').map(p=>`<option value="${p.id}">[${p.cat}] ${p.nom}</option>`).join('');
@@ -1400,38 +1427,31 @@ function renderExtras(){
 }
 function rerenderExtras(){const el=document.getElementById('extras-sec');if(el)el.innerHTML=renderExtras();}
 function addExtra(){const first=S.productos.find(p=>p.cat!=='Activo');nExtras.push({pid:first?first.id:'',qty:1});rerenderExtras();updateSesTotal();}
-function scoreClass(v){return v>=7?'on-green':v>=4?'on-amber':'on-red';}
-function applyScores(){DIMS.forEach(({k})=>{for(let n=1;n<=10;n++){const b=document.getElementById('s'+k+n);if(!b)continue;const on=n===nScores[k];b.className='sc-btn'+(on?' '+scoreClass(n):'');}});}
-function setScore(k,v){nScores[k]=v;applyScores();}
+function calcAgujasCost(list){return (list||[]).reduce((a,x)=>{const p=S.productos.find(y=>y.id===x.pid);return a+(p&&p.cu>0?cxu(p)*(x.qty||1):0);},0);}
 function updateSesTotal(){
   const kitId=document.getElementById('sf-kit-sel')?.value;
-  const kitC=kitId?calcKitCost(kitId,[...nKitExcludes]):0;const extC=calcExtrasCost();const amortS=amortTotalSes();
+  const kitC=kitId?calcKitCost(kitId,[...nKitExcludes]):0;const extC=calcExtrasCost()+(SF&&SF.mode==='new'?calcAgujasCost(SF.agujas):0);const amortS=amortTotalSes();
   const el=document.getElementById('ses-total');const eli=document.getElementById('ins-cost');
   if(el)el.textContent=ars(amortS+kitC+extC);if(eli)eli.textContent=ars(kitC+extC);
 }
 async function saveSes(){
   const fecha=document.getElementById('sf-fecha').value||today;
-  const agujaId=document.getElementById('sf-aguja').value||null;
   const kitId=document.getElementById('sf-kit-sel').value||null;
   const kitExcludes=[...nKitExcludes];
-  const tattooId=document.getElementById('sf-tattoo').value||null;
   const sesId=await dbSaveSesion({
     fecha,
     cliente:document.getElementById('sf-cli').value.trim(),
     zona:readZona('sf-zona'),
     hrs:parseFloat(document.getElementById('sf-hrs').value)||0,
     maquina:document.getElementById('sf-maq').value,
-    agujaId,voltaje:parseFloat(document.getElementById('sf-volt').value)||0,
     stroke:document.getElementById('sf-stroke').value,
-    tattooId,kitId,kitExcludes,extras:[...nExtras],
-    sL:nScores.L,sR:nScores.R,sT:nScores.T,sD:nScores.D,sC:nScores.C,
+    kitId,kitExcludes,extras:[...nExtras],
     notas:document.getElementById('sf-notas').value.trim(),
-    practica:!tattooId,
-    agujasTested:[...nTestedIds],
+    ...sfCollect(),
   });
   if(!sesId)return;
   msg('ses-msg','Sesión guardada','ok');
-  nExtras=[];nScores={L:0,R:0,T:0,D:0,C:0};nTestedIds=new Set();nKitExcludes=new Set();
+  nExtras=[];nKitExcludes=new Set();SF=null;
   setTimeout(()=>setSesView('bit'),1000);
 }
 
