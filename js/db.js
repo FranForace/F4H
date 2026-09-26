@@ -149,6 +149,37 @@ function adaptTatuaje(t) {
   };
 }
 
+function adaptTurno(t) {
+  return {
+    id:       String(t.id),
+    fecha:    t.fecha,
+    hora:     t.hora_inicio ? t.hora_inicio.slice(0, 5) : '',
+    dur:      t.duracion_min || null,
+    cli:      t.cliente,
+    contacto: t.contacto || '',
+    tid:      t.tatuaje_id ? String(t.tatuaje_id) : null,
+    sid:      t.sesion_id  ? String(t.sesion_id)  : null,
+    estado:   t.estado,
+    cupo:     t.cupo_lanzamiento,
+    sena:     Number(t.sena_ars) || 0,
+    notas:    t.notas || '',
+  };
+}
+
+function adaptRegla(r) {
+  return {
+    id:      String(r.id),
+    efecto:  r.efecto,
+    dias:    r.dias_semana || null,
+    desde:   r.desde || null,
+    hasta:   r.hasta || null,
+    hDesde:  r.hora_desde ? r.hora_desde.slice(0, 5) : '',
+    hHasta:  r.hora_hasta ? r.hora_hasta.slice(0, 5) : '',
+    motivo:  r.motivo || '',
+    created: r.created_at,
+  };
+}
+
 // ── Lecturas ─────────────────────────────────────────────────────────────────
 
 async function getProductos() {
@@ -198,6 +229,37 @@ async function getConfig() {
   const cfg = {};
   (data || []).forEach(row => { cfg[row.clave] = row.valor; });
   return cfg;
+}
+
+async function getTurnos() {
+  const { data, error } = await _db.from('turnos').select('*').order('fecha').order('hora_inicio');
+  if (error) { dbError('Error cargando turnos: ' + error.message); return null; }
+  return data.map(adaptTurno);
+}
+
+async function getReglas() {
+  const { data, error } = await _db
+    .from('disponibilidad_reglas').select('*')
+    .order('created_at', { ascending: false });
+  if (error) { dbError('Error cargando reglas de disponibilidad: ' + error.message); return null; }
+  return data.map(adaptRegla);
+}
+
+async function getCupos() {
+  const { data, error } = await _db.from('v_cupos_lanzamiento').select('*').maybeSingle();
+  if (error) { dbError('Error cargando cupos de lanzamiento: ' + error.message); return null; }
+  return data || null;
+}
+
+async function refreshCupos() {
+  const c = await getCupos();
+  if (c) S.cupos = c;
+}
+
+async function dbAgendaDias(desde, hasta) {
+  const { data, error } = await _db.rpc('fn_agenda_dias', { p_desde: desde, p_hasta: hasta });
+  if (error) { dbError('Error calculando disponibilidad: ' + error.message); return null; }
+  return data;
 }
 
 // ── Escrituras ────────────────────────────────────────────────────────────────
@@ -453,12 +515,106 @@ async function dbDeleteKit(id) {
   return true;
 }
 
+async function dbSaveTurno(t) {
+  // No toca estado ni sesion_id — eso lo maneja dbSetEstadoTurno/dbVincularSesionTurno.
+  const payload = {
+    fecha:            t.fecha,
+    hora_inicio:      t.hora || null,
+    duracion_min:     t.dur  || null,
+    cliente:          t.cli,
+    contacto:         t.contacto || null,
+    tatuaje_id:       t.tid ? Number(t.tid) : null,
+    cupo_lanzamiento: !!t.cupo,
+    sena_ars:         t.sena || 0,
+    notas:            t.notas || null,
+  };
+  if (t.id) {
+    const { error } = await _db.from('turnos').update(payload).eq('id', Number(t.id));
+    if (error) { dbError('Error actualizando turno: ' + error.message); return null; }
+  } else {
+    const { data, error } = await _db.from('turnos').insert(payload).select().single();
+    if (error) { dbError('Error guardando turno: ' + error.message); return null; }
+    t.id = String(data.id);
+  }
+  const nuevos = await getTurnos();
+  if (nuevos) S.turnos = nuevos;
+  await refreshCupos();
+  return t.id;
+}
+
+async function dbSetEstadoTurno(id, estado) {
+  if (!['Reservado', 'Confirmado', 'Cancelado', 'No vino'].includes(estado)) {
+    dbError('Estado de turno inválido'); return false;
+  }
+  const { error } = await _db.from('turnos').update({ estado }).eq('id', Number(id));
+  if (error) { dbError('Error actualizando estado del turno: ' + error.message); return false; }
+  const t = S.turnos.find(x => x.id === String(id));
+  if (t) t.estado = estado;
+  await refreshCupos();
+  return true;
+}
+
+async function dbVincularSesionTurno(turnoId, sesionId) {
+  const { error } = await _db.from('turnos')
+    .update({ sesion_id: Number(sesionId), estado: 'Realizado' })
+    .eq('id', Number(turnoId));
+  if (error) { dbError('Error vinculando la sesión al turno: ' + error.message); return false; }
+  const t = S.turnos.find(x => x.id === String(turnoId));
+  if (t) { t.sid = String(sesionId); t.estado = 'Realizado'; }
+  return true;
+}
+
+async function dbDesvincularSesionTurno(turnoId) {
+  const { error } = await _db.from('turnos')
+    .update({ sesion_id: null, estado: 'Confirmado' })
+    .eq('id', Number(turnoId));
+  if (error) { dbError('Error desvinculando la sesión del turno: ' + error.message); return false; }
+  const t = S.turnos.find(x => x.id === String(turnoId));
+  if (t) { t.sid = null; t.estado = 'Confirmado'; }
+  return true;
+}
+
+async function dbDeleteTurno(id) {
+  const t = S.turnos.find(x => x.id === String(id));
+  if (t && t.sid) { dbError('Este turno tiene una sesión vinculada — desvinculala antes de borrar.'); return false; }
+  const { error } = await _db.from('turnos').delete().eq('id', Number(id));
+  if (error) { dbError('Error eliminando turno: ' + error.message); return false; }
+  S.turnos = S.turnos.filter(x => x.id !== String(id));
+  await refreshCupos();
+  return true;
+}
+
+async function dbSaveRegla(r) {
+  const payload = {
+    efecto:      r.efecto,
+    dias_semana: r.dias || null,
+    desde:       r.desde || null,
+    hasta:       r.hasta || null,
+    hora_desde:  r.hDesde || null,
+    hora_hasta:  r.hHasta || null,
+    motivo:      r.motivo || null,
+  };
+  const { data, error } = await _db.from('disponibilidad_reglas').insert(payload).select().single();
+  if (error) { dbError('Error guardando la regla: ' + error.message); return null; }
+  const nuevas = await getReglas();
+  if (nuevas) S.reglas = nuevas;
+  return String(data.id);
+}
+
+async function dbDeleteRegla(id) {
+  const { error } = await _db.from('disponibilidad_reglas').delete().eq('id', Number(id));
+  if (error) { dbError('Error eliminando la regla: ' + error.message); return false; }
+  S.reglas = S.reglas.filter(x => x.id !== String(id));
+  return true;
+}
+
 // ── Hidratación inicial de S desde Supabase ───────────────────────────────────
 
 async function initDB() {
   try {
-    const [productos, movimientos, sesiones, tatuajes, kits, cfg] = await Promise.all([
+    const [productos, movimientos, sesiones, tatuajes, kits, cfg, turnos, reglas, cupos] = await Promise.all([
       getProductos(), getMovimientos(), getSesiones(), getTatuajes(), getKits(), getConfig(),
+      getTurnos(), getReglas(), getCupos(),
     ]);
     if (!productos) throw new Error('productos null');
     S.productos   = productos;
@@ -466,6 +622,9 @@ async function initDB() {
     S.sesiones    = sesiones    || [];
     S.tatuajes    = tatuajes    || [];
     S.kits        = kits        || [];
+    S.turnos      = turnos      || [];
+    S.reglas      = reglas      || [];
+    S.cupos       = cupos       || null;
     if (cfg) {
       if (cfg.tipo_cambio      !== undefined) S.tc  = Number(cfg.tipo_cambio);
       if (cfg.sesiones_por_mes !== undefined) S.spm = Number(cfg.sesiones_por_mes);

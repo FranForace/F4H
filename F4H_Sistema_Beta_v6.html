@@ -256,6 +256,9 @@ textarea{resize:vertical;min-height:80px}
       <span class="sb-icon">&#x25AA;</span>Dashboard
     </button>
     <div class="sb-group">Trabajo</div>
+    <button class="sidebar-item" data-tab="agenda" onclick="go('agenda')">
+      <span class="sb-icon">&#x25A6;</span>Agenda
+    </button>
     <button class="sidebar-item" data-tab="tattoos" onclick="go('tattoos')">
       <span class="sb-icon">&#x2726;</span>Tatuajes
     </button>
@@ -293,6 +296,7 @@ textarea{resize:vertical;min-height:80px}
 
 
 <div id="t-dash"></div>
+<div id="t-agenda" style="display:none"></div>
 <div id="t-tattoos" style="display:none"></div>
 <div id="t-inv" style="display:none"></div>
 <div id="t-act" style="display:none"></div>
@@ -476,7 +480,7 @@ function initAuthUI(){
     }
   });
 }
-let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
+let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8,turnos:[],reglas:[],cupos:null};
 const ESTILOS=['American Traditional','Neo Traditional','New School','Blackwork','Realismo','Fine Line','Minimalista','Geométrico','Japonés (Irezumi)','Lettering','Acuarela','Chicano','Tribal','Dark / Horror','Ilustración','Otro'];
 let curTab='dash',sesView='nueva',tattooView='lista',fCat=[],fSt='',editingId=null,selectedTattooId=null;
 let nExtras=[],nKitExcludes=new Set(),editSesionId=null;
@@ -604,9 +608,10 @@ function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En 
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function go(t){
+  if(curTab==='ses'&&t!=='ses'&&pendingTurnoId)pendingTurnoId=null;
   curTab=t;editingId=null;
   document.querySelectorAll('.sidebar-item').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
-  ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg'].forEach(x=>{
+  ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg','agenda'].forEach(x=>{
     document.getElementById('t-'+x).style.display=x===t?'':'none';
   });
   if(t==='dash')renderDash();
@@ -617,10 +622,407 @@ function go(t){
   if(t==='egresos')renderEgresos();
   if(t==='mov'){fillMovSel();renderMovTable();}
   if(t==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
+  if(t==='agenda')renderAgenda();
 }
 function setSesView(v){sesView=v;editSesionId=null;SF=null;nExtras=[];nKitExcludes=new Set();renderSes();}
 function renderAll(){if(curTab==='dash')renderDash();else if(curTab==='tattoos')renderTattoos();else if(curTab==='inv')renderInv();else if(curTab==='act')renderActivos();else if(curTab==='ses')renderSes();else if(curTab==='egresos')renderEgresos();
-  else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}}
+  else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
+  else if(curTab==='agenda')renderAgenda();}
+
+// ─── Agenda ───────────────────────────────────────────────────────────────────
+// AG: estado de UI del módulo (no persiste, se recalcula desde S + fn_agenda_dias).
+// AG.dias[yyyy-mm] = { 'yyyy-mm-dd': {fecha,abierto,hora_desde,hora_hasta,regla_id,regla_efecto,regla_motivo,turnos_activos} }
+let AG={mes:today.slice(0,7),dia:null,panel:null,dias:{}};
+let AGturnoForm=null,AGavisoCierre=null;
+let AGreglaForm=AGreglaFormDefault();
+function AGreglaFormDefault(){return{efecto:'abrir',dias:new Set(),todos:true,desde:'',hasta:'',hDesde:'',hHasta:'',motivo:''};}
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DIAS_SEM=['L','M','X','J','V','S','D'];
+const DIAS_SEM_LARGO=['','lunes','martes','mi\xE9rcoles','jueves','viernes','s\xE1bado','domingo'];
+
+function AGymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function AGaddMonths(mesKey,delta){
+  const [y,m]=mesKey.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function AGgridRange(mesKey){
+  const [y,m]=mesKey.split('-').map(Number);
+  const first=new Date(y,m-1,1);
+  const last=new Date(y,m,0);
+  const firstIso=((first.getDay()+6)%7)+1;
+  const lastIso=((last.getDay()+6)%7)+1;
+  const start=new Date(first);start.setDate(first.getDate()-(firstIso-1));
+  const end=new Date(last);end.setDate(last.getDate()+(7-lastIso));
+  return {start,end};
+}
+async function AGloadMes(mesKey){
+  if(AG.dias[mesKey])return AG.dias[mesKey];
+  const {start,end}=AGgridRange(mesKey);
+  const rows=await dbAgendaDias(AGymd(start),AGymd(end));
+  if(rows===null)return {};
+  const map={};
+  rows.forEach(r=>{map[r.fecha]=r;});
+  AG.dias[mesKey]=map;
+  return map;
+}
+function AGinfoDia(fecha){
+  return (AG.dias[AG.mes]||{})[fecha] || (AG.dias[fecha.slice(0,7)]||{})[fecha] || null;
+}
+
+async function renderAgenda(){
+  const el=document.getElementById('t-agenda');
+  if(!AG.dias[AG.mes])await AGloadMes(AG.mes);
+  el.innerHTML=buildAgendaHeader()+buildAgendaCupos()
+    +'<div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">'
+    +buildAgendaCalendario()+buildAgendaPanel()+'</div>';
+}
+
+function buildAgendaHeader(){
+  return '<div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Trabajo</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Agenda</div><div style="font-size:14px;color:var(--text-2)">Disponibilidad, turnos y cupos</div></div>';
+}
+
+function buildAgendaCupos(){
+  const c=S.cupos;if(!c)return'';
+  const pct=c.total?Math.min(100,Math.round((c.usados/c.total)*100)):0;
+  const critico=c.disponibles<=3||c.dias_restantes<=7;
+  const color=critico?'var(--red)':'var(--accent)';
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<span style="font-size:13px;font-weight:700;color:var(--text)">Cupos de lanzamiento</span>'
+    +'<span style="font-size:13px;font-weight:700;color:'+color+'">'+c.usados+'/'+c.total+' \xB7 '+c.dias_restantes+' d\xEDas</span>'
+    +'</div><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'
+    +'</div>';
+}
+
+function buildAgendaCalendario(){
+  const mesKey=AG.mes;
+  const [y,m]=mesKey.split('-').map(Number);
+  const dias=AG.dias[mesKey]||{};
+  const {start,end}=AGgridRange(mesKey);
+  let cells='';
+  const d=new Date(start);
+  while(d<=end){
+    const fecha=AGymd(d);
+    const info=dias[fecha];
+    const inMes=(d.getMonth()+1===m);
+    const esHoy=fecha===today;
+    const abierto=!!(info&&info.abierto);
+    const turnosDia=S.turnos.filter(t=>t.fecha===fecha);
+    const turnosActivos=(info&&info.turnos_activos)||0;
+    const avisoRojo=!abierto&&turnosActivos>0;
+    const sesionesSinTurno=fecha<today?S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id)):[];
+    const titleTxt=abierto?('Abierto por: '+(info.regla_motivo||'—')):((info&&info.regla_id)?('Cerrado por: '+(info.regla_motivo||'—')):'Cerrado (sin reglas)');
+    const bg=abierto?'var(--bg-card)':'var(--bg)';
+    const border=abierto?'1.5px solid var(--accent)':'1px solid var(--border)';
+    const numColor=abierto?'var(--text)':'var(--text-3)';
+    const numHtml=esHoy
+      ?'<span style="font-size:11px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
+      :'<span style="font-size:12px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" style="min-height:86px;padding:6px 8px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative">'
+      +(avisoRojo?'<span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+numHtml
+      +(abierto&&info.hora_desde?'<span style="font-size:9px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:2px">'
+      +turnosDia.slice(0,3).map(t=>{
+        const tachado=['Cancelado','No vino'].includes(t.estado);
+        const color=t.estado==='Confirmado'?'var(--green)':t.estado==='Realizado'?'var(--text-3)':tachado?'var(--red)':'var(--amber)';
+        return '<div style="font-size:9px;color:'+color+(tachado?';text-decoration:line-through':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(t.hora||'--:--')+' '+t.cli+'</div>';
+      }).join('')
+      +sesionesSinTurno.slice(0,2).map(s=>'<div style="font-size:9px;color:var(--text-3)">✓ '+(s.cliente||'—')+'</div>').join('')
+      +'</div></div>';
+    d.setDate(d.getDate()+1);
+  }
+  return '<div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<button class="btn btn-xs" onclick="AGcambiarMes(-1)">‹</button>'
+        +'<span style="font-size:15px;font-weight:700;min-width:150px;text-align:center">'+MESES[m-1]+' '+y+'</span>'
+        +'<button class="btn btn-xs" onclick="AGcambiarMes(1)">›</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button class="btn btn-xs" onclick="AG.mes=today.slice(0,7);renderAgenda()">Hoy</button>'
+        +'<button class="btn btn-xs" onclick="AGabrirReglas()">Reglas de disponibilidad</button>'
+      +'</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">'
+      +DIAS_SEM.map(x=>'<div style="font-size:10px;font-weight:700;color:var(--text-3);text-align:center;text-transform:uppercase">'+x+'</div>').join('')
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+cells+'</div>'
+  +'</div>';
+}
+async function AGcambiarMes(delta){AG.mes=AGaddMonths(AG.mes,delta);if(!AG.dias[AG.mes])await AGloadMes(AG.mes);renderAgenda();}
+
+function buildAgendaPanel(){
+  if(AG.panel==='reglas')return buildPanelReglas();
+  if(AG.panel==='turno')return buildPanelTurno();
+  if(AG.dia)return buildPanelDia(AG.dia);
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 20px;text-align:center;color:var(--text-3);font-size:13px">Seleccion\xE1 un d\xEDa del calendario.</div>';
+}
+
+function buildPanelDia(fecha){
+  const info=AGinfoDia(fecha)||{abierto:false,turnos_activos:0,regla_id:null,regla_motivo:''};
+  const [y,m,dd]=fecha.split('-').map(Number);
+  const fechaLarga=new Date(y,m-1,dd).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const turnosDia=S.turnos.filter(t=>t.fecha===fecha).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const sesionesSinTurno=S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id));
+  return '<div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text);text-transform:capitalize">'+fechaLarga+'</div>'
+        +'<button class="btn btn-xs" onclick="AG.dia=null;AG.panel=null;renderAgenda()">✕</button>'
+      +'</div>'
+      +'<div style="margin-bottom:6px"><span class="badge" style="background:'+(info.abierto?'rgba(74,154,58,.15)':'rgba(226,75,74,.15)')+';color:'+(info.abierto?'var(--green)':'var(--red)')+'">'+(info.abierto?'ABIERTO':'CERRADO')+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:12px">'+(info.abierto?'Abierto por: ':(info.regla_id?'Cerrado por: ':'Cerrado (sin reglas)'))+(info.regla_id?(info.regla_motivo||'—'):'')+'</div>'
+      +(AGavisoCierre===fecha
+        ?'<div style="background:rgba(226,75,74,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text)">Este d\xEDa tiene '+info.turnos_activos+' turno(s) activo(s).'
+          +'<div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-xs btn-danger" onclick="AGtoggleDia(\''+fecha+'\')">Cerrar igual</button><button class="btn btn-xs" onclick="AGavisoCierre=null;renderAgenda()">Cancelar</button></div></div>'
+        :'<button class="btn btn-sm" onclick="AGtoggleDia(\''+fecha+'\')">'+(info.abierto?'Cerrar este d\xEDa':'Abrir este d\xEDa')+'</button>')
+    +'</div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:700;color:var(--text)">Turnos</div>'
+        +'<button class="btn btn-xs btn-p" onclick="AGnuevoTurno(\''+fecha+'\')">+ Turno</button></div>'
+      +(turnosDia.length?turnosDia.map(buildTurnoRow).join(''):'<div class="empty">Sin turnos este d\xEDa.</div>')
+    +'</div>'
+    +(sesionesSinTurno.length?('<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">Sesiones registradas sin turno</div>'
+      +sesionesSinTurno.map(s=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:12px"><span>'+(s.cliente||'—')+' \xB7 '+(s.zona||'—')+'</span><button class="btn btn-xs" onclick="editSesFromTattoo(\''+s.id+'\')">Ver sesi\xF3n</button></div>').join('')
+    +'</div>'):'')
+  +'</div>';
+}
+
+function buildTurnoRow(t){
+  const tat=t.tid?S.tatuajes.find(x=>x.id===t.tid):null;
+  const colorMap={Reservado:'var(--amber)',Confirmado:'var(--green)',Realizado:'var(--text-3)',Cancelado:'var(--red)','No vino':'var(--red)'};
+  const tachado=['Cancelado','No vino'].includes(t.estado);
+  let acciones='';
+  if(t.estado==='Reservado')acciones+='<button class="btn btn-xs" onclick="AGsetEstado(\''+t.id+'\',\'Confirmado\')">Confirmar</button>';
+  if(!['Cancelado','No vino','Realizado'].includes(t.estado)){
+    acciones+='<button class="btn btn-xs btn-danger" onclick="AGsetEstado(\''+t.id+'\',\'Cancelado\')">Cancelar</button>';
+    acciones+='<button class="btn btn-xs" onclick="AGsetEstado(\''+t.id+'\',\'No vino\')">No vino</button>';
+  }
+  acciones+='<button class="btn btn-xs" onclick="AGeditarTurno(\''+t.id+'\')">Editar</button>';
+  acciones+=(t.estado!=='Realizado')
+    ?'<button class="btn btn-xs btn-p" onclick="AGregistrarSesion(\''+t.id+'\')">Registrar sesi\xF3n</button>'
+    :('<button class="btn btn-xs" onclick="editSesFromTattoo(\''+t.sid+'\')">Ver sesi\xF3n</button>'
+      +'<button class="btn btn-xs btn-ghost" onclick="AGdesvincular(\''+t.id+'\')">Desvincular</button>');
+  return '<div style="padding:8px 0;border-top:1px solid var(--border)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<span style="font-size:12px;font-weight:700;color:'+colorMap[t.estado]+(tachado?';text-decoration:line-through':'')+'">'+(t.hora||'--:--')+' \xB7 '+t.cli+'</span>'
+      +'<span class="hint">'+t.estado+'</span>'
+    +'</div>'
+    +(tat?'<div class="hint" style="margin-bottom:4px">'+tat.diseno+'</div>':'')
+    +(t.cupo?'<div class="hint" style="margin-bottom:4px;color:var(--accent)">Cupo de lanzamiento</div>':'')
+    +'<div style="display:flex;gap:4px;flex-wrap:wrap">'+acciones+'</div>'
+  +'</div>';
+}
+
+async function AGsetEstado(id,estado){
+  if(await dbSetEstadoTurno(id,estado)){
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
+}
+async function AGdesvincular(id){
+  if(!confirm('\xBFDesvincular la sesi\xF3n de este turno? El turno vuelve a Confirmado.'))return;
+  if(await dbDesvincularSesionTurno(id)){
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
+}
+
+async function AGtoggleDia(fecha){
+  const info=AGinfoDia(fecha)||{abierto:false,turnos_activos:0,regla_id:null};
+  if(info.abierto&&info.turnos_activos>0&&AGavisoCierre!==fecha){
+    AGavisoCierre=fecha;renderAgenda();return;
+  }
+  AGavisoCierre=null;
+  const r=info.regla_id?S.reglas.find(x=>x.id===String(info.regla_id)):null;
+  if(r&&r.desde===fecha&&r.hasta===fecha&&!r.dias){
+    await dbDeleteRegla(r.id);
+  }else{
+    await dbSaveRegla({efecto:info.abierto?'cerrar':'abrir',dias:null,desde:fecha,hasta:fecha,hDesde:'',hHasta:'',motivo:'Manual'});
+  }
+  AG.dias={};
+  await AGloadMes(AG.mes);
+  renderAgenda();
+}
+
+function AGnuevoTurno(fecha){
+  AGturnoForm={id:null,fecha,hora:'',dur:60,cli:'',contacto:'',tid:'',
+    cupo:!!(S.cupos&&S.cupos.disponibles>0&&(!S.cupos.hasta||fecha<=S.cupos.hasta)),sena:0,notas:''};
+  AG.panel='turno';renderAgenda();
+}
+function AGeditarTurno(id){
+  const t=S.turnos.find(x=>x.id===String(id));if(!t)return;
+  AGturnoForm={...t};
+  AG.panel='turno';renderAgenda();
+}
+
+function buildPanelTurno(){
+  const f=AGturnoForm;if(!f)return'';
+  const fecha=f.fecha;
+  const info=AGinfoDia(fecha)||{abierto:false};
+  const tatOpts=S.tatuajes.filter(t=>t.estado!=='Finalizado');
+  const cupoAgotado=S.cupos&&S.cupos.disponibles<=0;
+  const sesionesFecha=S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id&&t.id!==f.id));
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--text)">'+(f.id?'Editar turno':'Nuevo turno')+'</div><button class="btn btn-xs" onclick="AGturnoForm=null;AG.panel=\'dia\';renderAgenda()">✕</button></div>'
+    +(!info.abierto?'<div style="background:rgba(212,135,42,.1);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text)">Este d\xEDa est\xE1 cerrado.</div>':'')
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Fecha</label><input id="tf-fecha" type="date" value="'+fecha+'"></div>'
+    +'<div class="fgrid" style="margin-bottom:8px">'
+      +'<div class="fg"><label class="fl">Hora</label><input id="tf-hora" type="time" value="'+(f.hora||'')+'"></div>'
+      +'<div class="fg"><label class="fl">Duraci\xF3n (min)</label><input id="tf-dur" type="number" min="0" step="15" value="'+(f.dur||'')+'"></div>'
+    +'</div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Cliente *</label><input id="tf-cli" value="'+(f.cli||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Contacto</label><input id="tf-contacto" value="'+(f.contacto||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Tatuaje vinculado</label><select id="tf-tid"><option value="">— ninguno —</option>'+tatOpts.map(t=>'<option value="'+t.id+'"'+(f.tid===t.id?' selected':'')+'>#'+t.num+' '+t.diseno+'</option>').join('')+'</select></div>'
+    +(sesionesFecha.length?('<div class="fg" style="margin-bottom:8px"><label class="fl">Vincular sesi\xF3n existente</label><select id="tf-sesion-existente"><option value="">— ninguna —</option>'+sesionesFecha.map(s=>'<option value="'+s.id+'">'+(s.cliente||'sin cliente')+' \xB7 '+(s.zona||'sin zona')+'</option>').join('')+'</select></div>'):'')
+    +'<div class="fg" style="margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2)"><input type="checkbox" id="tf-cupo" style="width:auto"'+(f.cupo?' checked':'')+'> Usa cupo de lanzamiento'+(cupoAgotado?' <span style="color:var(--red)">(agotado)</span>':'')+'</label></div>'
+    +'<div class="fg" style="margin-bottom:8px"><label class="fl">Se\xF1a (ARS)</label><input id="tf-sena" type="number" min="0" step="500" value="'+(f.sena||0)+'"></div>'
+    +'<div class="fg" style="margin-bottom:12px"><label class="fl">Notas</label><textarea id="tf-notas" rows="2">'+(f.notas||'')+'</textarea></div>'
+    +'<div style="display:flex;gap:8px;align-items:center"><button class="btn btn-p" id="tf-save" onclick="AGguardarTurno()">Guardar'+(!info.abierto?' igual':'')+'</button>'
+    +(f.id?'<button class="btn btn-danger" onclick="AGborrarTurno(\''+f.id+'\')">Eliminar</button>':'')
+    +'<span id="tf-msg"></span></div>'
+  +'</div>';
+}
+
+async function AGguardarTurno(){
+  const btn=document.getElementById('tf-save');if(btn)btn.disabled=true;
+  const cli=document.getElementById('tf-cli').value.trim();
+  if(!cli){msg('tf-msg','El cliente es obligatorio','err');if(btn)btn.disabled=false;return;}
+  const sesionExistenteSel=document.getElementById('tf-sesion-existente');
+  const sesionExistente=sesionExistenteSel?sesionExistenteSel.value:'';
+  const payload={
+    id:AGturnoForm.id,
+    fecha:document.getElementById('tf-fecha').value,
+    hora:document.getElementById('tf-hora').value,
+    dur:parseInt(document.getElementById('tf-dur').value)||null,
+    cli,
+    contacto:document.getElementById('tf-contacto').value.trim(),
+    tid:document.getElementById('tf-tid').value,
+    cupo:document.getElementById('tf-cupo').checked,
+    sena:parseFloat(document.getElementById('tf-sena').value)||0,
+    notas:document.getElementById('tf-notas').value.trim(),
+  };
+  const id=await dbSaveTurno(payload);
+  if(!id){if(btn)btn.disabled=false;return;}
+  if(sesionExistente)await dbVincularSesionTurno(id,sesionExistente);
+  AG.dias={};await AGloadMes(AG.mes);
+  if(payload.fecha.slice(0,7)!==AG.mes)await AGloadMes(payload.fecha.slice(0,7));
+  AGturnoForm=null;AG.dia=payload.fecha;AG.panel='dia';
+  renderAgenda();
+}
+async function AGborrarTurno(id){
+  if(!confirm('\xBFEliminar este turno?'))return;
+  if(await dbDeleteTurno(id)){
+    AGturnoForm=null;AG.panel='dia';
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
+}
+
+function AGabrirReglas(){AGreglaForm=AGreglaFormDefault();AG.panel='reglas';renderAgenda();}
+
+function AGtoggleDiaChip(n){
+  if(AGreglaForm.dias.has(n))AGreglaForm.dias.delete(n);else AGreglaForm.dias.add(n);
+  renderAgenda();
+}
+
+function AGpreviewRegla(f){
+  if(!f.todos&&!f.dias.size)return'Seleccion\xE1 al menos un d\xEDa.';
+  const dias=f.todos?null:[...f.dias];
+  const start=new Date(today+'T00:00:00');
+  const matches=[];
+  for(let i=0;i<90&&matches.length<6;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);
+    const fecha=AGymd(d);
+    if(f.desde&&fecha<f.desde)continue;
+    if(f.hasta&&fecha>f.hasta)continue;
+    const iso=((d.getDay()+6)%7)+1;
+    if(dias&&!dias.includes(iso))continue;
+    matches.push(d.getDate()+'/'+(d.getMonth()+1));
+  }
+  if(!matches.length)return'Esta regla no toca ning\xFAn d\xEDa en los pr\xF3ximos 90.';
+  return'Esta regla toca los pr\xF3ximos 90 d\xEDas as\xED: '+matches.join(', ')+(matches.length>=6?'…':'');
+}
+
+function buildPanelReglas(){
+  const f=AGreglaForm;
+  const diasChips=DIAS_SEM.map((lbl,i)=>{
+    const n=i+1;const on=!f.todos&&f.dias.has(n);
+    return '<button type="button" class="btn btn-xs'+(on?' btn-p':'')+'" onclick="AGtoggleDiaChip('+n+')">'+lbl+'</button>';
+  }).join('');
+  return '<div>'
+    +'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--text)">Nueva regla</div><button class="btn btn-xs" onclick="AG.panel=null;AG.dia=null;renderAgenda()">✕</button></div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:10px">'
+        +'<button class="btn btn-sm'+(f.efecto==='abrir'?' btn-p':'')+'" onclick="AGreglaForm.efecto=\'abrir\';renderAgenda()">Abrir</button>'
+        +'<button class="btn btn-sm'+(f.efecto==='cerrar'?' btn-p':'')+'" onclick="AGreglaForm.efecto=\'cerrar\';renderAgenda()">Cerrar</button>'
+      +'</div>'
+      +'<div class="fl" style="margin-bottom:4px">Qu\xE9 d\xEDas</div>'
+      +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+diasChips+'</div>'
+      +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);margin-bottom:10px"><input type="checkbox" style="width:auto"'+(f.todos?' checked':'')+' onchange="AGreglaForm.todos=this.checked;renderAgenda()"> Todos los d\xEDas</label>'
+      +'<div class="fgrid" style="margin-bottom:6px">'
+        +'<div class="fg"><label class="fl">Desde</label><input id="rg-desde" type="date" value="'+f.desde+'" onchange="AGreglaForm.desde=this.value;renderAgenda()"></div>'
+        +'<div class="fg"><label class="fl">Hasta</label><input id="rg-hasta" type="date" value="'+f.hasta+'" onchange="AGreglaForm.hasta=this.value;renderAgenda()"></div>'
+      +'</div>'
+      +'<button type="button" class="btn btn-xs" style="margin-bottom:10px" onclick="AGreglaForm.hasta=AGreglaForm.desde;renderAgenda()">Solo un d\xEDa</button>'
+      +(f.efecto==='abrir'?('<div class="fgrid" style="margin-bottom:10px">'
+        +'<div class="fg"><label class="fl">Horario desde</label><input id="rg-hdesde" type="time" value="'+f.hDesde+'" onchange="AGreglaForm.hDesde=this.value"></div>'
+        +'<div class="fg"><label class="fl">Horario hasta</label><input id="rg-hhasta" type="time" value="'+f.hHasta+'" onchange="AGreglaForm.hHasta=this.value"></div>'
+      +'</div>'):'')
+      +'<div class="fg" style="margin-bottom:10px"><label class="fl">Motivo</label><input id="rg-motivo" value="'+(f.motivo||'').replace(/"/g,'&quot;')+'" onchange="AGreglaForm.motivo=this.value"></div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:10px">'+AGpreviewRegla(f)+'</div>'
+      +'<button class="btn btn-p" id="rg-save" onclick="AGguardarRegla()">Guardar regla</button>'
+      +'<span id="rg-msg"></span>'
+    +'</div>'
+    +buildListaReglas()
+  +'</div>';
+}
+
+async function AGguardarRegla(){
+  const f=AGreglaForm;
+  if(!f.todos&&!f.dias.size){msg('rg-msg','Eleg\xED al menos un d\xEDa o marc\xE1 "Todos los d\xEDas"','err');return;}
+  if(f.desde&&f.hasta&&f.hasta<f.desde){msg('rg-msg','"Hasta" no puede ser anterior a "Desde"','err');return;}
+  const btn=document.getElementById('rg-save');if(btn)btn.disabled=true;
+  const id=await dbSaveRegla({
+    efecto:f.efecto,
+    dias:f.todos?null:[...f.dias].sort((a,b)=>a-b),
+    desde:f.desde||null,hasta:f.hasta||null,
+    hDesde:f.efecto==='abrir'?(f.hDesde||''):'',
+    hHasta:f.efecto==='abrir'?(f.hHasta||''):'',
+    motivo:f.motivo.trim(),
+  });
+  if(!id){if(btn)btn.disabled=false;return;}
+  AG.dias={};await AGloadMes(AG.mes);
+  AGreglaForm=AGreglaFormDefault();
+  renderAgenda();
+}
+
+function AGdescribeRegla(r){
+  const diasTxt=r.dias?r.dias.map(n=>DIAS_SEM_LARGO[n]).join(', '):'todos los d\xEDas';
+  const rango=(r.desde&&r.hasta&&r.desde===r.hasta)?('el '+fdate(r.desde))
+    :((r.desde?('desde '+fdate(r.desde)):'')+(r.hasta?(' hasta '+fdate(r.hasta)):'')||'sin l\xEDmite');
+  const horario=r.hDesde?(' \xB7 '+r.hDesde+'–'+r.hHasta):'';
+  return(r.efecto==='abrir'?'Abrir':'Cerrar')+' \xB7 '+diasTxt+' \xB7 '+rango+horario+(r.motivo?(' \xB7 ‘'+r.motivo+'’'):'');
+}
+function buildListaReglas(){
+  const vigentes=S.reglas.filter(r=>!r.hasta||r.hasta>=today);
+  const vencidas=S.reglas.filter(r=>r.hasta&&r.hasta<today);
+  const row=r=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:12px"><span>'+AGdescribeRegla(r)+'</span><button class="btn btn-xs btn-danger" onclick="AGeliminarRegla(\''+r.id+'\')">✕</button></div>';
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Reglas vigentes</div>'
+    +(vigentes.length?vigentes.map(row).join(''):'<div class="empty">Sin reglas vigentes.</div>')
+    +(vencidas.length?('<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;color:var(--text-3)">Reglas vencidas ('+vencidas.length+')</summary>'+vencidas.map(row).join('')+'</details>'):'')
+  +'</div>';
+}
+async function AGeliminarRegla(id){
+  if(await dbDeleteRegla(id)){AG.dias={};await AGloadMes(AG.mes);renderAgenda();}
+}
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
@@ -1408,6 +1810,19 @@ function buildNuevaSes(){
 }
 
 function editSesFromTattoo(sid){go('ses');setTimeout(()=>{editSesionId=sid;sesView='edit';SF=null;renderSes();},60);}
+let pendingTurnoId=null;
+function AGregistrarSesion(turnoId){
+  const t=S.turnos.find(x=>x.id===String(turnoId));if(!t)return;
+  pendingTurnoId=turnoId;
+  go('ses');
+  setTimeout(()=>{
+    sesView='nueva';SF=null;renderSes();
+    setTimeout(()=>{
+      const fEl=document.getElementById('sf-fecha');if(fEl)fEl.value=t.fecha;
+      if(t.tid)sfAddTat(t.tid);
+    },30);
+  },60);
+}
 function startEditSes(sid){editSesionId=sid;sesView='edit';SF=null;renderSes();}
 
 function buildEditSes(sid){
@@ -1457,6 +1872,10 @@ async function saveEditSes(sid){
 
 async function deleteSes(sid){
   if(!confirm('¿Eliminar esta sesión? Los movimientos de stock generados NO se revierten.'))return;
+  if(S.turnos.some(t=>t.sid===sid)){
+    msg('es-msg-'+sid,'Esta sesión está vinculada a un turno — desvinculala desde la Agenda antes de eliminarla.','err');
+    return;
+  }
   const ok=await dbDeleteSesion(sid);if(!ok)return;
   editSesionId=null;SF=null;sesView='bit';renderSes();
 }
@@ -1532,8 +1951,16 @@ async function saveSes(){
     ...sfCollect(),
   });
   if(!sesId){if(btn){btn.disabled=false;btn.textContent='Guardar sesión';}return;}
+  let vinculoError=false;
+  if(pendingTurnoId){
+    const ok=await dbVincularSesionTurno(pendingTurnoId,sesId);
+    if(!ok)vinculoError=true;
+    pendingTurnoId=null;
+    AG.dias={};
+  }
   const nf=SF.fotos.length;const subidas=await sfPostSave(sesId);
-  msg('ses-msg','Sesión guardada'+(nf?' · '+subidas+'/'+nf+' fotos':''),'ok');
+  if(vinculoError)msg('ses-msg','Sesión guardada, pero no se pudo vincular al turno — vinculala desde la Agenda','err');
+  else msg('ses-msg','Sesión guardada'+(nf?' · '+subidas+'/'+nf+' fotos':''),'ok');
   nExtras=[];nKitExcludes=new Set();SF=null;
   setTimeout(()=>setSesView('bit'),1000);
 }
