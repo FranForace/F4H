@@ -1061,14 +1061,13 @@ function renderDash(){
   const ultimasSes=[...S.sesiones].sort((a,b)=>b.fecha>a.fecha?1:-1).slice(0,3);
   const mesLabel=new Date().toLocaleString('es-AR',{month:'long',year:'numeric'});
   const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
-  const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
   const ringR=22,ringC=Math.round(2*Math.PI*ringR);
   const ringOffset=n?Math.round(ringC*(1-Math.min(1,avgGlobalNum/10))):ringC;
   const sesMeses=sesionesPorMes(6);
-  const sesDelta=sesMeses[5]-sesMeses[4];
+  const sesDelta=sesMeses[4]-sesMeses[3];
   const sesTrendColor=sesDelta>0?'var(--green)':sesDelta<0?'var(--red)':'var(--text-3)';
   const sesTrendArrow=sesDelta>0?'↑':sesDelta<0?'↓':'→';
-  const sesTrendTxt=sesDelta===0?'sin cambios':(sesDelta>0?'+':'')+sesDelta+' sesi\xF3n'+(Math.abs(sesDelta)!==1?'es':'')+' vs mes anterior';
+  const sesTrendTxt=sesDelta===0?'sin cambios':(sesDelta>0?'+':'')+sesDelta+' sesi\xF3n'+(Math.abs(sesDelta)!==1?'es':'')+' (mes pasado vs anterior)';
   document.getElementById('t-dash').innerHTML=`
     <div style="padding:28px 0 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px">
       <img src="logo-v2-trim.png" alt="F4H" style="height:40px;width:auto;filter:invert(1);opacity:.85;flex-shrink:0">
@@ -1089,7 +1088,7 @@ function renderDash(){
           <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
             <svg width="52" height="52" viewBox="0 0 52 52">
               <circle cx="26" cy="26" r="${ringR}" fill="none" stroke="var(--border)" stroke-width="5"/>
-              <circle cx="26" cy="26" r="${ringR}" fill="none" stroke="${gColor}" stroke-width="5" stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}" stroke-linecap="round" transform="rotate(-90 26 26)"/>
+              ${n?`<circle cx="26" cy="26" r="${ringR}" fill="none" stroke="${gColor}" stroke-width="5" stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}" stroke-linecap="round" transform="rotate(-90 26 26)"/>`:''}
             </svg>
             <div style="font-size:12px;font-weight:700;color:${gColor};margin-top:4px">${avgGlobal}/10</div>
             <div style="font-size:10px;color:var(--text-3)">Score global</div>
