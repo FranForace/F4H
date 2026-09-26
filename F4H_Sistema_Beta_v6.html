@@ -1026,9 +1026,25 @@ async function AGeliminarRegla(id){
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
+function sesionesPorMes(nMeses){
+  const hoy=new Date();
+  const out=[];
+  for(let i=nMeses-1;i>=0;i--){
+    const d=new Date(hoy.getFullYear(),hoy.getMonth()-i,1);
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    out.push(S.sesiones.filter(s=>(s.fecha||'').slice(0,7)===key).length);
+  }
+  return out;
+}
+function sparklinePts(vals,w,h,pad){
+  const max=Math.max(1,...vals);
+  const step=vals.length>1?(w-2*pad)/(vals.length-1):0;
+  return vals.map((v,i)=>(pad+i*step).toFixed(1)+','+((h-pad)-(v/max)*(h-2*pad)).toFixed(1)).join(' ');
+}
 function renderDash(){
   const n=S.sesiones.length;
-  const avgGlobal=n?(S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n).toFixed(1):'--';
+  const avgGlobalNum=n?S.sesiones.reduce((a,s)=>a+globalScore(s),0)/n:0;
+  const avgGlobal=n?avgGlobalNum.toFixed(1):'--';
   const avgDim=k=>{const vals=S.sesiones.map(s=>s[k]).filter(v=>v>0);return vals.length?(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;};
   const amortS=amortTotalSes();
   const amortM=amortTotalMes();
@@ -1046,6 +1062,13 @@ function renderDash(){
   const mesLabel=new Date().toLocaleString('es-AR',{month:'long',year:'numeric'});
   const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
   const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
+  const ringR=22,ringC=Math.round(2*Math.PI*ringR);
+  const ringOffset=n?Math.round(ringC*(1-Math.min(1,avgGlobalNum/10))):ringC;
+  const sesMeses=sesionesPorMes(6);
+  const sesDelta=sesMeses[5]-sesMeses[4];
+  const sesTrendColor=sesDelta>0?'var(--green)':sesDelta<0?'var(--red)':'var(--text-3)';
+  const sesTrendArrow=sesDelta>0?'↑':sesDelta<0?'↓':'→';
+  const sesTrendTxt=sesDelta===0?'sin cambios':(sesDelta>0?'+':'')+sesDelta+' sesi\xF3n'+(Math.abs(sesDelta)!==1?'es':'')+' vs mes anterior';
   document.getElementById('t-dash').innerHTML=`
     <div style="padding:28px 0 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px">
       <img src="logo-v2-trim.png" alt="F4H" style="height:40px;width:auto;filter:invert(1);opacity:.85;flex-shrink:0">
@@ -1058,10 +1081,27 @@ function renderDash(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
       <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:26px 26px 22px;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.7"></div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:.13em;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">Sesiones totales</div>
-        <div style="font-size:52px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-.02em">${n}</div>
-        <div style="margin-top:9px;font-size:14px;color:var(--text-2)">Score global promedio</div>
-        <div style="display:inline-flex;align-items:center;margin-top:10px;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;background:${gBg};color:${gColor}">${avgGlobal} / 10</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
+          <div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.13em;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">Sesiones totales</div>
+            <div style="font-size:52px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-.02em">${n}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="${ringR}" fill="none" stroke="var(--border)" stroke-width="5"/>
+              <circle cx="26" cy="26" r="${ringR}" fill="none" stroke="${gColor}" stroke-width="5" stroke-dasharray="${ringC}" stroke-dashoffset="${ringOffset}" stroke-linecap="round" transform="rotate(-90 26 26)"/>
+            </svg>
+            <div style="font-size:12px;font-weight:700;color:${gColor};margin-top:4px">${avgGlobal}/10</div>
+            <div style="font-size:10px;color:var(--text-3)">Score global</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <svg width="100" height="26" viewBox="0 0 100 26" style="flex-shrink:0"><polyline points="${sparklinePts(sesMeses,100,26,3)}" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+          <div>
+            <div style="font-size:11px;color:var(--text-2)">\xDAltimos 6 meses</div>
+            <div style="font-size:12px;font-weight:700;color:${sesTrendColor}">${sesTrendArrow} ${sesTrendTxt}</div>
+          </div>
+        </div>
       </div>
       <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:14px;padding:26px 26px 22px;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--green)"></div>
