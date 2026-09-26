@@ -42,13 +42,14 @@ S = {
 - **Proyecto**: `https://minletiyftpmufqpmviv.supabase.co`
 - **Publishable key** (en `js/db.js`, safe para frontend): `sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH`
 - **service_role key**: NUNCA en frontend. NUNCA en el repo.
-- **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_tatuajes`, `sesion_agujas`, `sesion_tecnicas`, `movimientos`, `config` (`sesion_agujas_testeadas` es legacy, ya no se escribe)
+- **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_tatuajes`, `sesion_agujas`, `sesion_tecnicas`, `movimientos`, `config`, `turnos`, `disponibilidad_reglas` (`sesion_agujas_testeadas` es legacy, ya no se escribe)
 - **Sesión N:M**: una sesión puede tener varios tatuajes (`sesion_tatuajes`, con puntaje propio por tatuaje). Puntaje de la sesión = promedio de sus tatuajes; puntaje de un tatuaje = promedio de sus sesiones. Costo de la sesión se reparte en partes iguales entre sus tatuajes. `sesion_agujas` (aguja + cantidad) es lo único de agujas que descuenta stock; `sesion_tecnicas` (técnica + aguja + voltaje) es bitácora. `sesiones.tatuaje_id`/`aguja_principal_id`/`voltaje` se completan con el primer elemento (compat V5)
 - **Por tatuaje dentro de la sesión**: `sesion_agujas` y `sesion_tecnicas` tienen `tatuaje_id` (null = práctica). La UI de sesión es una tarjeta por tatuaje (agujas, técnicas, puntaje, fotos); la zona es la del tatuaje (editable desde la tarjeta, actualiza `tatuajes.zona`). Costo por tatuaje = sus agujas + parte igual del resto (`sesionCostoTat`)
 - **Fotos**: tabla `tatuaje_fotos` + Storage bucket privado `fotos` (ruta `{uid}/{tatuaje_id}/…`, policies por carpeta). Se comprimen en el navegador (1600px JPEG) y se muestran con URLs firmadas (`fotoUrls`)
 - **Vista `v_inversion`** (`security_invoker`): invertido (activos/insumos), consumido (práctica/cliente/histórico), en stock, recuperado y saldo a recuperar, en ARS con `tipo_cambio`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 4)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
-- **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
+- **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`/`turnos`.
+- **Agenda** (`turnos`, `disponibilidad_reglas`, 2026-09): disponibilidad por reglas — todos los días arrancan cerrados, se abren/cierran con reglas (`abrir`/`cerrar`, `dias_semana` ISO 1=lun…7=dom o `null`=todos, `desde`/`hasta` opcionales, horario). `fn_agenda_dias(p_desde, p_hasta)` (`security invoker`, tope 400 días) resuelve el día ganador por precedencia: 1) rango cerrado > un lado > sin fechas, 2) rango más corto, 3) menos días de semana, 4) `created_at desc, id desc` — NO reimplementar esta lógica en JS, siempre llamar la función. `turnos.estado` (`Reservado|Confirmado|Realizado|Cancelado|No vino`) tiene el constraint `turnos_realizado_con_sesion`: `estado='Realizado' ⇔ sesion_id is not null` — solo `dbVincularSesionTurno`/`dbDesvincularSesionTurno` tocan esa pareja de columnas. `v_cupos_lanzamiento` (`security_invoker`) cuenta cupos de lanzamiento contra la fila `config` con `clave='cupos_lanzamiento'` (`valor` jsonb `{"total":25,"hasta":"2026-11-20"}`). Diseño completo en `docs/superpowers/specs/2026-09-26-agenda-design.md`.
 - **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Cuenta original / tenant #1: `franforace@gmail.com`. Altas de tenants nuevos se crean manualmente en el dashboard de Supabase Auth — no hay signup in-app todavía (ver roadmap de onboarding por invitación).
 - **RLS**: multi-tenant. Todas las tablas de datos (`productos`, `tatuajes`, `kits`, `sesiones`, `movimientos`, `config`) tienen columna `tenant_id uuid not null references auth.users(id) default auth.uid()`; las policies `tenant_isolation` filtran por `tenant_id = auth.uid()`. `kit_items` y `sesion_agujas_testeadas` no tienen `tenant_id` propio — su policy `tenant_isolation` es un join a su tabla padre (`kits`/`sesiones`). Un trigger `trg_tenant_bootstrap` (`fn_tenant_bootstrap`, `SECURITY DEFINER`) en `auth.users` siembra el catálogo base (37 productos, 1 kit, 2 config) para cada usuario nuevo. Verificar el estado real (no asumir por este archivo):
   ```sql
@@ -63,7 +64,7 @@ S = {
   git show origin/main:F4H_Sistema_Beta_v6.html | sha256sum   # comparar
   ```
 - **IDs**: `bigint` en DB → `String(id)` en S → `Number(id)` al escribir en DB.
-- **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje` — mapean columnas DB a campos cortos de S. No modificar render functions.
+- **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje`, `adaptTurno`, `adaptRegla` — mapean columnas DB a campos cortos de S. No modificar render functions.
 - **Error de stock**: `error.code === '23514'` (violación de CHECK constraint `stock >= 0`).
 
 > **Git, producción y RLS se verifican con comandos, no se declaran en este archivo.** Este documento
@@ -73,13 +74,14 @@ S = {
 
 ## Módulos del sistema (tabs en la UI)
 1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo watermark
-2. **Tatuajes** — split master-detail: lista 300px + panel detalle 1fr
-3. **Inventario** — pills de filtro por categoría/estado, table-card border-radius:14px
-4. **Activos** — equipos con amortización lineal
-5. **Sesiones** — registro técnico + bitácora con scoring 1-10
-6. **Egresos** — panel de gastos acumulados con historial
-7. **Movimientos** — log transaccional con costo promedio ponderado (WAC)
-8. **Config** — TC, sesiones/mes, kits de insumos, backup JSON
+2. **Agenda** — disponibilidad por reglas, calendario mensual + panel lateral (día/turno/reglas), cupos de lanzamiento (primer ítem del grupo "Trabajo")
+3. **Tatuajes** — split master-detail: lista 300px + panel detalle 1fr
+4. **Inventario** — pills de filtro por categoría/estado, table-card border-radius:14px
+5. **Activos** — equipos con amortización lineal
+6. **Sesiones** — registro técnico + bitácora con scoring 1-10
+7. **Egresos** — panel de gastos acumulados con historial
+8. **Movimientos** — log transaccional con costo promedio ponderado (WAC)
+9. **Config** — TC, sesiones/mes, kits de insumos, backup JSON
 
 ## Lógica de costos clave
 - **Stock se mide en usos, no en envases** (migrado 2026-08-24). `productos.stock`,
@@ -172,6 +174,7 @@ S = {
 - costoAlMomento: trigger sella el valor vigente si no se informa en el INSERT
 - `globalScore(s)` — NO modificar esta función
 - Mutations de kits: `dbSaveKitItems`, `dbRenameKit`, `dbAddKit`, `dbDeleteKit` en `js/db.js`
+- Agenda: "Realizado" ⇔ sesión vinculada (constraint en DB). Turno en día cerrado o cerrar un día con turnos activos: se permite con aviso, no se bloquea. Horario de un día abierto sale de la regla que lo abre — sin default global. Seña (`sena_ars`) solo se guarda en el turno, no genera movimiento en Finanzas. Borrar una sesión vinculada a un turno pide desvincular desde la Agenda primero (mismo constraint).
 
 ## Próximas features pendientes
 - **Onboarding por invitación**: siguiente proyecto planeado sobre multi-tenancy — ver `docs/superpowers/specs/2026-08-18-multi-tenancy-design.md`. Todavía no está construido.
