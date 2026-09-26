@@ -1047,9 +1047,9 @@ function renderDash(){
   const gColor=avgGlobal>=7?'var(--green)':avgGlobal>=4?'var(--amber)':'var(--red)';
   const gBg=avgGlobal>=7?'rgba(74,154,58,.15)':avgGlobal>=4?'rgba(212,135,42,.15)':'rgba(226,75,74,.15)';
   document.getElementById('t-dash').innerHTML=`
-    <div style="position:relative;padding:28px 0 24px;margin-bottom:24px;min-height:200px;display:flex;align-items:center">
-      <img src="logo-v2.png" alt="F4H" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:380px;width:auto;filter:invert(1) sepia(0.4) saturate(1.8) hue-rotate(350deg) brightness(0.9);opacity:.7;pointer-events:none;z-index:0">
-      <div style="position:relative;z-index:1">
+    <div style="padding:28px 0 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px">
+      <img src="logo-v2.png" alt="F4H" style="height:40px;width:auto;filter:invert(1);opacity:.85;flex-shrink:0">
+      <div>
         <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Resumen general</div>
         <div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Dashboard</div>
         <div style="font-size:14px;color:var(--text-2)">${tatCurso.length} tatuaje${tatCurso.length!==1?'s':''} activo${tatCurso.length!==1?'s':''} \xB7 ${n} sesi\xF3n${n!==1?'es':''} registrada${n!==1?'s':''}</div>
