@@ -628,6 +628,133 @@ function renderAll(){if(curTab==='dash')renderDash();else if(curTab==='tattoos')
   else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
   else if(curTab==='agenda')renderAgenda();}
 
+// ─── Agenda ───────────────────────────────────────────────────────────────────
+// AG: estado de UI del módulo (no persiste, se recalcula desde S + fn_agenda_dias).
+// AG.dias[yyyy-mm] = { 'yyyy-mm-dd': {fecha,abierto,hora_desde,hora_hasta,regla_id,regla_efecto,regla_motivo,turnos_activos} }
+let AG={mes:today.slice(0,7),dia:null,panel:null,dias:{}};
+let AGturnoForm=null,AGavisoCierre=null;
+let AGreglaForm=AGreglaFormDefault();
+function AGreglaFormDefault(){return{efecto:'abrir',dias:new Set(),todos:true,desde:'',hasta:'',hDesde:'',hHasta:'',motivo:''};}
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DIAS_SEM=['L','M','X','J','V','S','D'];
+const DIAS_SEM_LARGO=['','lunes','martes','mi\xE9rcoles','jueves','viernes','s\xE1bado','domingo'];
+
+function AGymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function AGaddMonths(mesKey,delta){
+  const [y,m]=mesKey.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function AGgridRange(mesKey){
+  const [y,m]=mesKey.split('-').map(Number);
+  const first=new Date(y,m-1,1);
+  const last=new Date(y,m,0);
+  const firstIso=((first.getDay()+6)%7)+1;
+  const lastIso=((last.getDay()+6)%7)+1;
+  const start=new Date(first);start.setDate(first.getDate()-(firstIso-1));
+  const end=new Date(last);end.setDate(last.getDate()+(7-lastIso));
+  return {start,end};
+}
+async function AGloadMes(mesKey){
+  if(AG.dias[mesKey])return AG.dias[mesKey];
+  const {start,end}=AGgridRange(mesKey);
+  const rows=await dbAgendaDias(AGymd(start),AGymd(end));
+  const map={};
+  (rows||[]).forEach(r=>{map[r.fecha]=r;});
+  AG.dias[mesKey]=map;
+  return map;
+}
+
+async function renderAgenda(){
+  const el=document.getElementById('t-agenda');
+  if(!AG.dias[AG.mes])await AGloadMes(AG.mes);
+  el.innerHTML=buildAgendaHeader()+buildAgendaCupos()
+    +'<div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">'
+    +buildAgendaCalendario()+buildAgendaPanel()+'</div>';
+}
+
+function buildAgendaHeader(){
+  return '<div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Trabajo</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Agenda</div><div style="font-size:14px;color:var(--text-2)">Disponibilidad, turnos y cupos</div></div>';
+}
+
+function buildAgendaCupos(){
+  const c=S.cupos;if(!c)return'';
+  const pct=c.total?Math.min(100,Math.round((c.usados/c.total)*100)):0;
+  const critico=c.disponibles<=3||c.dias_restantes<=7;
+  const color=critico?'var(--red)':'var(--accent)';
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<span style="font-size:13px;font-weight:700;color:var(--text)">Cupos de lanzamiento</span>'
+    +'<span style="font-size:13px;font-weight:700;color:'+color+'">'+c.usados+'/'+c.total+' \xB7 '+c.dias_restantes+' d\xEDas</span>'
+    +'</div><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'
+    +'</div>';
+}
+
+function buildAgendaCalendario(){
+  const mesKey=AG.mes;
+  const [y,m]=mesKey.split('-').map(Number);
+  const dias=AG.dias[mesKey]||{};
+  const {start,end}=AGgridRange(mesKey);
+  let cells='';
+  const d=new Date(start);
+  while(d<=end){
+    const fecha=AGymd(d);
+    const info=dias[fecha];
+    const inMes=(d.getMonth()+1===m);
+    const esHoy=fecha===today;
+    const abierto=!!(info&&info.abierto);
+    const turnosDia=S.turnos.filter(t=>t.fecha===fecha&&!['Cancelado','No vino'].includes(t.estado));
+    const turnosActivos=(info&&info.turnos_activos)||0;
+    const avisoRojo=!abierto&&turnosActivos>0;
+    const sesionesSinTurno=fecha<today?S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id)):[];
+    const titleTxt=abierto?('Abierto por: '+(info.regla_motivo||'—')):((info&&info.regla_id)?('Cerrado por: '+(info.regla_motivo||'—')):'Cerrado (sin reglas)');
+    const bg=abierto?'var(--bg-card)':'var(--bg)';
+    const border=abierto?'1.5px solid var(--accent)':'1px solid var(--border)';
+    const numColor=abierto?'var(--text)':'var(--text-3)';
+    const numHtml=esHoy
+      ?'<span style="font-size:11px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
+      :'<span style="font-size:12px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" style="min-height:86px;padding:6px 8px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative">'
+      +(avisoRojo?'<span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+numHtml
+      +(abierto&&info.hora_desde?'<span style="font-size:9px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:2px">'
+      +turnosDia.slice(0,3).map(t=>{
+        const tachado=['Cancelado','No vino'].includes(t.estado);
+        const color=t.estado==='Confirmado'?'var(--green)':t.estado==='Realizado'?'var(--text-3)':tachado?'var(--red)':'var(--amber)';
+        return '<div style="font-size:9px;color:'+color+(tachado?';text-decoration:line-through':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(t.hora||'--:--')+' '+t.cli+'</div>';
+      }).join('')
+      +sesionesSinTurno.slice(0,2).map(s=>'<div style="font-size:9px;color:var(--text-3)">✓ '+(s.cliente||'—')+'</div>').join('')
+      +'</div></div>';
+    d.setDate(d.getDate()+1);
+  }
+  return '<div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<button class="btn btn-xs" onclick="AGcambiarMes(-1)">‹</button>'
+        +'<span style="font-size:15px;font-weight:700;min-width:150px;text-align:center">'+MESES[m-1]+' '+y+'</span>'
+        +'<button class="btn btn-xs" onclick="AGcambiarMes(1)">›</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+        +'<button class="btn btn-xs" onclick="AG.mes=today.slice(0,7);renderAgenda()">Hoy</button>'
+        +'<button class="btn btn-xs" onclick="AGabrirReglas()">Reglas de disponibilidad</button>'
+      +'</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">'
+      +DIAS_SEM.map(x=>'<div style="font-size:10px;font-weight:700;color:var(--text-3);text-align:center;text-transform:uppercase">'+x+'</div>').join('')
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+cells+'</div>'
+  +'</div>';
+}
+async function AGcambiarMes(delta){AG.mes=AGaddMonths(AG.mes,delta);if(!AG.dias[AG.mes])await AGloadMes(AG.mes);renderAgenda();}
+
+function buildAgendaPanel(){
+  if(AG.panel==='reglas')return buildPanelReglas();
+  if(AG.panel==='turno')return buildPanelTurno();
+  if(AG.dia)return buildPanelDia(AG.dia);
+  return '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 20px;text-align:center;color:var(--text-3);font-size:13px">Seleccion\xE1 un d\xEDa del calendario.</div>';
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
   const n=S.sesiones.length;
