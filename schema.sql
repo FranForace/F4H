@@ -306,3 +306,66 @@ create trigger trg_tenant_bootstrap after insert on auth.users
 -- de PUBLIC directamente cierra esa vía; no afecta al trigger en sí, que se
 -- dispara por el trigger manager, no por un grant de EXECUTE de un rol.
 revoke execute on function public.fn_tenant_bootstrap() from public;
+
+-- ── Vista v_inversion ───────────────────────────────────────────────────────
+-- Inversión vs. consumo vs. recupero, una fila por tenant, en ARS.
+-- security_invoker: respeta RLS (cada usuario ve solo su fila).
+-- consumido_historico = salidas sin sesión (carga inicial, ajustes manuales).
+create or replace view public.v_inversion with (security_invoker = true) as
+with tc as (
+  select tenant_id, (valor #>> '{}')::numeric as tc from config where clave = 'tipo_cambio'
+),
+mov as (
+  select m.tenant_id,
+         p.categoria,
+         m.tipo,
+         m.cantidad * coalesce(m.costo_al_momento, 0)
+           * case when p.moneda = 'USD' then coalesce(tc.tc, 1) else 1 end as monto_ars,
+         case when m.tipo = 'salida' then
+           case when m.sesion_id is null then 'historico'
+                when s.practica then 'practica'
+                else 'cliente' end
+         end as destino
+  from movimientos m
+  join productos p on p.id = m.producto_id
+  left join sesiones s on s.id = m.sesion_id
+  left join tc on tc.tenant_id = m.tenant_id
+),
+agg as (
+  select tenant_id,
+    sum(monto_ars) filter (where tipo = 'entrada' and categoria =  'Activo') as invertido_activos,
+    sum(monto_ars) filter (where tipo = 'entrada' and categoria <> 'Activo') as invertido_insumos,
+    sum(monto_ars) filter (where destino = 'practica')  as consumido_practica,
+    sum(monto_ars) filter (where destino = 'cliente')   as consumido_cliente,
+    sum(monto_ars) filter (where destino = 'historico') as consumido_historico
+  from mov group by tenant_id
+),
+stk as (
+  select p.tenant_id,
+         sum(p.stock * p.costo_unitario * case when p.moneda = 'USD' then coalesce(tc.tc, 1) else 1 end) as en_stock
+  from productos p left join tc on tc.tenant_id = p.tenant_id
+  where p.categoria <> 'Activo'
+  group by p.tenant_id
+),
+rec as (
+  select tenant_id, sum(precio) as recuperado from tatuajes group by tenant_id
+)
+select a.tenant_id,
+  round(coalesce(a.invertido_activos, 0), 0)                                   as invertido_activos_ars,
+  round(coalesce(a.invertido_insumos, 0), 0)                                   as invertido_insumos_ars,
+  round(coalesce(a.invertido_activos, 0) + coalesce(a.invertido_insumos, 0), 0) as invertido_total_ars,
+  round(coalesce(a.consumido_practica, 0), 0)                                  as consumido_practica_ars,
+  round(coalesce(a.consumido_cliente, 0), 0)                                   as consumido_cliente_ars,
+  round(coalesce(a.consumido_historico, 0), 0)                                 as consumido_historico_ars,
+  round(coalesce(a.consumido_practica, 0) + coalesce(a.consumido_cliente, 0) + coalesce(a.consumido_historico, 0), 0) as consumido_total_ars,
+  round(coalesce(s.en_stock, 0), 0)                                            as en_stock_ars,
+  round(coalesce(r.recuperado, 0), 0)                                          as recuperado_ars,
+  round(coalesce(a.invertido_activos, 0) + coalesce(a.invertido_insumos, 0) - coalesce(r.recuperado, 0), 0) as saldo_a_recuperar_ars,
+  t.tc                                                                         as tipo_cambio
+from agg a
+left join stk s on s.tenant_id = a.tenant_id
+left join rec r on r.tenant_id = a.tenant_id
+left join tc  t on t.tenant_id = a.tenant_id;
+
+revoke all on public.v_inversion from anon;
+grant select on public.v_inversion to authenticated;

@@ -261,10 +261,10 @@ async function dbSaveSesion(params) {
       if (ex.pid && ex.qty > 0)
         await dbAddMovimiento({ productoId: ex.pid, tipo: 'salida', cantidad: ex.qty, sesionId, referencia: 'ses-' + sesionId + ' (extra)' });
     }
-    // Aguja principal (descuenta si no es de práctica)
+    // Aguja principal (siempre descuenta — las de práctica también cuestan plata)
     if (params.agujaId) {
       const ap = S.productos.find(x => x.id === String(params.agujaId));
-      if (ap && !ap.practica)
+      if (ap)
         await dbAddMovimiento({ productoId: params.agujaId, tipo: 'salida', cantidad: 1, sesionId, referencia: 'ses-' + sesionId + ' (aguja)' });
     }
   }

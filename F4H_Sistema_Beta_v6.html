@@ -43,6 +43,9 @@ body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;co
 .sb-new{width:100%;padding:8px 12px;background:var(--accent);color:#111;font-size:12px;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;transition:background .12s}
 .sb-new:hover{background:#d4b87c}
 .sb-sep{height:1px;background:var(--border);margin:6px 16px}
+.lock-btn{align-items:center;justify-content:center;margin-left:6px;padding:0 6px;height:18px;font-size:11px;line-height:1;border:1px solid var(--border);border-radius:4px;background:var(--bg-elevated);color:var(--accent);cursor:pointer;font-family:inherit;vertical-align:middle}
+.lock-btn:hover{border-color:var(--accent)}
+.sb-group{padding:14px 20px 4px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
 .sb-spacer{flex:1}
 .sb-footer{padding:12px 16px;border-top:1px solid #1e1e1e;flex-shrink:0}
 
@@ -252,23 +255,26 @@ textarea{resize:vertical;min-height:80px}
     <button class="sidebar-item on" data-tab="dash" onclick="go('dash')">
       <span class="sb-icon">&#x25AA;</span>Dashboard
     </button>
+    <div class="sb-group">Trabajo</div>
     <button class="sidebar-item" data-tab="tattoos" onclick="go('tattoos')">
       <span class="sb-icon">&#x2726;</span>Tatuajes
-    </button>
-    <button class="sidebar-item" data-tab="inv" onclick="go('inv')">
-      <span class="sb-icon">&#x2261;</span>Inventario
-    </button>
-    <button class="sidebar-item" data-tab="act" onclick="go('act')">
-      <span class="sb-icon">&#x25FB;</span>Activos
     </button>
     <button class="sidebar-item" data-tab="ses" onclick="go('ses')">
       <span class="sb-icon">&#x25CE;</span>Sesiones
     </button>
-    <button class="sidebar-item" data-tab="egresos" onclick="go('egresos')">
-      <span class="sb-icon">&#x2193;</span>Egresos
+    <div class="sb-group">Insumos</div>
+    <button class="sidebar-item" data-tab="inv" onclick="go('inv')">
+      <span class="sb-icon">&#x2261;</span>Inventario
     </button>
     <button class="sidebar-item" data-tab="mov" onclick="go('mov')">
       <span class="sb-icon">&#x21C5;</span>Movimientos
+    </button>
+    <div class="sb-group">Finanzas</div>
+    <button class="sidebar-item" data-tab="act" onclick="go('act')">
+      <span class="sb-icon">&#x25FB;</span>Activos
+    </button>
+    <button class="sidebar-item" data-tab="egresos" onclick="go('egresos')">
+      <span class="sb-icon">&#x2193;</span>Egresos
     </button>
     <div class="sb-spacer"></div>
     <div class="sb-sep"></div>
@@ -548,12 +554,37 @@ function sesionCosto(s){
   else if(s.kitOn&&S.kits.length>0)c+=calcKitCost(S.kits[0].id,[]);
   (s.extras||[]).forEach(e=>{const p=S.productos.find(x=>x.id===e.pid);if(p&&p.cu>0)c+=cxu(p)*e.qty;});
   const ag=S.productos.find(x=>x.id===s.agujaId);
-  if(ag&&ag.cu>0&&!ag.practica)c+=cxu(ag);
+  if(ag&&ag.cu>0)c+=cxu(ag);
   return c;
 }
 function calcKitCost(kitId,excludes){const kit=S.kits.find(k=>k.id===kitId);if(!kit)return 0;const excl=excludes||[];return kit.items.reduce((a,ki)=>{if(excl.includes(ki.pid))return a;const p=S.productos.find(x=>x.id===ki.pid);return a+(p&&p.cu>0?cxu(p)*ki.qty:0);},0);}
 function calcKitCostStatic(){return S.kits.length?calcKitCost(S.kits[0].id,[]):0;}
 function tattooSesiones(tid){return S.sesiones.filter(s=>s.tattooId===tid);}
+
+// ── Zona del cuerpo: lista cerrada + lado. Se guarda como "Tobillo · Izq" (split por ' · ' para análisis) ──
+const ZONAS=[
+  ['Brazo',['Hombro','Brazo','Codo','Antebrazo','Mu\xF1eca','Mano','Dedos']],
+  ['Torso',['Pecho','Estern\xF3n','Costillas','Abdomen','Espalda alta','Espalda baja','Espalda completa','Cadera']],
+  ['Cabeza y cuello',['Cuello','Nuca','Detr\xE1s de la oreja','Cara']],
+  ['Pierna',['Gl\xFAteo','Muslo','Rodilla','Pantorrilla','Canilla','Tobillo','Pie']],
+  ['Pr\xE1ctica',['Piel sint\xE9tica']]
+];
+const LADOS=['Izq','Der','Centro'];
+function zonaSplit(v){v=(v||'').trim();const m=v.match(/^(.*?) \xB7 (Izq|Der|Centro)$/);return m?[m[1],m[2]]:[v,''];}
+function zonaField(id,val){
+  const [base,lado]=zonaSplit(val);
+  const known=ZONAS.some(g=>g[1].includes(base));
+  const legacy=base&&!known?'<option value="'+base+'" selected>'+base+' (anterior)</option>':'';
+  return '<div style="display:flex;gap:6px"><select id="'+id+'" style="flex:1"><option value="">— Zona —</option>'+legacy
+    +ZONAS.map(g=>'<optgroup label="'+g[0]+'">'+g[1].map(z=>'<option'+(z===base?' selected':'')+'>'+z+'</option>').join('')+'</optgroup>').join('')
+    +'</select><select id="'+id+'-lado" style="width:92px"><option value="">Lado</option>'+LADOS.map(l=>'<option'+(l===lado?' selected':'')+'>'+l+'</option>').join('')+'</select></div>';
+}
+function readZona(id){const b=document.getElementById(id)?.value||'';const l=document.getElementById(id+'-lado')?.value||'';return b?(l?b+' \xB7 '+l:b):'';}
+function setZona(id,val){
+  const [b,l]=zonaSplit(val);const s=document.getElementById(id);
+  if(s){if(b&&![...s.options].some(o=>o.value===b))s.add(new Option(b+' (anterior)',b));s.value=b;}
+  const sl=document.getElementById(id+'-lado');if(sl)sl.value=l;
+}
 function tattooCosto(tid){return tattooSesiones(tid).reduce((a,s)=>a+sesionCosto(s),0);}
 function globalScore(s){const vals=[s.sL,s.sR,s.sT,s.sD,s.sC].filter(v=>v>0);return vals.length?+(vals.reduce((a,v)=>a+v,0)/vals.length).toFixed(1):0;}
 function tattooMargen(t){return t.precio?(t.precio-tattooCosto(t.id)):null;}
@@ -723,9 +754,7 @@ function buildNuevoTattoo(){
       <div class="fg"><label class="fl">Estado</label><select id="nt-estado"><option>En curso</option><option>Finalizado</option><option>Pendiente</option></select></div>
       <div class="fg" style="grid-column:1/-1"><label class="fl">Cliente</label><input id="nt-cli" placeholder="Nombre o referencia"></div>
       <div class="fg" style="grid-column:1/-1"><label class="fl">Diseño / descripción</label><input id="nt-dis" placeholder="Ej: Fantasma americano tradicional, antebrazo"></div>
-      <div class="fg"><label class="fl">Zona del cuerpo</label><input id="nt-zona" list="zonas-dl2" placeholder="Ej: Muslo, Brazo...">
-        <datalist id="zonas-dl2"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Tobillo</option><option>Cuello</option><option>Mano</option></datalist>
-      </div>
+      <div class="fg"><label class="fl">Zona del cuerpo</label>${zonaField('nt-zona','')}</div>
       <div class="fg"><label class="fl">Tamaño estimado</label><input id="nt-tam" placeholder="Ej: 5cm, A4, pequeño"></div>
       <div class="fg"><label class="fl">Estilo</label><select id="nt-est"><option value="">— Sin definir —</option>${ESTILOS.map(e=>`<option>${e}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">Precio acordado (ARS)</label><input id="nt-precio" type="number" min="0" step="100" placeholder="0"></div>
@@ -860,7 +889,7 @@ async function addTattoo(){
     num:parseInt(document.getElementById('nt-num').value)||1,
     cliente:cli,diseno,
     estado:document.getElementById('nt-estado').value,
-    zona:document.getElementById('nt-zona').value.trim(),
+    zona:readZona('nt-zona'),
     tam:document.getElementById('nt-tam').value.trim(),
     precio:parseFloat(document.getElementById('nt-precio').value)||0,
     estilo:document.getElementById('nt-est').value,
@@ -893,7 +922,7 @@ function editTattoo(tid){
       <div class="fg"><label class="fl">Estado</label><select id="et-estado"><option${t.estado==='En curso'?' selected':''}>En curso</option><option${t.estado==='Finalizado'?' selected':''}>Finalizado</option><option${t.estado==='Pendiente'?' selected':''}>Pendiente</option></select></div>
       <div class="fg" style="grid-column:1/-1"><label class="fl">Cliente</label><input id="et-cli" value="${t.cliente}"></div>
       <div class="fg" style="grid-column:1/-1"><label class="fl">Diseño</label><input id="et-dis" value="${t.diseno}"></div>
-      <div class="fg"><label class="fl">Zona</label><input id="et-zona" value="${t.zona||''}"></div>
+      <div class="fg"><label class="fl">Zona</label>${zonaField('et-zona',t.zona)}</div>
       <div class="fg"><label class="fl">Tamaño</label><input id="et-tam" value="${t.tamano||''}"></div>
       <div class="fg"><label class="fl">Estilo</label><select id="et-est">${ESTILOS.map(e=>`<option value="${e}"${(t.estilo||'')===e?' selected':''}>${e}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">Precio (ARS)</label><input id="et-precio" type="number" value="${t.precio||0}"></div>
@@ -913,7 +942,7 @@ async function saveEditTattoo(tid){
   t.estado=document.getElementById('et-estado').value;
   t.cliente=document.getElementById('et-cli').value.trim();
   t.diseno=document.getElementById('et-dis').value.trim();
-  t.zona=document.getElementById('et-zona').value.trim();
+  t.zona=readZona('et-zona');
   t.tam=document.getElementById('et-tam').value.trim();
   t.estilo=document.getElementById('et-est').value;
   t.precio=parseFloat(document.getElementById('et-precio').value)||0;
@@ -1024,7 +1053,7 @@ function buildEditCard(p){
       +'<div><div style="'+lbl+'">Stock m\xEDnimo</div><input id="ep-sm" type="number" min="0" value="'+p.sm+'" style="'+inp+'"></div>'
       +(p.cat==='Activo'?'<div><div style="'+lbl+'">Vida \xFAtil (meses)</div><input id="ep-vum" type="number" min="1" value="'+(p.vum||24)+'" style="'+inp+'"></div>':'')
       +(p.cat!=='Activo'?'<div><div style="'+lbl+'">Tipo de consumo</div><select id="ep-tipo" style="'+inp+'"><option value="UNIDAD"'+(p.tipo_consumo==='UNIDAD'?' selected':'')+'>Unidad</option><option value="SESION"'+(p.tipo_consumo==='SESION'?' selected':'')+'>Sesi\xF3n</option><option value="VARIABLE"'+(p.tipo_consumo==='VARIABLE'?' selected':'')+'>Variable</option><option value="LONGITUD"'+(p.tipo_consumo==='LONGITUD'?' selected':'')+'>Longitud</option></select></div>':'')
-      +(p.cat==='Aguja'?'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"'+(p.practica?' checked':'')+'>Aguja de pr\xE1ctica (no descuenta stock)</label></div>':'')
+      +(p.cat==='Aguja'?'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"'+(p.practica?' checked':'')+'>Aguja de pr\xE1ctica (etiqueta; descuenta stock igual)</label></div>':'')
     +'</div>'
     +'<div style="display:flex;gap:10px;align-items:center">'
       +'<button style="padding:9px 22px;font-size:13px;font-weight:700;background:var(--accent);color:#1a1200;border:none;border-radius:8px;cursor:pointer;font-family:inherit" onclick="saveEdit(\''+p.id+'\')">Guardar</button>'
@@ -1092,7 +1121,20 @@ function renderSes(){
   if(sesView==='nueva'){applyScores();renderKitItems();}
 }
 
-function onTattooSelChange(){const tid=document.getElementById('sf-tattoo').value;const t=S.tatuajes.find(x=>x.id===tid);if(t){const c=document.getElementById('sf-cli');const z=document.getElementById('sf-zona');if(c)c.value=t.cliente||'';if(z)z.value=t.zona||'';}}
+// Con tatuaje vinculado, cliente y zona vienen del tatuaje y quedan bloqueados (✎ para editar)
+function onTattooSelChange(){
+  const tid=document.getElementById('sf-tattoo').value;const t=S.tatuajes.find(x=>x.id===tid);
+  const c=document.getElementById('sf-cli');
+  if(c)c.value=t?(t.cliente||''):'';
+  setZona('sf-zona',t?t.zona:'');
+  lockSesField('cli',!!t);lockSesField('zona',!!t);
+}
+function lockSesField(f,on){
+  const ids=f==='zona'?['sf-zona','sf-zona-lado']:['sf-cli'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=on;el.style.opacity=on?'.6':'';}});
+  const b=document.getElementById('sf-'+f+'-unlock');if(b)b.style.display=on?'inline-flex':'none';
+}
+function unlockSesField(f){lockSesField(f,false);const el=document.getElementById(f==='zona'?'sf-zona':'sf-cli');if(el)el.focus();}
 function onKitSelChange(){nKitExcludes.clear();renderKitItems();updateSesTotal();}
 function toggleKitExclude(pid){if(nKitExcludes.has(pid))nKitExcludes.delete(pid);else nKitExcludes.add(pid);updateSesTotal();}
 function renderKitItems(){
@@ -1114,7 +1156,10 @@ function buildNuevaSes(){
   const pracAgujas=agujas.filter(p=>p.practica);
   const amortS=amortTotalSes();const kitC=calcKitCostStatic();
   const testedChips=agujas.map(a=>`<button type="button" class="aguja-chip${a.practica?' prac':''}${nTestedIds.has(a.id)?' on':''}" onclick="toggleTested('${a.id}')">${a.nom}${a.practica?' ★':''}</button>`).join('');
-  const tattooOpts=S.tatuajes.filter(t=>t.estado!=='Finalizado').map(t=>`<option value="${t.id}">#${t.num} · ${t.cliente} — ${t.diseno}</option>`).join('');
+  const tatOpt=t=>`<option value="${t.id}">#${t.num} · ${t.cliente} — ${t.diseno}</option>`;
+  const tatAbiertos=S.tatuajes.filter(t=>t.estado!=='Finalizado'),tatFin=S.tatuajes.filter(t=>t.estado==='Finalizado');
+  const tattooOpts=(tatAbiertos.length?`<optgroup label="En curso / pendientes">${tatAbiertos.map(tatOpt).join('')}</optgroup>`:'')
+    +(tatFin.length?`<optgroup label="Finalizados">${tatFin.map(tatOpt).join('')}</optgroup>`:'');
   return`<div class="card">
     <div class="ct">Nueva sesión</div>
     <div class="fgrid" style="margin-bottom:1rem">
@@ -1122,10 +1167,8 @@ function buildNuevaSes(){
         <select id="sf-tattoo" onchange="onTattooSelChange()"><option value="">— Práctica / sin proyecto —</option>${tattooOpts}</select>
       </div>
       <div class="fg"><label class="fl">Fecha</label><input id="sf-fecha" type="date" value="${today}"></div>
-      <div class="fg"><label class="fl">Cliente</label><input id="sf-cli" placeholder="Nombre o 'Yo mismo'"></div>
-      <div class="fg"><label class="fl">Zona</label><input id="sf-zona" list="zonas-dl" placeholder="Muslo, Antebrazo...">
-        <datalist id="zonas-dl"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Tobillo</option><option>Piel sintética</option></datalist>
-      </div>
+      <div class="fg"><label class="fl">Cliente <button type="button" id="sf-cli-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('cli')" title="Editar">&#x270E;</button></label><input id="sf-cli" placeholder="Nombre o 'Yo mismo'"></div>
+      <div class="fg"><label class="fl">Zona <button type="button" id="sf-zona-unlock" class="lock-btn" style="display:none" onclick="unlockSesField('zona')" title="Editar">&#x270E;</button></label>${zonaField('sf-zona','')}</div>
       <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="sf-hrs" type="number" min="0.25" step="0.25" value="2"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="sf-maq"><option value="">— Seleccionar —</option>${maquinas.map(m=>`<option value="${m.nom}">${m.nom}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">Voltaje (V)</label><input id="sf-volt" type="number" min="0" step="0.1" value="8"></div>
@@ -1216,8 +1259,7 @@ function buildEditSes(sid){
     <div class="fgrid" style="margin-bottom:1rem">
       <div class="fg"><label class="fl">Fecha</label><input id="es-fecha" type="date" value="${s.fecha}"></div>
       <div class="fg"><label class="fl">Cliente</label><input id="es-cli" value="${s.cliente||''}"></div>
-      <div class="fg"><label class="fl">Zona</label><input id="es-zona" list="zonas-dl-e" value="${s.zona||''}">
-        <datalist id="zonas-dl-e"><option>Muslo</option><option>Antebrazo</option><option>Brazo</option><option>Pecho</option><option>Espalda</option><option>Costillas</option><option>Piel sintética</option></datalist>
+      <div class="fg"><label class="fl">Zona</label>${zonaField('es-zona',s.zona)}
       </div>
       <div class="fg"><label class="fl">Tiempo (hrs)</label><input id="es-hrs" type="number" min="0.25" step="0.25" value="${s.hrs||1}"></div>
       <div class="fg"><label class="fl">Máquina</label><select id="es-maq"><option value="">— —</option>${maquinas.map(m=>`<option value="${m.nom}"${s.maquina===m.nom?' selected':''}>${m.nom}</option>`).join('')}</select></div>
@@ -1284,7 +1326,7 @@ async function saveEditSes(sid){
     id:sid,
     fecha:document.getElementById('es-fecha').value||s.fecha,
     cliente:document.getElementById('es-cli').value.trim(),
-    zona:document.getElementById('es-zona').value.trim(),
+    zona:readZona('es-zona'),
     hrs:parseFloat(document.getElementById('es-hrs').value)||s.hrs,
     maquina:document.getElementById('es-maq').value,
     voltaje:parseFloat(document.getElementById('es-volt').value)||0,
@@ -1376,7 +1418,7 @@ async function saveSes(){
   const sesId=await dbSaveSesion({
     fecha,
     cliente:document.getElementById('sf-cli').value.trim(),
-    zona:document.getElementById('sf-zona').value.trim(),
+    zona:readZona('sf-zona'),
     hrs:parseFloat(document.getElementById('sf-hrs').value)||0,
     maquina:document.getElementById('sf-maq').value,
     agujaId,voltaje:parseFloat(document.getElementById('sf-volt').value)||0,

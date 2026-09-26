@@ -43,6 +43,7 @@ S = {
 - **Publishable key** (en `js/db.js`, safe para frontend): `sb_publishable_8dl1Rolu23DUX35Gk8s24g_06GRANqH`
 - **service_role key**: NUNCA en frontend. NUNCA en el repo.
 - **Tablas**: `productos`, `tatuajes`, `kits`, `kit_items`, `sesiones`, `sesion_agujas_testeadas`, `movimientos`, `config`
+- **Vista `v_inversion`** (`security_invoker`): invertido (activos/insumos), consumido (práctica/cliente/histórico), en stock, recuperado y saldo a recuperar, en ARS con `tipo_cambio`
 - **Trigger `fn_movimiento_aplicar`**: BEFORE INSERT en `movimientos`. Calcula WAC con `round(x, 4)`, actualiza `productos.stock`, bloquea fila FOR UPDATE. Fuente de verdad para stock y costo_unitario — NO calcular en JS.
 - **Trigger `fn_touch_updated_at`**: BEFORE UPDATE en `productos`/`tatuajes`/`sesiones`/`config`.
 - **Auth**: Supabase Auth con email+contraseña (`signInWithPassword`). `dbSignIn(email,password)`/`dbSignOut`/`initAuthUI` en `js/db.js` y `F4H_Sistema_Beta_v6.html`. Cuenta original / tenant #1: `franforace@gmail.com`. Altas de tenants nuevos se crean manualmente en el dashboard de Supabase Auth — no hay signup in-app todavía (ver roadmap de onboarding por invitación).
@@ -162,7 +163,8 @@ S = {
 ## Reglas de negocio importantes
 - Activos excluidos de alertas: `if(p.cat==='Activo') return 'ok'`
 - Alertas: stock ESTRICTO < mínimo (no <=)
-- Agujas `practica:true` no descuentan stock
+- Agujas `practica:true` descuentan stock igual (desde 2026-09): el flag es solo etiqueta. El costo de práctica se ve en `v_inversion.consumido_practica_ars`
+- Zona del cuerpo: lista cerrada `ZONAS` + lado, guardada como `"Tobillo · Izq"` (`zonaField`/`readZona`/`setZona`). Para análisis: `split_part(zona, ' · ', 1)`
 - Kit base: se descuenta automáticamente en cada sesión si checkbox activo
 - costoAlMomento: trigger sella el valor vigente si no se informa en el INSERT
 - `globalScore(s)` — NO modificar esta función
