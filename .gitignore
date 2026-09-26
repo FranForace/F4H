@@ -6,3 +6,4 @@ Info/
 *.xlsx
 node_modules/
 .vercel/
+.claude/
