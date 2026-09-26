@@ -73,7 +73,7 @@ S = {
 > una afirmación escrita acá con fecha.
 
 ## Módulos del sistema (tabs en la UI)
-1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo watermark
+1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo junto al título
 2. **Agenda** — disponibilidad por reglas, calendario mensual + panel lateral (día/turno/reglas), cupos de lanzamiento (primer ítem del grupo "Trabajo")
 3. **Tatuajes** — split master-detail: lista 300px + panel detalle 1fr
 4. **Inventario** — pills de filtro por categoría/estado, table-card border-radius:14px
@@ -135,8 +135,10 @@ S = {
   fondos rgba light (no dark bg)
 - **Headers de módulos**: sin border-bottom, margin-bottom:24px
 - **Arte lateral**: fuego izq. opacity:0.75, hannya der. opacity:0.55 + filter:invert(1)
-- **Logo nav**: logo-v2.png, height:44px
-- **Dashboard header**: logo-v2.png watermark centrado absoluto (380px, filtro dorado)
+- **Logo**: `logo-v2-trim.png` (recorte del glifo real de `logo-v2.png`, que tiene mucho margen
+  transparente) con `filter:invert(1)` — necesario, la tinta es oscura. Sidebar height:48px,
+  junto al título de cada header de módulo height:40px (por ahora solo implementado en el
+  Dashboard — 2026-09-26, ver `docs/superpowers/specs/2026-09-26-design-system.md` sección 5).
 - **Tatuajes**: split grid 300px + 1fr (lista + detalle), project-cards con margen
 - **Inventario**: pills circulares (border-radius:99px), active states de color,
   separador entre grupos, edit panel border:1.5px solid var(--accent), grid 4 cols

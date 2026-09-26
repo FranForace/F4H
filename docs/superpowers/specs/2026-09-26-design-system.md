@@ -131,11 +131,20 @@ marca de agua de 380px centrada de fondo en el Dashboard (con un filtro de color
 que lo deja casi invisible detrás del contenido).
 
 **Decisión:** el logo funciona como parte del **título**, no como decoración de fondo:
-- **Sidebar:** el logo se mantiene chico pero nítido (sin el filtro que lo pone gris/blanco),
-  acompañado del nombre del sistema al lado — juntos arman un mini-masthead, no un ícono solo.
-- **Headers de módulo:** el mismo logo chico (más chico que en el sidebar) aparece junto al
-  título de cada módulo (Dashboard, Agenda, Tatuajes, etc.), con el mismo tratamiento en todos
-  lados — consistencia en vez de un caso especial por módulo.
+- **El archivo real importa:** `logo-v2.png` es un lienzo de 896×1195 con el glifo "F4H" ocupando
+  solo una caja chica en el medio (mucho margen transparente alrededor) — escalar la imagen
+  entera por `height` deja el trazo casi invisible. Se usa un recorte al glifo,
+  `logo-v2-trim.png` (~561×342, misma tinta), para que el tamaño en pantalla sea el tamaño real
+  del logo.
+- **El filtro `invert(1)` se mantiene** en sidebar y headers — la tinta es oscura, sin eso no se
+  lee sobre el fondo oscuro del sistema. No es el "filtro que lo pone gris/blanco" que se quiere
+  sacar; es lo que lo hace legible. No se agrega texto con el nombre del sistema al lado — el
+  logo ya es la palabra "F4H" caligrafiada, duplicarla en texto sería redundante.
+- **Sidebar:** el logo recortado se agranda un poco (38px→48px) para tener más presencia,
+  reemplazando la idea original de "logo + texto" por simplemente "logo más grande y nítido".
+- **Headers de módulo:** el mismo logo recortado, más chico que en el sidebar (40px), aparece
+  junto al título de cada módulo — **implementado por ahora solo en el Dashboard** (2026-09-26);
+  extenderlo a Agenda/Tatuajes/etc. es un rollout posterior, no bloqueante.
 - **Se elimina la marca de agua gigante del Dashboard** — con el logo ya presente en el sidebar
   y en el header, la marca de agua de 380px no suma presencia de marca, solo ocupa espacio sin
   que casi se note.
