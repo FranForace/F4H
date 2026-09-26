@@ -122,18 +122,40 @@ seleccionar barra de progreso lineal existente (`.progress-bar`) donde ya se use
 cupos de lanzamiento de la Agenda, que ya la usa) en vez de duplicar con un anillo nuevo si no
 suma.
 
----
+## 5. Logo / marca — unificar el tratamiento
 
-## 5. Próximos pasos
+**Hoy:** el logo (`logo-v2.png`) aparece 3 veces con tratamientos distintos y sin relación entre
+sí: 56px en la pantalla de login, 38px chico e invertido a gris/blanco arriba del sidebar, y una
+marca de agua de 380px centrada de fondo en el Dashboard (con un filtro de color raro —
+`invert(1) sepia(.4) saturate(1.8) hue-rotate(350deg) brightness(.9)` — al 70% de opacidad,
+que lo deja casi invisible detrás del contenido).
+
+**Decisión:** el logo funciona como parte del **título**, no como decoración de fondo:
+- **Sidebar:** el logo se mantiene chico pero nítido (sin el filtro que lo pone gris/blanco),
+  acompañado del nombre del sistema al lado — juntos arman un mini-masthead, no un ícono solo.
+- **Headers de módulo:** el mismo logo chico (más chico que en el sidebar) aparece junto al
+  título de cada módulo (Dashboard, Agenda, Tatuajes, etc.), con el mismo tratamiento en todos
+  lados — consistencia en vez de un caso especial por módulo.
+- **Se elimina la marca de agua gigante del Dashboard** — con el logo ya presente en el sidebar
+  y en el header, la marca de agua de 380px no suma presencia de marca, solo ocupa espacio sin
+  que casi se note.
+- Login (56px) queda afuera de este pase — es una pantalla aparte, sin jerarquía que unificar
+  con el resto.
+
+## 6. Próximos pasos
 
 Cada módulo aplica esta base con su propio plan de implementación (`writing-plans`), en este
 orden sugerido (a confirmar con Francesco antes de cada uno):
 
-1. **Agenda** — motivo original del pedido: aplicar espaciado Cómoda a las celdas del
+1. **Logo/marca** (sección 5) — sidebar + header compartido de módulos. Toca la estructura que
+   usan todos los módulos (el bloque de header que ya se repite en cada uno), así que conviene
+   resolverlo antes de tocar headers puntuales en los rollouts siguientes.
+2. **Agenda** — motivo original del pedido: aplicar espaciado Cómoda a las celdas del
    calendario (probablemente el cambio de mayor impacto — hoy son las más comprimidas del
    sistema) y la transición estándar a los chips/turnos clickeables.
-2. **Tatuajes** — patrón imagen + info (sección 2) en el detalle de tatuaje.
-3. **Dashboard** — tratamiento de métricas (sección 4) en los stat-cards existentes.
-4. Resto de módulos (Inventario, Activos, Sesiones, Egresos, Movimientos, Config) — aplicar
+3. **Tatuajes** — patrón imagen + info (sección 2) en el detalle de tatuaje.
+4. **Dashboard** — tratamiento de métricas (sección 4) en los stat-cards existentes, y remover
+   la marca de agua vieja (sección 5) si el rollout 1 todavía no la sacó.
+5. Resto de módulos (Inventario, Activos, Sesiones, Egresos, Movimientos, Config) — aplicar
    espaciado + transición estándar; evaluar caso a caso si algo se beneficia del patrón
    imagen+info o de métricas visuales.
