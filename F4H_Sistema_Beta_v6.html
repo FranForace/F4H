@@ -256,6 +256,9 @@ textarea{resize:vertical;min-height:80px}
       <span class="sb-icon">&#x25AA;</span>Dashboard
     </button>
     <div class="sb-group">Trabajo</div>
+    <button class="sidebar-item" data-tab="agenda" onclick="go('agenda')">
+      <span class="sb-icon">&#x25A6;</span>Agenda
+    </button>
     <button class="sidebar-item" data-tab="tattoos" onclick="go('tattoos')">
       <span class="sb-icon">&#x2726;</span>Tatuajes
     </button>
@@ -293,6 +296,7 @@ textarea{resize:vertical;min-height:80px}
 
 
 <div id="t-dash"></div>
+<div id="t-agenda" style="display:none"></div>
 <div id="t-tattoos" style="display:none"></div>
 <div id="t-inv" style="display:none"></div>
 <div id="t-act" style="display:none"></div>
@@ -476,7 +480,7 @@ function initAuthUI(){
     }
   });
 }
-let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8};
+let S={productos:[],movimientos:[],sesiones:[],tatuajes:[],kit:[],kits:[],tc:1400,spm:8,turnos:[],reglas:[],cupos:null};
 const ESTILOS=['American Traditional','Neo Traditional','New School','Blackwork','Realismo','Fine Line','Minimalista','Geométrico','Japonés (Irezumi)','Lettering','Acuarela','Chicano','Tribal','Dark / Horror','Ilustración','Otro'];
 let curTab='dash',sesView='nueva',tattooView='lista',fCat=[],fSt='',editingId=null,selectedTattooId=null;
 let nExtras=[],nKitExcludes=new Set(),editSesionId=null;
@@ -606,7 +610,7 @@ function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En 
 function go(t){
   curTab=t;editingId=null;
   document.querySelectorAll('.sidebar-item').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
-  ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg'].forEach(x=>{
+  ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg','agenda'].forEach(x=>{
     document.getElementById('t-'+x).style.display=x===t?'':'none';
   });
   if(t==='dash')renderDash();
@@ -617,10 +621,12 @@ function go(t){
   if(t==='egresos')renderEgresos();
   if(t==='mov'){fillMovSel();renderMovTable();}
   if(t==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
+  if(t==='agenda')renderAgenda();
 }
 function setSesView(v){sesView=v;editSesionId=null;SF=null;nExtras=[];nKitExcludes=new Set();renderSes();}
 function renderAll(){if(curTab==='dash')renderDash();else if(curTab==='tattoos')renderTattoos();else if(curTab==='inv')renderInv();else if(curTab==='act')renderActivos();else if(curTab==='ses')renderSes();else if(curTab==='egresos')renderEgresos();
-  else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}}
+  else if(curTab==='mov'){fillMovSel();renderMovTable();}else if(curTab==='cfg'){document.getElementById('tc-val').value=S.tc;document.getElementById('spm-val').value=S.spm;renderKitCfg();updateCfgAmort();}
+  else if(curTab==='agenda')renderAgenda();}
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function renderDash(){
