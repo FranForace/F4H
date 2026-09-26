@@ -660,10 +660,14 @@ async function AGloadMes(mesKey){
   if(AG.dias[mesKey])return AG.dias[mesKey];
   const {start,end}=AGgridRange(mesKey);
   const rows=await dbAgendaDias(AGymd(start),AGymd(end));
+  if(rows===null)return {};
   const map={};
-  (rows||[]).forEach(r=>{map[r.fecha]=r;});
+  rows.forEach(r=>{map[r.fecha]=r;});
   AG.dias[mesKey]=map;
   return map;
+}
+function AGinfoDia(fecha){
+  return (AG.dias[AG.mes]||{})[fecha] || (AG.dias[fecha.slice(0,7)]||{})[fecha] || null;
 }
 
 async function renderAgenda(){
@@ -704,7 +708,7 @@ function buildAgendaCalendario(){
     const inMes=(d.getMonth()+1===m);
     const esHoy=fecha===today;
     const abierto=!!(info&&info.abierto);
-    const turnosDia=S.turnos.filter(t=>t.fecha===fecha&&!['Cancelado','No vino'].includes(t.estado));
+    const turnosDia=S.turnos.filter(t=>t.fecha===fecha);
     const turnosActivos=(info&&info.turnos_activos)||0;
     const avisoRojo=!abierto&&turnosActivos>0;
     const sesionesSinTurno=fecha<today?S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id)):[];
@@ -757,8 +761,7 @@ function buildAgendaPanel(){
 }
 
 function buildPanelDia(fecha){
-  const mesKey=fecha.slice(0,7);
-  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false,turnos_activos:0,regla_id:null,regla_motivo:''};
+  const info=AGinfoDia(fecha)||{abierto:false,turnos_activos:0,regla_id:null,regla_motivo:''};
   const [y,m,dd]=fecha.split('-').map(Number);
   const fechaLarga=new Date(y,m-1,dd).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const turnosDia=S.turnos.filter(t=>t.fecha===fecha).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
@@ -814,15 +817,24 @@ function buildTurnoRow(t){
   +'</div>';
 }
 
-async function AGsetEstado(id,estado){if(await dbSetEstadoTurno(id,estado))renderAgenda();}
+async function AGsetEstado(id,estado){
+  if(await dbSetEstadoTurno(id,estado)){
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
+}
 async function AGdesvincular(id){
   if(!confirm('\xBFDesvincular la sesi\xF3n de este turno? El turno vuelve a Confirmado.'))return;
-  if(await dbDesvincularSesionTurno(id))renderAgenda();
+  if(await dbDesvincularSesionTurno(id)){
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
 }
 
 async function AGtoggleDia(fecha){
-  const mesKey=fecha.slice(0,7);
-  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false,turnos_activos:0,regla_id:null};
+  const info=AGinfoDia(fecha)||{abierto:false,turnos_activos:0,regla_id:null};
   if(info.abierto&&info.turnos_activos>0&&AGavisoCierre!==fecha){
     AGavisoCierre=fecha;renderAgenda();return;
   }
@@ -852,8 +864,7 @@ function AGeditarTurno(id){
 function buildPanelTurno(){
   const f=AGturnoForm;if(!f)return'';
   const fecha=f.fecha;
-  const mesKey=fecha.slice(0,7);
-  const info=(AG.dias[mesKey]||{})[fecha]||{abierto:false};
+  const info=AGinfoDia(fecha)||{abierto:false};
   const tatOpts=S.tatuajes.filter(t=>t.estado!=='Finalizado');
   const cupoAgotado=S.cupos&&S.cupos.disponibles<=0;
   const sesionesFecha=S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id&&t.id!==f.id));
@@ -900,12 +911,18 @@ async function AGguardarTurno(){
   if(!id){if(btn)btn.disabled=false;return;}
   if(sesionExistente)await dbVincularSesionTurno(id,sesionExistente);
   AG.dias={};await AGloadMes(AG.mes);
+  if(payload.fecha.slice(0,7)!==AG.mes)await AGloadMes(payload.fecha.slice(0,7));
   AGturnoForm=null;AG.dia=payload.fecha;AG.panel='dia';
   renderAgenda();
 }
 async function AGborrarTurno(id){
   if(!confirm('\xBFEliminar este turno?'))return;
-  if(await dbDeleteTurno(id)){AGturnoForm=null;AG.panel='dia';renderAgenda();}
+  if(await dbDeleteTurno(id)){
+    AGturnoForm=null;AG.panel='dia';
+    AG.dias={};
+    await AGloadMes(AG.mes);
+    renderAgenda();
+  }
 }
 
 function AGabrirReglas(){AGreglaForm=AGreglaFormDefault();AG.panel='reglas';renderAgenda();}
@@ -1855,6 +1872,10 @@ async function saveEditSes(sid){
 
 async function deleteSes(sid){
   if(!confirm('¿Eliminar esta sesión? Los movimientos de stock generados NO se revierten.'))return;
+  if(S.turnos.some(t=>t.sid===sid)){
+    msg('es-msg-'+sid,'Esta sesión está vinculada a un turno — desvinculala desde la Agenda antes de eliminarla.','err');
+    return;
+  }
   const ok=await dbDeleteSesion(sid);if(!ok)return;
   editSesionId=null;SF=null;sesView='bit';renderSes();
 }
@@ -1935,6 +1956,7 @@ async function saveSes(){
     const ok=await dbVincularSesionTurno(pendingTurnoId,sesId);
     if(!ok)vinculoError=true;
     pendingTurnoId=null;
+    AG.dias={};
   }
   const nf=SF.fotos.length;const subidas=await sfPostSave(sesId);
   if(vinculoError)msg('ses-msg','Sesión guardada, pero no se pudo vincular al turno — vinculala desde la Agenda','err');

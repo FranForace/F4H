@@ -251,6 +251,11 @@ async function getCupos() {
   return data || null;
 }
 
+async function refreshCupos() {
+  const c = await getCupos();
+  if (c) S.cupos = c;
+}
+
 async function dbAgendaDias(desde, hasta) {
   const { data, error } = await _db.rpc('fn_agenda_dias', { p_desde: desde, p_hasta: hasta });
   if (error) { dbError('Error calculando disponibilidad: ' + error.message); return null; }
@@ -533,6 +538,7 @@ async function dbSaveTurno(t) {
   }
   const nuevos = await getTurnos();
   if (nuevos) S.turnos = nuevos;
+  await refreshCupos();
   return t.id;
 }
 
@@ -544,6 +550,7 @@ async function dbSetEstadoTurno(id, estado) {
   if (error) { dbError('Error actualizando estado del turno: ' + error.message); return false; }
   const t = S.turnos.find(x => x.id === String(id));
   if (t) t.estado = estado;
+  await refreshCupos();
   return true;
 }
 
@@ -573,6 +580,7 @@ async function dbDeleteTurno(id) {
   const { error } = await _db.from('turnos').delete().eq('id', Number(id));
   if (error) { dbError('Error eliminando turno: ' + error.message); return false; }
   S.turnos = S.turnos.filter(x => x.id !== String(id));
+  await refreshCupos();
   return true;
 }
 
