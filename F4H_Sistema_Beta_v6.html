@@ -216,6 +216,21 @@ textarea{resize:vertical;min-height:80px}
 .be-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
 .be-cell-label{font-size:10px;color:var(--text-2);margin-bottom:4px}
 .be-cell-val{font-size:18px;font-weight:700;letter-spacing:-.3px}
+/* ── Mobile (spec docs/superpowers/specs/2026-09-30-mobile-pwa-design.md) ─────
+   Todo lo mobile vive en este bloque. Las render functions usan inline styles,
+   por eso la capa pisa con selectores de atributo + !important acotados a .app.
+   La media query debe ser idéntica a MQ_MOBILE en JS. */
+.mnav{display:none}
+@media (max-width: 760px), (pointer: coarse) and (max-height: 500px){
+  .sidebar{display:none}
+  .app{margin-left:0;padding:calc(10px + env(safe-area-inset-top)) 12px calc(84px + env(safe-area-inset-bottom))}
+  .mnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#0a0908;border-top:1px solid #1e1e1e;padding:4px 4px env(safe-area-inset-bottom)}
+  .mnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;background:none;border:none;color:var(--text-2);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mnav-item .mnav-ic{font-size:18px;line-height:1}
+  .mnav-item.on{color:var(--accent)}
+  .mnav-plus .mnav-ic{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#1a1200;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:300}
+  .mnav-plus.on .mnav-ic{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--accent)}
+}
 </style>
 </head>
 <body style="background:var(--bg)">
@@ -290,6 +305,14 @@ textarea{resize:vertical;min-height:80px}
     <button id="nav-signout" onclick="doSignOut()" style="display:none;width:100%;padding:6px 10px;border-radius:6px;font-size:11px;font-family:inherit;cursor:pointer;border:1px solid #2e2e2e;background:transparent;color:#555;text-align:left" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='#2e2e2e';this.style.color='#555'">Cerrar sesi&#xF3;n</button>
   </div>
 </aside>
+<nav class="mnav" aria-label="Navegación">
+  <button class="mnav-item" data-tabs="dash" onclick="go('dash')"><span class="mnav-ic">&#x25AA;</span>Inicio</button>
+  <button class="mnav-item" data-tabs="agenda" onclick="go('agenda')"><span class="mnav-ic">&#x25A6;</span>Agenda</button>
+  <button class="mnav-item mnav-plus" data-tabs="new" onclick="mOpenNuevo()" aria-label="Nuevo"><span class="mnav-ic">+</span>Nuevo</button>
+  <button class="mnav-item" data-tabs="ses" onclick="go('ses')"><span class="mnav-ic">&#x25CE;</span>Sesiones</button>
+  <button class="mnav-item" data-tabs="tattoos,inv,mov,act,egresos,cfg" onclick="mOpenMas()"><span class="mnav-ic">&#x22EF;</span>M&#xE1;s</button>
+</nav>
+<div id="msheet" style="display:none"></div>
 <div class="app">
 
 <div id="inject-banner" class="inject-banner"></div>
@@ -635,10 +658,14 @@ function scorePill(v){if(!v)return'<span class="sp" style="background:#eee;color
 function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En curso</span>';if(e==='Finalizado')return'<span class="badge b-fin">Finalizado</span>';return'<span class="badge b-pend">Pendiente</span>';}
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
+// Mobile: misma media query que el bloque CSS "Mobile". Ver spec mobile-pwa 1.1.
+const MQ_MOBILE=matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 500px)');
+function isMobile(){return MQ_MOBILE.matches;}
 function go(t){
   if(curTab==='ses'&&t!=='ses'&&pendingTurnoId)pendingTurnoId=null;
   curTab=t;editingId=null;
   document.querySelectorAll('.sidebar-item').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
+  document.querySelectorAll('.mnav-item').forEach(function(b){b.classList.toggle('on',(b.dataset.tabs||'').split(',').includes(t));});
   ['dash','tattoos','inv','act','ses','egresos','new','mov','cfg','agenda'].forEach(x=>{
     document.getElementById('t-'+x).style.display=x===t?'':'none';
   });
