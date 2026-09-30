@@ -38,6 +38,32 @@ async (groups) => {
     return f;
   };
 
+  G.sheets = async () => {
+    const f = [];
+    const sh = () => document.getElementById('msheet');
+    const open = () => sh() && css(sh(),'display') !== 'none';
+    const items = () => [...sh().querySelectorAll('[data-sheet-item]')].map(b => b.innerText.trim().replace(/\s+/g,' '));
+    if (typeof mOpenNuevo !== 'function' || typeof mOpenMas !== 'function') return ['mOpenNuevo/mOpenMas no existen'];
+    mOpenNuevo(); await sleep(50);
+    if (!open()) f.push('Nuevo no abre la hoja');
+    const n = items(); ['Tatuaje','Sesión','Producto','Movimiento','Egreso'].forEach(w => { if (!n.some(x => x.includes(w))) f.push('Nuevo sin "' + w + '"'); });
+    [...sh().querySelectorAll('[data-sheet-item]')].forEach(b => { if (b.getBoundingClientRect().height < 44) f.push('ítem de hoja < 44px'); });
+    sh().firstElementChild.click(); await sleep(50);          // tocar el fondo oscuro
+    if (open()) f.push('tocar afuera no cierra la hoja');
+    mOpenMas(); await sleep(50);
+    const m = items(); ['Tatuajes','Inventario','Movimientos','Activos','Egresos','Config','Cerrar sesión'].forEach(w => { if (!m.some(x => x.includes(w))) f.push('Más sin "' + w + '"'); });
+    [...sh().querySelectorAll('[data-sheet-item]')].find(b => b.innerText.includes('Inventario')).click(); await sleep(50);
+    if (curTab !== 'inv') f.push('Más → Inventario no navega (curTab=' + curTab + ')');
+    if (open()) f.push('elegir una opción no cierra la hoja');
+    mOpenNuevo(); await sleep(50); go('dash'); await sleep(50);
+    if (open()) f.push('go() no cierra la hoja abierta');
+    mOpenNuevo(); await sleep(50);
+    [...sh().querySelectorAll('[data-sheet-item]')].find(b => b.innerText.includes('Sesión')).click(); await sleep(200);
+    if (curTab !== 'ses' || sesView !== 'nueva') f.push('Nuevo → Sesión no abre el formulario (curTab=' + curTab + ', sesView=' + sesView + ')');
+    go('dash');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }

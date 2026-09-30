@@ -661,7 +661,37 @@ function estadoBadge(e){if(e==='En curso')return'<span class="badge b-curso">En 
 // Mobile: misma media query que el bloque CSS "Mobile". Ver spec mobile-pwa 1.1.
 const MQ_MOBILE=matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 500px)');
 function isMobile(){return MQ_MOBILE.matches;}
+// Hojas inferiores (mobile). HTML generado → inline styles (regla de CLAUDE.md).
+function mSheet(title,items){
+  const el=document.getElementById('msheet');if(!el)return;
+  el.innerHTML='<div onclick="if(event.target===this)mSheetClose()" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);display:flex;align-items:flex-end">'
+    +'<div role="dialog" aria-label="'+title+'" style="width:100%;background:var(--bg-card);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:8px 10px calc(12px + env(safe-area-inset-bottom))">'
+      +'<div style="width:36px;height:4px;border-radius:99px;background:var(--border-hover);margin:4px auto 10px"></div>'
+      +'<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:0 8px 6px">'+title+'</div>'
+      +items.map(function(it){return '<button data-sheet-item onclick="mSheetClose();'+it.act+'" style="display:flex;align-items:center;gap:14px;width:100%;min-height:52px;padding:0 10px;background:none;border:none;border-radius:10px;color:var(--text);font-size:16px;font-family:inherit;text-align:left;cursor:pointer"><span style="width:26px;text-align:center;font-size:18px;color:var(--accent)">'+it.ic+'</span>'+it.label+'</button>';}).join('')
+    +'</div></div>';
+  el.style.display='block';
+}
+function mSheetClose(){const el=document.getElementById('msheet');if(el){el.style.display='none';el.innerHTML='';}}
+function mOpenNuevo(){mSheet('Nuevo',[
+  {ic:'&#x1F58B;',label:'Tatuaje',act:"tattooView='nuevo';go('tattoos')"},
+  {ic:'&#x25CE;',label:'Sesi\xF3n',act:"go('ses');setSesView('nueva')"},
+  {ic:'&#x1F4E6;',label:'Producto',act:"go('new')"},
+  {ic:'&#x21C5;',label:'Movimiento (compra o salida)',act:"go('mov')"},
+  {ic:'&#x2193;',label:'Egreso',act:"go('egresos')"}
+]);}
+function mOpenMas(){mSheet('M\xE1s',[
+  {ic:'&#x2726;',label:'Tatuajes',act:"go('tattoos')"},
+  {ic:'&#x2261;',label:'Inventario',act:"go('inv')"},
+  {ic:'&#x21C5;',label:'Movimientos',act:"go('mov')"},
+  {ic:'&#x25FB;',label:'Activos',act:"go('act')"},
+  {ic:'&#x2193;',label:'Egresos',act:"go('egresos')"},
+  {ic:'&#x2699;',label:'Config',act:"go('cfg')"},
+  {ic:'&#x21AA;',label:'Cerrar sesi\xF3n',act:'doSignOut()'}
+]);}
+MQ_MOBILE.addEventListener('change',function(){mSheetClose();renderAll();});
 function go(t){
+  mSheetClose();
   if(curTab==='ses'&&t!=='ses'&&pendingTurnoId)pendingTurnoId=null;
   curTab=t;editingId=null;
   document.querySelectorAll('.sidebar-item').forEach(function(btn){btn.classList.toggle('on',btn.dataset.tab===t);});
