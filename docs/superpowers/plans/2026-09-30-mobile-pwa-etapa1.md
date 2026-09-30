@@ -138,12 +138,12 @@ case "$VP" in
   *) echo "viewport: mobile | desktop"; exit 2 ;;
 esac
 DIR=$(dirname "$0")
-GROUPS=$(node -e 'console.log(JSON.stringify(process.argv.slice(1)))' "$@")
+GRUPOS=$(node -e 'console.log(JSON.stringify(process.argv.slice(1)))' "$@")
 FN=$(cat "$DIR/checks.js")
 playwright-cli -s=f4h resize $W $H >/dev/null 2>&1
 playwright-cli -s=f4h reload >/dev/null 2>&1
 sleep 5
-OUT=$(playwright-cli -s=f4h eval "async () => (${FN})(${GROUPS})" --raw 2>/dev/null)
+OUT=$(playwright-cli -s=f4h eval "async () => (${FN})(${GRUPOS})" --raw 2>/dev/null)
 echo "$OUT"
 echo "$OUT" | grep -q '"ok": *true'
 ```
