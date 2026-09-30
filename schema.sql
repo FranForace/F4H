@@ -28,7 +28,18 @@ create table productos (
   notas             text,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
-  constraint productos_tenant_nombre_key unique (tenant_id, nombre)
+  -- Agujas estructuradas (2026-09-30): el nombre lo arma trg_aguja_nombre
+  aguja_tipo        text     check (aguja_tipo in ('RL','RS','M','CM')),
+  aguja_numero      smallint check (aguja_numero between 1 and 99),
+  aguja_calibre     text     check (aguja_calibre in ('08','10','12')),
+  aguja_sufijo      text     check (aguja_sufijo is null or btrim(aguja_sufijo) <> ''),
+  activo            boolean  not null default true,   -- false = archivado (oculto en selectores)
+  constraint productos_tenant_nombre_key unique (tenant_id, nombre),
+  constraint productos_aguja_campos check (
+    case when categoria = 'Aguja'
+      then aguja_tipo is not null and aguja_numero is not null and aguja_calibre is not null
+      else aguja_tipo is null and aguja_numero is null and aguja_calibre is null and aguja_sufijo is null
+    end)
 );
 
 create table tatuajes (
@@ -265,17 +276,15 @@ begin
     (new.id, 'Green Soap', 'Consumible', 'Green Soap', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 50, null, false),
     (new.id, 'Diluyente', 'Consumible', 'Diluyente', 'SESION', 'Frasco', 1, 1, 'ARS', 8000, 50, null, false),
     (new.id, 'Levanta Lengua (100u)', 'Consumible', 'Otros', 'SESION', 'Caja', 1, 1, 'ARS', 6000, 100, null, false),
-    (new.id, 'Remove Stencil', 'Consumible', 'Limpieza', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 20, null, false),
-    (new.id, 'RS 7', 'Aguja', 'RS', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'Magnum 7', 'Aguja', 'MG', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'Magnum 13', 'Aguja', 'MG', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 3', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 4, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 5', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 7', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 3, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 9', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 11', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 14', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false),
-    (new.id, 'RL 15', 'Aguja', 'RL', 'UNIDAD', 'Unidad', 2, 2, 'ARS', 1500, 1, null, false);
+    (new.id, 'Remove Stencil', 'Consumible', 'Limpieza', 'SESION', 'Frasco', 1, 1, 'ARS', 9000, 20, null, false);
+
+  -- Agujas: el nombre lo arma trg_aguja_nombre (2026-09-30)
+  insert into productos
+    (tenant_id, nombre, categoria, aguja_tipo, aguja_numero, aguja_calibre,
+     tipo_consumo, unidad_medida, stock, stock_minimo, moneda, costo_unitario, usos_por_unidad)
+  select new.id, '', 'Aguja', t, n, '12', 'UNIDAD', 'Unidad', s, 2, 'ARS', 1500, 1
+  from (values ('RS',7,2), ('M',7,2), ('M',13,2), ('RL',3,4), ('RL',5,2),
+               ('RL',7,3), ('RL',9,2), ('RL',11,2), ('RL',14,2), ('RL',15,2)) v(t, n, s);
 
   insert into kits (tenant_id, nombre) values (new.id, 'Kit base')
     returning id into v_kit_id;
@@ -562,3 +571,46 @@ left join public.turnos t
 where c.clave = 'cupos_lanzamiento'
 group by c.tenant_id, c.valor;
 grant select on public.v_cupos_lanzamiento to authenticated;
+
+-- ── Agujas estructuradas (2026-09-30) ───────────────────────────────────────
+-- Columnas y constraint productos_aguja_campos: ver create table productos.
+-- Migración: docs/superpowers/plans/sql/2026-09-30-agujas.sql (+ -unificar-39.sql)
+create or replace function public.fn_aguja_nombre() returns trigger
+language plpgsql set search_path = public, pg_temp as $$
+begin
+  if new.categoria = 'Aguja' then
+    new.aguja_sufijo := nullif(regexp_replace(btrim(coalesce(new.aguja_sufijo, '')), '\s+', ' ', 'g'), '');
+    if new.aguja_tipo is not null and new.aguja_numero is not null and new.aguja_calibre is not null then
+      new.nombre := new.aguja_tipo || lpad(new.aguja_numero::text, 2, '0') || ' '
+                    || new.aguja_calibre || coalesce(' ' || new.aguja_sufijo, '');
+      new.subcategoria := new.aguja_tipo;
+    end if;
+  end if;
+  return new;
+end $$;
+
+create trigger trg_aguja_nombre before insert or update on public.productos
+  for each row execute function public.fn_aguja_nombre();
+
+create unique index productos_aguja_combo_key on public.productos
+  (tenant_id, aguja_tipo, aguja_numero, aguja_calibre, lower(coalesce(aguja_sufijo, '')))
+  where categoria = 'Aguja';
+
+create view public.v_agujas_uso with (security_invoker = true) as
+select p.tenant_id, p.aguja_tipo, p.aguja_numero, p.aguja_calibre,
+  sum(p.stock) filter (where p.activo) as stock_actual,
+  coalesce(sum(m.u30), 0)              as usadas_30d,
+  coalesce(sum(m.u90), 0)              as usadas_90d,
+  coalesce(sum(m.u_total), 0)          as usadas_total
+from public.productos p
+left join lateral (
+  select sum(mv.cantidad) filter (where mv.fecha > current_date - 30) u30,
+         sum(mv.cantidad) filter (where mv.fecha > current_date - 90) u90,
+         sum(mv.cantidad)                                            u_total
+  from public.movimientos mv
+  where mv.producto_id = p.id and mv.tipo = 'salida' and mv.sesion_id is not null
+) m on true
+where p.categoria = 'Aguja'
+group by 1, 2, 3, 4;
+revoke all on public.v_agujas_uso from anon;
+grant select on public.v_agujas_uso to authenticated;
