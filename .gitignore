@@ -8,3 +8,4 @@ node_modules/
 .vercel/
 .claude/
 .superpowers/
+.playwright-cli/

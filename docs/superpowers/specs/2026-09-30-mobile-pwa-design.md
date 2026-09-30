@@ -35,10 +35,17 @@ específico, cambios de datos o de base.
 
 ## 1. Arquitectura
 
-### 1.1 Breakpoint único
+### 1.1 Breakpoint único (vertical + horizontal)
 
-`@media (max-width: 760px)` — todo lo mobile vive detrás de esta media query. Por encima,
-el sistema se ve exactamente igual que hoy.
+```css
+@media (max-width: 760px), (pointer: coarse) and (max-height: 500px) { ... }
+```
+
+Todo lo mobile vive detrás de esta media query. La segunda condición cubre el **iPhone
+acostado** (844×390: más de 760px de ancho, pero 390 de alto): sin ella volvería la barra
+lateral de 220px en una pantalla de 390px de alto (hallazgo de la auditoría, anexo A). Por
+encima / con mouse, el sistema se ve exactamente igual que hoy. `isMobile()` usa la misma
+media query.
 
 ### 1.2 Capa responsive sobre estilos inline
 
@@ -139,7 +146,16 @@ rewrite actual es solo `/` → `F4H_Sistema_Beta_v6.html`). `sw.js` con
 
 ### 3.4 Formularios (sesión, turno, producto, movimiento)
 - `input`, `select`, `textarea` con **`font-size:16px`** (evita el zoom automático de iOS).
-- Objetivos táctiles de **≥ 44px** de alto (botones, selects, botones de puntaje).
+  Hoy los **130 campos medidos están por debajo de 16px** (anexo A): va en la etapa 1, global.
+- Objetivos táctiles de **≥ 44px** de alto (botones, selects, botones de puntaje, pills de
+  filtro, flechas del calendario). Hoy fallan 209 de 287 elementos tocables medidos.
+- Texto funcional (labels de sección, nav, encabezados de tabla) con **mínimo 11px**; hoy
+  hay varios a 10px.
+
+### 3.5 Contraste
+`--text-3: #555` sobre los fondos del sistema da **2,3–2,7:1** (WCAG AA pide 4,5:1 para texto
+chico). Se usa en hints, subtítulos y labels secundarios: en el estudio, con luz fuerte o el
+brillo bajo, en el celular se pierde. Ver decisión pendiente en el anexo A.
 - Puntajes 1–10: dos filas de 5.
 - Fila de aguja en la tarjeta de sesión: select a ancho completo, cantidad y ✕ debajo.
 - Fotos: se mantiene el `<input type="file" accept="image/*">` actual (en iOS ofrece cámara o galería).
@@ -183,4 +199,69 @@ Francesco → merge a `dev` y `main`.
 | Selectores de atributo agarran algo que no debían | Acotados a `.app`; revisión de cada tab en 390px y 1440px |
 | `!important` complica cambios futuros | Toda la capa en un solo bloque `/* ── Mobile ── */` documentado en CLAUDE.md |
 | El SW sirve una versión vieja | Network-first + caché versionada + `sw.js` sin caché HTTP |
+| El iPhone acostado cae en el layout de escritorio | Segunda condición del breakpoint (1.1) |
 | iOS standalone y el login de Supabase | La sesión de Supabase vive en `localStorage` del contexto instalado: al instalar hay que loguearse una vez dentro de la app (esperado, documentarlo) |
+
+---
+
+## Anexo A — Auditoría inicial (2026-09-30)
+
+Hecha **antes de tocar código**, sobre producción (`f4-h.vercel.app`, commit `5ff018e`):
+Playwright CLI con viewport 390×844 (tamaño iPhone 13, motor Chromium: valida layout, no
+gestos ni Safari) + auditoría y detector de Impeccable 4.4.0. Capturas en
+`.playwright-cli/mobile-antes/` (no versionadas).
+
+### Puntaje (Impeccable `audit`)
+
+| # | Dimensión | Puntaje | Hallazgo clave |
+|---|---|---|---|
+| 1 | Accesibilidad | 2/4 | `--text-3` a 2,3–2,7:1; labels a 10px |
+| 2 | Performance | 3/4 | Sin problemas medibles; fotos ya se comprimen a 1600px |
+| 3 | Responsive | **0/4** | Sin ninguna media query: en 390px el sidebar ocupa 220px y el contenido queda en ~170px, cortado |
+| 4 | Theming | 3/4 | Tokens en `:root`, con colores sueltos inline (`#4a8fd4`, `rgba(...)`) |
+| 5 | Integridad | 3/4 | Sistema coherente y propio (no genérico); drift menor por estilos inline |
+| | **Total** | **11/20** | Aceptable: el trabajo pesado es responsive |
+
+### Mediciones por sección (390px)
+
+| Sección | Ancho real de página | Campos < 16px | Tocables < 44px | Nota |
+|---|---|---|---|---|
+| Dashboard | 581px | — | — | Métricas y anillo cortados |
+| Agenda | **943px** | — | 24 de 39 | Calendario de 7 columnas con ancho mínimo: lo más roto |
+| Tatuajes | 691px | — | 3 de 6 | Split 300px + detalle |
+| Sesiones | 656px | **23 de 23** | **78 de 79** | La pantalla más usada y la más apretada |
+| Inventario | 696px | — | 10 de 58 | Tabla de 7 columnas |
+| Movimientos | 490px | 4 de 4 | 3 de 3 | |
+| Egresos | 754px | — | — | Tablas anchas |
+| Activos | 386px | 10 de 10 | — | Casi entra |
+| Config | 507px | **83 de 83** | **86 de 88** | Editor de kits muy denso |
+| Nuevo | 574px | 10 de 10 | 5 de 9 | |
+
+### Hallazgos por gravedad
+
+- **[P0] Sin layout mobile.** Sidebar fijo de 220px + contenido cortado en 8 de 10 secciones.
+  → Etapa 1 (sección 2 y 3.1–3.2).
+- **[P0] Agenda: el calendario mide 943px.** Las celdas tienen ancho mínimo. → Etapa 1 lleva
+  un arreglo mínimo (`repeat(7, minmax(0,1fr))`, sin chips de texto) para que entre; el
+  rediseño compacto queda en la etapa 2.
+- **[P1] 130 campos por debajo de 16px** → iOS hace zoom al tocar cada uno. → Etapa 1, global.
+- **[P1] 209 de 287 tocables por debajo de 44px** (pills de filtro 28px, "‹ ›" del
+  calendario 20px, botones de Config 23px). → Etapa 1, global.
+- **[P1] Contraste de `--text-3`** (ver decisión abajo).
+- **[P1] iPhone acostado cae en el layout de escritorio.** → Breakpoint de 1.1.
+- **[P2] Labels a 10px** (Trabajo, Insumos, Finanzas, Datos del producto, Acciones, Tipo de
+  cambio…). → Mínimo 11px en mobile.
+- **[P2] Hover solo decorativo.** Los `onmouseover` cambian color de borde; no esconden
+  funciones, así que no hay nada inaccesible por touch. Sin acción.
+- **[P3] Colores sueltos inline** (`#4a8fd4` práctica, `rgba` de estados). Fuera de alcance.
+
+### Lo que está bien (mantener)
+- Design system oscuro coherente y propio; tokens en `:root`.
+- Fotos comprimidas en el navegador antes de subir.
+- Nada depende de hover para funcionar.
+- El input de fotos ya abre cámara o galería en iOS.
+
+### Decisión pendiente para Francesco
+**Subir `--text-3` de `#555` a `#7a7a7a`** (≈4,5:1 sobre `#0f0f0f`), en todo el sistema o
+solo en mobile. Cambia el design system (CLAUDE.md lo fija en `#555`), por eso no se decide
+acá. Sin el cambio, en mobile los textos secundarios siguen costando leer.
