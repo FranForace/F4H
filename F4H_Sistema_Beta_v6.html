@@ -216,6 +216,9 @@ textarea{resize:vertical;min-height:80px}
 .be-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem}
 .be-cell-label{font-size:10px;color:var(--text-2);margin-bottom:4px}
 .be-cell-val{font-size:18px;font-weight:700;letter-spacing:-.3px}
+/* Tablas ordenables (TSORT): tsApply marca los <th> con data-lbl / data-sorted */
+thead th[data-lbl]:not([data-lbl=""]){cursor:pointer;user-select:none}
+thead th[data-sorted]{color:var(--accent)!important}
 /* ── Mobile (spec docs/superpowers/specs/2026-09-30-mobile-pwa-design.md) ─────
    Todo lo mobile vive en este bloque. Las render functions usan inline styles,
    por eso la capa pisa con selectores de atributo + !important acotados a .app.
@@ -230,6 +233,35 @@ textarea{resize:vertical;min-height:80px}
   .mnav-item.on{color:var(--accent)}
   .mnav-plus .mnav-ic{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#1a1200;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:300}
   .mnav-plus.on .mnav-ic{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--accent)}
+  /* Grillas: 1 columna; métricas y auto-fit a 2; calendario 7 columnas que se achican */
+  .app [style*="grid-template-columns"]{grid-template-columns:1fr!important}
+  .app .g4,.app [style*="repeat(4,1fr)"],.app [style*="1fr 1fr 1fr 1fr"],.app [style*="auto-fit"]{grid-template-columns:1fr 1fr!important}
+  .app [style*="repeat(7,1fr)"]{grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:3px!important}
+  .app [style*="grid-template-columns"]>*{min-width:0}
+  /* Encabezados de módulo y tarjetas más compactos */
+  .app [style*="font-size:38px"]{font-size:26px!important}
+  .app [style*="padding:28px 0 24px"]{padding:6px 0 10px!important;margin-bottom:12px!important}
+  .app [style*="padding:24px 28px"]{padding:16px!important}
+  /* Tablas: scroll horizontal dentro de su tarjeta, primera columna fija */
+  .app :has(> table){overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  .app table{min-width:100%;width:max-content}
+  .app th:first-child,.app td:first-child{position:sticky;left:0;z-index:1;background:var(--bg-card)}
+  /* Campos a 16px (iOS no hace zoom) y tocables de 44px */
+  .app input:not([type=checkbox]):not([type=radio]):not([type=file]),.app select,.app textarea,#auth-screen input{font-size:16px!important;min-height:44px}
+  .app button,.app .btn{min-height:44px}
+  .app .btn-xs{min-width:44px}
+  /* Puntajes 1–10 en dos filas de 5 */
+  .app div:has(> .sc-btn){display:grid!important;grid-template-columns:repeat(5,44px);gap:6px}
+  .app .sc-btn{width:44px;height:44px}
+  /* Texto mínimo 11px */
+  .app [style*="font-size:9px"],.app [style*="font-size:10px"]{font-size:11px!important}
+  .app .badge,.app .tag-in,.app .tag-out,.app .btn-xs,.app .detail-lbl,.app .ph-label,.app .sc-label,.app .sc-badge,.app .be-cell-label{font-size:11px}
+  /* Filas de pills/filtros que en escritorio no bajan de renglón */
+  .app [style*="display:flex;gap:4px"],.app [style*="margin:12px 0 6px"]{flex-wrap:wrap}
+  /* Calendario (arreglo mínimo; el rediseño es la etapa 2): celdas bajas, sin chips, contador de turnos */
+  .app [style*="min-height:108px"]{min-height:52px!important;padding:5px!important}
+  .app [style*="min-height:108px"] [style*="text-overflow:ellipsis"],.app [style*="min-height:108px"] [style*="font-size:10px"]{display:none}
+  .app [data-turnos]::after{content:attr(data-turnos);position:absolute;bottom:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#1a1200;font-size:11px;font-weight:700;line-height:16px;text-align:center}
 }
 </style>
 </head>
@@ -745,9 +777,10 @@ function tsApply(table){
   [...head.cells].forEach((th,i)=>{
     if(th.dataset.lbl===undefined)th.dataset.lbl=th.textContent;
     if(!th.dataset.lbl.trim())return;
-    th.style.cursor='pointer';th.style.userSelect='none';th.title='Ordenar por '+th.dataset.lbl;
+    // Sin tocar th.style: reescribirlo rompe los selectores [style*=...] de la capa mobile. Cursor y color en CSS.
+    th.title='Ordenar por '+th.dataset.lbl;
     th.textContent=th.dataset.lbl+(st&&st.col===i?(st.dir>0?' ▲':' ▼'):'');
-    th.style.color=st&&st.col===i?'var(--accent)':'';
+    if(st&&st.col===i)th.dataset.sorted='1';else delete th.dataset.sorted;
   });
 }
 document.addEventListener('click',function(e){
@@ -858,7 +891,7 @@ function buildAgendaCalendario(){
     const numHtml=esHoy
       ?'<span style="font-size:12px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
       :'<span style="font-size:13px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
-    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" onmouseover="this.style.background=\''+bgHover+'\'" onmouseout="this.style.background=\''+bg+'\'" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" onmouseover="this.style.background=\''+bgHover+'\'" onmouseout="this.style.background=\''+bg+'\'" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
       +(avisoRojo?'<span style="position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+numHtml
       +(abierto&&info.hora_desde?'<span style="font-size:10px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')

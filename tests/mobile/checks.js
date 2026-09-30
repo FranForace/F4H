@@ -15,6 +15,16 @@ async (groups) => {
     if (css(document.querySelector('.app'),'marginLeft') !== '220px') f.push('.app sin margin-left 220px');
     const mnav = document.querySelector('.mnav');
     if (mnav && css(mnav,'display') !== 'none') f.push('.mnav visible en escritorio');
+    // orden por columna: sigue funcionando y se ve igual (dorado + cursor de mano)
+    go('inv'); await sleep(120);
+    const th = document.querySelector('#t-inv thead th');
+    if (th) {
+      if (css(th,'cursor') !== 'pointer') f.push('encabezado ordenable sin cursor pointer');
+      th.click(); await sleep(50);
+      const th2 = document.querySelector('#t-inv thead th');
+      if (!th2.dataset.sorted || css(th2,'color') !== 'rgb(200, 169, 110)') f.push('encabezado ordenado no queda en dorado');
+      th2.click(); await sleep(50); document.querySelector('#t-inv thead th').click(); await sleep(50);
+    }
     return f;
   };
 
@@ -61,6 +71,42 @@ async (groups) => {
     [...sh().querySelectorAll('[data-sheet-item]')].find(b => b.innerText.includes('Sesión')).click(); await sleep(200);
     if (curTab !== 'ses' || sesView !== 'nueva') f.push('Nuevo → Sesión no abre el formulario (curTab=' + curTab + ', sesView=' + sesView + ')');
     go('dash');
+    return f;
+  };
+
+  G.content = async () => {
+    const f = [];
+    const scrollerAncestor = el => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const o = css(p,'overflowX'); if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') return true; } return false; };
+    const scan = (nombre, root) => {
+      // 1) nada se sale del ancho (salvo dentro de un contenedor con scroll propio)
+      const out = [...root.querySelectorAll('*')].filter(el => vis(el) && el.getBoundingClientRect().right > vw + 1 && !scrollerAncestor(el));
+      if (out.length) f.push(nombre + ': ' + out.length + ' elementos se salen (ej. ' + out.slice(0,2).map(label).join(' | ') + ')');
+      // 2) campos a 16px
+      const inp = [...root.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),select,textarea')].filter(vis).filter(el => parseFloat(css(el,'fontSize')) < 16);
+      if (inp.length) f.push(nombre + ': ' + inp.length + ' campos < 16px (ej. ' + label(inp[0]) + ')');
+      // 3) tocables de 44px de alto
+      const tap = [...root.querySelectorAll('button,select,.btn,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')].filter(vis).filter(el => el.getBoundingClientRect().height < 44);
+      if (tap.length) f.push(nombre + ': ' + tap.length + ' tocables < 44px (ej. ' + tap.slice(0,2).map(el => label(el) + ' ' + Math.round(el.getBoundingClientRect().height) + 'px').join(' | ') + ')');
+      // 4) texto de al menos 11px
+      const chico = [...root.querySelectorAll('*')].filter(el => vis(el) && [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && parseFloat(css(el,'fontSize')) < 11);
+      if (chico.length) f.push(nombre + ': ' + chico.length + ' textos < 11px (ej. ' + label(chico[0]) + ')');
+    };
+    for (const t of TABS) { go(t); await sleep(120); scan(t, document.getElementById('t-' + t)); }
+    // formularios abiertos (Review Focus 2)
+    go('ses'); setSesView('nueva'); await sleep(200); scan('ses/nueva', document.getElementById('t-ses'));
+    go('inv'); const ag = S.productos.find(p => p.cat === 'Aguja' && p.activo !== false); editingId = ag ? ag.id : null; renderInv(); await sleep(120); scan('inv/edición', document.getElementById('t-inv')); editingId = null;
+    go('new'); const c = document.getElementById('np-cat'); c.value = 'Aguja'; toggleNewFields(); await sleep(80); scan('new/aguja', document.getElementById('t-new')); c.value = 'Activo'; toggleNewFields();
+    // El orden por columna no debe reescribir el style de los <th> (rompe los selectores [style*=...])
+    go('inv'); await sleep(120);
+    const thMut = document.querySelectorAll('.app thead th[style*="cursor"]').length;
+    if (thMut) f.push(thMut + ' <th> con style modificado por el orden de columnas');
+    // Review Focus 3: la barra no tapa el final del contenido
+    const pb = parseFloat(css(document.querySelector('.app'),'paddingBottom')), nh = document.querySelector('.mnav').getBoundingClientRect().height;
+    if (pb < nh) f.push('padding-bottom de .app (' + pb + ') menor que la barra (' + nh + ')');
+    // puntajes en filas de 5
+    go('ses'); setSesView('nueva'); await sleep(200);
+    const sc = [...document.querySelectorAll('#t-ses .sc-btn')].slice(0, 10).map(b => Math.round(b.getBoundingClientRect().top));
+    if (sc.length === 10 && new Set(sc).size !== 2) f.push('puntajes 1–10 no quedan en 2 filas (filas: ' + new Set(sc).size + ')');
     return f;
   };
 
