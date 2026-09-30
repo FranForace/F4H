@@ -155,7 +155,7 @@ rewrite actual es solo `/` → `F4H_Sistema_Beta_v6.html`). `sw.js` con
 ### 3.5 Contraste
 `--text-3: #555` sobre los fondos del sistema da **2,3–2,7:1** (WCAG AA pide 4,5:1 para texto
 chico). Se usa en hints, subtítulos y labels secundarios: en el estudio, con luz fuerte o el
-brillo bajo, en el celular se pierde. Ver decisión pendiente en el anexo A.
+brillo bajo, en el celular se pierde. Decidido: pasa a `#7a7a7a` en todo el sistema (anexo A).
 - Puntajes 1–10: dos filas de 5.
 - Fila de aguja en la tarjeta de sesión: select a ancho completo, cantidad y ✕ debajo.
 - Fotos: se mantiene el `<input type="file" accept="image/*">` actual (en iOS ofrece cámara o galería).
@@ -261,7 +261,8 @@ gestos ni Safari) + auditoría y detector de Impeccable 4.4.0. Capturas en
 - Nada depende de hover para funcionar.
 - El input de fotos ya abre cámara o galería en iOS.
 
-### Decisión pendiente para Francesco
-**Subir `--text-3` de `#555` a `#7a7a7a`** (≈4,5:1 sobre `#0f0f0f`), en todo el sistema o
-solo en mobile. Cambia el design system (CLAUDE.md lo fija en `#555`), por eso no se decide
-acá. Sin el cambio, en mobile los textos secundarios siguen costando leer.
+### Decisión tomada (2026-09-30)
+**`--text-3`: `#555` → `#7a7a7a` en todo el sistema** (escritorio y mobile), decidido por Francesco.
+Contraste: 4,47:1 sobre `#0f0f0f`, 4,05:1 sobre tarjetas `#1a1a1a` (antes 2,57 / 2,33). No llega a
+4,5:1 en tarjetas a propósito: para eso haría falta `#888`, que es `--text-2`, y se perdería la
+jerarquía entre texto normal y secundario. Va en la etapa 1.

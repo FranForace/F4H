@@ -124,7 +124,7 @@ S = {
 --border: #2e2e2e
 --text: #f0f0ee
 --text-2: #888
---text-3: #555
+--text-3: #7a7a7a   /* era #555; subido por contraste 2026-09-30 */
 --accent: #c8a96e   /* dorado F4H */
 --red: #e24b4a
 --amber: #d4872a
