@@ -2304,17 +2304,32 @@ function clearNewForm(){['np-nom','np-sub','np-sub-new','np-ag-num','np-ag-suf']
 function updateCfgAmort(){const el=document.getElementById('cfg-amort-display');if(el)el.textContent=ars(amortTotalSes());}
 async function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if(v>0){S.tc=v;await dbSetConfig('tipo_cambio',v);persist();document.getElementById('tc-display').textContent='USD = $'+v.toLocaleString('es-AR');msg('tc-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
 async function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;await dbSetConfig('sesiones_por_mes',v);persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
-let egCat='';
+let egCat='',egOri='';
 function setEgCat(c){egCat=egCat===c?'':c;renderEgresos();}
+function setEgOri(o){egOri=egOri===o?'':o;egCat='';renderEgresos();}
+// Origen de una salida (mismo criterio que v_inversion): sin sesión = carga inicial / ajustes manuales
+const EG_ORIGENES=[['cliente','Sesiones con cliente','var(--green)'],['practica','Pr\xE1ctica','#4a8fd4'],['previo','Sin sesi\xF3n (carga inicial y ajustes)','var(--text-3)']];
+function egOrigen(m){if(!m.sesion_id)return'previo';const s=S.sesiones.find(x=>x.id===m.sesion_id);return s&&s.practica?'practica':'cliente';}
 function renderEgresos(){
   const el=document.getElementById('t-egresos');if(!el)return;
   const phEgresos=`<div style="padding:28px 0 24px;margin-bottom:24px"><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">Costos</div><div style="font-size:38px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.02em;margin-bottom:6px">Egresos</div><div style="font-size:14px;color:var(--text-2)">Historial de insumos consumidos y movimientos</div></div>`;
-  const salidas=S.movimientos.filter(m=>m.tipo==='salida'&&m.costoAlMomento>0);
+  const salidasAll=S.movimientos.filter(m=>m.tipo==='salida'&&m.costoAlMomento>0);
   const entradas=S.movimientos.filter(m=>m.tipo==='entrada'&&m.costoAlMomento>0);
-  if(!salidas.length&&!entradas.length){
+  if(!salidasAll.length&&!entradas.length){
     el.innerHTML=phEgresos+'<div class="empty" style="padding:2.5rem">Sin movimientos con costo registrado todavía.<br><span class="hint">Los egresos se generan al registrar sesiones o movimientos de salida.</span></div>';
     return;
   }
+  // Filtro por origen (click en la tarjeta Origen): afecta todo lo de abajo
+  const monto=m=>Math.round(m.qty*(m.costoAlMomento||0));
+  const byOri={cliente:{total:0,count:0},practica:{total:0,count:0},previo:{total:0,count:0}};
+  salidasAll.forEach(m=>{const o=byOri[egOrigen(m)];o.total+=monto(m);o.count++;});
+  const totalAll=Object.values(byOri).reduce((a,v)=>a+v.total,0);
+  const salidas=egOri?salidasAll.filter(m=>egOrigen(m)===egOri):salidasAll;
+  const oriLbl=egOri?EG_ORIGENES.find(o=>o[0]===egOri)[1]:'';
+  const origenCard='<div class="card"><div class="ct">Origen del egreso <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">\xB7 toc\xE1 uno para ver solo ese</span></div>'
+    +EG_ORIGENES.map(function(o){var d=byOri[o[0]];if(!d.count)return'';var pct=totalAll>0?Math.round(d.total/totalAll*100):0;var on=egOri===o[0];
+      return '<div onclick="setEgOri(\''+o[0]+'\')" title="'+(on?'Quitar filtro':'Ver solo '+o[1])+'" style="margin:0 -8px 6px;padding:6px 8px;border-radius:8px;cursor:pointer;border:1.5px solid '+(on?'var(--accent)':'transparent')+';background:'+(on?'rgba(200,169,110,.07)':'transparent')+';opacity:'+(egOri&&!on?'.45':'1')+'"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:'+(on?700:500)+';color:'+(on?'var(--accent)':'inherit')+'"><span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:'+o[2]+';margin-right:6px"></span>'+o[1]+' <span class="hint">\xB7 '+d.count+' salida'+(d.count!==1?'s':'')+'</span></span><span>'+ars(d.total)+' <span class="hint">('+pct+'%)</span></span></div><div class="progress-bar"><div class="progress-fill" style="width:'+pct+'%;background:'+o[2]+'"></div></div></div>';}).join('')
+    +'</div>';
   const byCat={};
   salidas.forEach(m=>{
     const p=S.productos.find(x=>x.id===m.pid);if(!p)return;
@@ -2328,7 +2343,7 @@ function renderEgresos(){
   if(egCat&&!byCat[egCat])egCat='';
   const catOf=m=>{const p=S.productos.find(x=>x.id===m.pid);return p?p.cat:'';};
   const salidasF=egCat?salidas.filter(m=>catOf(m)===egCat):salidas;
-  const filtroTag=egCat?' <span style="font-size:11px;font-weight:600;color:var(--accent);text-transform:none;letter-spacing:0">\xB7 '+egCat+' <a style="cursor:pointer;color:var(--text-3);text-decoration:underline" onclick="setEgCat(\'\')">ver todas</a></span>':'';
+  const filtroTag=egCat||egOri?' <span style="font-size:11px;font-weight:600;color:var(--accent);text-transform:none;letter-spacing:0">\xB7 '+[oriLbl,egCat].filter(Boolean).join(' \xB7 ')+' <a style="cursor:pointer;color:var(--text-3);text-decoration:underline" onclick="egCat=\'\';egOri=\'\';renderEgresos()">ver todo</a></span>':'';
   let detalle='';
   if(egCat){
     const byProd={};
@@ -2353,12 +2368,13 @@ function renderEgresos(){
   });
   const sortedCats=Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total);
   el.innerHTML=phEgresos+'<div class="g4">'+
-    '<div class="metric"><div class="ml">Total egresos</div><div class="mv" style="color:var(--red);font-size:17px">'+ars(totalEg)+'</div><div class="ms">insumos consumidos</div></div>'+
+    '<div class="metric"><div class="ml">Total egresos</div><div class="mv" style="color:var(--red);font-size:17px">'+ars(totalEg)+'</div><div class="ms">'+(egOri?oriLbl.toLowerCase():'insumos consumidos')+'</div></div>'+
     '<div class="metric"><div class="ml">Total entradas</div><div class="mv" style="color:var(--green);font-size:17px">'+ars(totalEnt)+'</div><div class="ms">inversión en stock</div></div>'+
     '<div class="metric"><div class="ml">Movimientos</div><div class="mv">'+salidas.length+'</div><div class="ms">salidas registradas</div></div>'+
-    '<div class="metric"><div class="ml">Balance</div><div class="mv '+(totalEnt-totalEg>=0?'margin-pos':'margin-neg')+'" style="font-size:16px">'+ars(totalEnt-totalEg)+'</div><div class="ms">entradas − egresos</div></div>'+
+    '<div class="metric"><div class="ml">Balance</div><div class="mv '+(totalEnt-totalAll>=0?'margin-pos':'margin-neg')+'" style="font-size:16px">'+ars(totalEnt-totalAll)+'</div><div class="ms">entradas − egresos (todos)</div></div>'+
     '</div>'+
-    '<div class="card"><div class="ct">Egresos por categoría <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">\xB7 toc\xE1 una para ver el detalle</span></div>'+
+    origenCard+
+    '<div class="card"><div class="ct">Egresos por categoría'+(egOri?' \xB7 '+oriLbl:'')+' <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400">\xB7 toc\xE1 una para ver el detalle</span></div>'+
     sortedCats.map(function(entry){var cat=entry[0];var data=entry[1];var pct=totalEg>0?Math.round((data.total/totalEg)*100):0;var on=egCat===cat;
       return'<div onclick="setEgCat(\''+cat+'\')" title="'+(on?'Quitar filtro':'Ver solo '+cat)+'" style="margin:0 -8px 6px;padding:6px 8px;border-radius:8px;cursor:pointer;border:1.5px solid '+(on?'var(--accent)':'transparent')+';background:'+(on?'rgba(200,169,110,.07)':'transparent')+';opacity:'+(egCat&&!on?'.45':'1')+'" onmouseover="if(!'+on+')this.style.background=\'var(--bg-elevated)\'" onmouseout="this.style.background=\''+(on?'rgba(200,169,110,.07)':'transparent')+'\'"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:'+(on?700:500)+';color:'+(on?'var(--accent)':'inherit')+'">'+cat+' <span class="hint">\xB7 '+data.count+' salida'+(data.count!==1?'s':'')+'</span></span><span>'+ars(data.total)+' <span class="hint">('+pct+'%)</span></span></div><div class="progress-bar"><div class="progress-fill pf-red" style="width:'+pct+'%"></div></div></div>';}).join('')+
     '</div>'+
