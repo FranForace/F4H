@@ -153,6 +153,25 @@ S = {
 - Usar **string concatenation** (no template literals) dentro de .map() callbacks
   para evitar problemas de backticks anidados
 - `\xED` `\xE1` `\xFA` `\xF3` `\xE9` `\xB7` para acentos en template literals JS
+- **Mobile / PWA** (2026-09-30, spec `docs/superpowers/specs/2026-09-30-mobile-pwa-design.md`):
+  todo lo mobile vive en el bloque CSS `/* ── Mobile ── */` detrás de
+  `(max-width: 760px), (pointer: coarse) and (max-height: 500px)` (la misma media query está en
+  `MQ_MOBILE` / `isMobile()` en JS). La capa pisa inline styles con selectores de atributo +
+  `!important` acotados a `.app`: **una render function nueva no necesita nada para verse bien
+  en mobile** mientras use grillas/tablas comunes; si algo se sale, se agrega una regla al
+  bloque, no se cambian tamaños en la render function. Barra inferior `.mnav` (HTML estático) y
+  hojas `mSheet(title, items)` / `mOpenNuevo()` / `mOpenMas()`. En escritorio no cambia nada.
+  **No escribir `el.style.*` desde JS sobre elementos con layout inline**: el navegador
+  reserializa el atributo (`font-size: 10px`, con espacio) y los selectores `[style*=...]` de la
+  capa mobile dejan de matchear (por eso el orden de columnas marca `data-sorted` en vez de
+  tocar `th.style`).
+- **PWA:** `manifest.json`, `sw.js` (network-first, solo shell y solo mismo origen, caché
+  `f4h-shell-v1` — subir la versión si se cambia la lista `SHELL`), íconos en `icons/`
+  (regenerar desde `icons/fuente.html`, ver plan mobile etapa 1, Task 6).
+- **Tests mobile:** `node tests/mobile/serve.js` + sesión `playwright-cli -s=f4h open
+  http://localhost:8934 --browser chrome --headed --persistent` (login manual una vez) y
+  `sh tests/mobile/run.sh <mobile|desktop> <grupos>`; grupos: `desktop shell sheets content
+  tokens pwa`. iPhone acostado: `sh tests/mobile/landscape.sh`.
 - **Tablas ordenables** (`TSORT`): en los tabs de `TSORT_TABS` (Inventario, Activos, Sesiones, Egresos, Movimientos) cualquier `<table>` con `<thead>` se ordena al tocar el encabezado (asc → desc → original). Un `MutationObserver` re-aplica el orden después de cada render, así que las render functions no tienen que hacer nada. Para que una tabla nueva sea ordenable alcanza con `<thead><tr><th>`; `<th>` vacío = columna no ordenable. Los valores se leen del texto de la celda (primera línea): `$1.234`, `1,50` y fechas `MM/DD` se ordenan bien
 
 ## Productos pre-cargados (seed)
