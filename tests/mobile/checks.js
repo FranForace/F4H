@@ -110,6 +110,15 @@ async (groups) => {
     return f;
   };
 
+  G.tokens = async () => {
+    const f = [];
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--text-3').trim().toLowerCase();
+    if (v !== '#7a7a7a') f.push('--text-3 es ' + v + ', esperaba #7a7a7a');
+    const lit = [...document.querySelectorAll('[style*="#555"]')].length;
+    if (lit) f.push(lit + ' elementos con #555 literal');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }
