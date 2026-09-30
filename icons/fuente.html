@@ -1,0 +1,11 @@
+<!doctype html>
+<!-- Plantilla para generar los íconos de la PWA (ver Task 6 del plan mobile etapa 1).
+     ?m=1 → versión maskable: el logo ocupa menos para quedar dentro de la zona segura (80%). -->
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:100vw;height:100vh;background:#c8a96e;display:flex;align-items:center;justify-content:center;overflow:hidden}
+img{width:74vw;height:auto;filter:brightness(0)}
+body.m img{width:56vw}
+</style></head>
+<body><img src="../logo-v2-trim.png" alt="">
+<script>if(location.search.includes('m=1'))document.body.className='m';</script>
+</body></html>

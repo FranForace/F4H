@@ -119,6 +119,37 @@ async (groups) => {
     return f;
   };
 
+  G.pwa = async () => {
+    const f = [];
+    const link = document.querySelector('link[rel=manifest]');
+    if (!link) return ['falta <link rel=manifest>'];
+    const man = await fetch(link.href, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    if (!man) return ['manifest.json no carga o no es JSON'];
+    if (man.name !== 'F4H' || man.display !== 'standalone' || man.start_url !== '/') f.push('manifest: name/display/start_url incorrectos');
+    if (man.background_color !== '#0f0f0f' || man.theme_color !== '#0f0f0f') f.push('manifest: colores incorrectos');
+    const dims = src => new Promise(ok => { const i = new Image(); i.onload = () => ok(i.naturalWidth + 'x' + i.naturalHeight); i.onerror = () => ok('ERROR'); i.src = src + '?t=' + Date.now(); });
+    for (const ic of man.icons || []) { const d = await dims(ic.src); if (d !== ic.sizes) f.push('ícono ' + ic.src + ' mide ' + d + ', declara ' + ic.sizes); }
+    if (!(man.icons || []).some(i => i.purpose === 'maskable')) f.push('sin ícono maskable');
+    const ati = document.querySelector('link[rel=apple-touch-icon]');
+    if (!ati || await dims(ati.href) !== '180x180') f.push('apple-touch-icon falta o no es 180x180');
+    const vp = document.querySelector('meta[name=viewport]').content;
+    if (!vp.includes('viewport-fit=cover')) f.push('viewport sin viewport-fit=cover');
+    ['apple-mobile-web-app-capable','apple-mobile-web-app-status-bar-style','theme-color'].forEach(n => { if (!document.querySelector('meta[name="' + n + '"]')) f.push('falta meta ' + n); });
+    const swText = await fetch('/sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').catch(() => '');
+    if (!swText.includes('estrategia: network-first')) f.push('sw.js no existe o no es network-first');
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg || !reg.active) f.push('service worker no registrado/activo');
+    if (!navigator.serviceWorker.controller) f.push('la página no está controlada por el SW (recargar una vez)');
+    // Review Focus 5: la caché solo tiene cosas del mismo origen (nunca Supabase)
+    if (await caches.has('f4h-shell-v1')) {
+      const keys = await (await caches.open('f4h-shell-v1')).keys();
+      const ajenas = keys.filter(k => new URL(k.url).origin !== location.origin);
+      if (ajenas.length) f.push('la caché tiene ' + ajenas.length + ' respuestas de otros orígenes (ej. ' + ajenas[0].url + ')');
+      if (!keys.some(k => new URL(k.url).pathname === '/js/db.js')) f.push('la caché no tiene /js/db.js');
+    } else f.push('no existe la caché f4h-shell-v1');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }

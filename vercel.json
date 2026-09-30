@@ -1,5 +1,14 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/F4H_Sistema_Beta_v6.html" }
+  ],
+  "headers": [
+    { "source": "/sw.js", "headers": [
+      { "key": "Cache-Control", "value": "no-cache" },
+      { "key": "Service-Worker-Allowed", "value": "/" }
+    ] },
+    { "source": "/manifest.json", "headers": [
+      { "key": "Content-Type", "value": "application/manifest+json" }
+    ] }
   ]
 }
