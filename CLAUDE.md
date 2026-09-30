@@ -78,14 +78,15 @@ S = {
 1. **Dashboard** — métricas, break-even, mapa de desarrollo técnico, logo junto al título
 2. **Agenda** — disponibilidad por reglas, calendario mensual + panel lateral (día/turno/reglas), cupos de lanzamiento (primer ítem del grupo "Trabajo")
 3. **Tatuajes** — split master-detail: lista 300px + panel detalle 1fr
-4. **Inventario** — pills de filtro por categoría/estado, table-card border-radius:14px
+4. **Inventario** — pills de filtro por categoría/estado (+ "Archivados"), table-card border-radius:14px. Orden por defecto: categoría → subcategoría → nombre (agujas: tipo → número → calibre). Subcategoría es un desplegable (`subOpts`: las existentes de la categoría + "Nueva…")
 5. **Activos** — equipos con amortización lineal
 6. **Sesiones** — registro técnico + bitácora con scoring 1-10
-7. **Egresos** — panel de gastos acumulados con historial
+7. **Egresos** — panel de gastos acumulados con historial. Filtros combinables por click: **origen** (`egOri`: sesiones con cliente / práctica / sin sesión — mismo criterio que `v_inversion`, ver `egOrigen(m)`) y **categoría** (`egCat`, abre el desglose "De dónde viene" por producto). El Balance siempre es contra todos los egresos
 8. **Movimientos** — log transaccional con costo promedio ponderado (WAC)
 9. **Config** — TC, sesiones/mes, kits de insumos, backup JSON
 
 ## Lógica de costos clave
+- **`usos_por_unidad` mal configurado** (upu=1 en algo que viene en paquete) infla el costo de kits y sesiones: cada sesión descuenta el envase entero. Ya pasó con Papel de Cocina, Green Soap, Vaselina, Stencil Stuff y Cobertor Pen (`docs/superpowers/plans/sql/2026-09-30-cobertor-pen-usos.sql`). Corrección: upu=N, stock×N, costo÷N, movimientos re-escalados (misma plata), cuadrar el ledger contra el stock y, si hace falta, ajustar a conteo físico con una salida sin sesión. Siempre confirmar N y el conteo con Francesco antes
 - **Stock se mide en usos, no en envases** (migrado 2026-08-24). `productos.stock`,
   `stock_minimo` y `costo_unitario` están en usos/costo-por-uso en DB. `p.upu`
   (`usos_por_unidad`) sigue siendo el factor de conversión envase↔uso.
@@ -152,6 +153,7 @@ S = {
 - Usar **string concatenation** (no template literals) dentro de .map() callbacks
   para evitar problemas de backticks anidados
 - `\xED` `\xE1` `\xFA` `\xF3` `\xE9` `\xB7` para acentos en template literals JS
+- **Tablas ordenables** (`TSORT`): en los tabs de `TSORT_TABS` (Inventario, Activos, Sesiones, Egresos, Movimientos) cualquier `<table>` con `<thead>` se ordena al tocar el encabezado (asc → desc → original). Un `MutationObserver` re-aplica el orden después de cada render, así que las render functions no tienen que hacer nada. Para que una tabla nueva sea ordenable alcanza con `<thead><tr><th>`; `<th>` vacío = columna no ordenable. Los valores se leen del texto de la celda (primera línea): `$1.234`, `1,50` y fechas `MM/DD` se ordenan bien
 
 ## Productos pre-cargados (seed)
 ### Activos (excluidos de alertas de stock)
