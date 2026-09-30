@@ -63,6 +63,8 @@ S = {
   curl -s https://f4-h.vercel.app/F4H_Sistema_Beta_v6.html | sha256sum
   git show origin/main:F4H_Sistema_Beta_v6.html | sha256sum   # comparar
   ```
+- **Agujas estructuradas** (2026-09-30): `productos.aguja_tipo` (`RL|RS|M|CM`), `aguja_numero` (1–99), `aguja_calibre` (`08|10|12`), `aguja_sufijo` (opcional). Constraint `productos_aguja_campos`: obligatorios si `categoria='Aguja'`, null si no. El **nombre lo arma la DB** (trigger `trg_aguja_nombre`: `RL07 12 práctica`, y `subcategoria`=tipo) — en JS `agNombre()` es solo vista previa. Unicidad por `productos_aguja_combo_key` (tenant + tipo + número + calibre + sufijo sin mayúsculas). En S: `p.ag = {tipo,num,cal,suf}`; helpers `agInfo`/`agCmp`/`agDuplicada`/`agSel`. Vista `v_agujas_uso` (`security_invoker`): stock y consumo 30/90 días/total por tipo·número·calibre (consumo = salidas con sesión; ignora sufijo)
+- **`productos.activo`** (default true): false = archivado. No aparece en selectores, Movimientos ni alertas; Inventario lo muestra con el filtro "Archivados". Nunca borrar productos con historial: archivar
 - **IDs**: `bigint` en DB → `String(id)` en S → `Number(id)` al escribir en DB.
 - **Adaptadores** (`js/db.js`): `adaptProducto`, `adaptMovimiento`, `adaptSesion`, `adaptTatuaje`, `adaptTurno`, `adaptRegla` — mapean columnas DB a campos cortos de S. No modificar render functions.
 - **Error de stock**: `error.code === '23514'` (violación de CHECK constraint `stock >= 0`).
@@ -164,8 +166,8 @@ S = {
 - Tinta Dynamic Black, Piel Sintética, Stencil Stuff, Vaselina, Green Soap,
   Diluyente, Levanta Lengua
 
-### Agujas
-- RS 7, Magnum 7, RL 3, RL 5, RL 7, RL 11
+### Agujas (bootstrap de tenants nuevos, calibre 12)
+- RS07, M07, M13, RL03, RL05, RL07, RL09, RL11, RL14, RL15
 
 ## Reglas de negocio importantes
 - Activos excluidos de alertas: `if(p.cat==='Activo') return 'ok'`

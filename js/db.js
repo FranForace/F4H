@@ -64,7 +64,14 @@ function adaptProducto(p) {
     vum:          p.vida_util_meses || 0,
     practica:     p.practica,
     notas:        p.notas          || '',
+    activo:       p.activo !== false,
+    // Agujas: tipo/número/calibre/sufijo estructurados (el nombre lo arma el trigger trg_aguja_nombre)
+    ag:           p.aguja_tipo ? { tipo: p.aguja_tipo, num: p.aguja_numero, cal: p.aguja_calibre, suf: p.aguja_sufijo || '' } : null,
   };
+}
+
+function agujaCols(ag) {
+  return { aguja_tipo: ag.tipo, aguja_numero: Number(ag.num), aguja_calibre: ag.cal, aguja_sufijo: ag.suf || null };
 }
 
 function adaptMovimiento(m) {
@@ -444,6 +451,7 @@ async function dbAddProducto(prod) {
     usos_por_unidad: prod.upu           || 1,
     vida_util_meses: prod.vum > 0 ? prod.vum : null,
     practica:        prod.practica      || false,
+    ...(prod.ag ? agujaCols(prod.ag) : {}),
   }).select().single();
   if (error) { dbError('Error guardando producto: ' + error.message); return null; }
   const nuevo = adaptProducto(data);
@@ -462,6 +470,8 @@ async function dbUpdateProducto(id, fields) {
   if (fields.vum          !== undefined) patch.vida_util_meses = fields.vum > 0 ? fields.vum : null;
   if (fields.tipo_consumo !== undefined) patch.tipo_consumo    = fields.tipo_consumo;
   if (fields.practica     !== undefined) patch.practica        = fields.practica;
+  if (fields.activo       !== undefined) patch.activo          = fields.activo;
+  if (fields.ag)                         Object.assign(patch, agujaCols(fields.ag));
   const { error } = await _db.from('productos').update(patch).eq('id', Number(id));
   if (error) { dbError('Error actualizando producto: ' + error.message); return false; }
   const { data } = await _db.from('productos').select('*').eq('id', Number(id)).single();

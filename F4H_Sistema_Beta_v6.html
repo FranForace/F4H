@@ -331,9 +331,22 @@ textarea{resize:vertical;min-height:80px}
     <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
       <div style="padding:14px 20px;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)">Datos del producto</span></div>
       <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div style="grid-column:1/-1"><label class="fl">Nombre</label><input id="np-nom" placeholder="Ej: Cartucho #12 Curved Mag"></div>
+        <div id="nom-field" style="grid-column:1/-1"><label class="fl">Nombre</label><input id="np-nom" placeholder="Ej: Green Soap 500ml"></div>
+        <div id="ag-field" style="display:none;grid-column:1/-1">
+          <div style="display:grid;grid-template-columns:1.4fr .8fr .8fr 1.2fr;gap:14px">
+            <div><label class="fl">Tipo</label><select id="np-ag-tipo" onchange="agPreview()"><option value="RL">RL · Round Liner</option><option value="RS">RS · Round Shader</option><option value="M">M · Magnum</option><option value="CM">CM · Curved Magnum</option></select></div>
+            <div><label class="fl">Número</label><input id="np-ag-num" type="number" min="1" max="99" step="1" placeholder="7" oninput="agPreview()"></div>
+            <div><label class="fl">Calibre</label><select id="np-ag-cal" onchange="agPreview()"><option>08</option><option>10</option><option selected>12</option></select></div>
+            <div><label class="fl">Sufijo (opcional)</label><input id="np-ag-suf" placeholder="práctica" oninput="agPreview()"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em">Nombre</span>
+            <span id="np-ag-prev" style="font-size:16px;font-weight:800;color:var(--accent);letter-spacing:.02em">—</span>
+            <span id="np-ag-dup" style="font-size:12px"></span>
+          </div>
+        </div>
         <div><label class="fl">Categoría</label><select id="np-cat" onchange="toggleNewFields()"><option>Activo</option><option>Descartable</option><option>Consumible</option><option>Aguja</option></select></div>
-        <div><label class="fl">Subcategoría</label><input id="np-sub"></div>
+        <div id="sub-field"><label class="fl">Subcategoría</label><input id="np-sub"></div>
         <div><label class="fl">Unidad</label><select id="np-um"><option>Unidad</option><option>Caja (100u)</option><option>Caja (50u)</option><option>Onza</option><option>ml</option><option>Uso</option></select></div>
         <div><label class="fl">Moneda</label><select id="np-mon"><option value="ARS">ARS $</option><option value="USD">USD u$s</option></select></div>
         <div><label class="fl">Costo unitario</label><input id="np-cu" type="number" min="0" step="0.01" value="0"></div>
@@ -342,7 +355,7 @@ textarea{resize:vertical;min-height:80px}
         <div><label class="fl">Stock actual</label><input id="np-si" type="number" min="0" value="1"></div>
         <div><label class="fl">Stock mínimo</label><input id="np-sm" type="number" min="0" value="1"></div>
         <div id="vum-field"><label class="fl">Vida útil (meses)</label><input id="np-vum" type="number" min="1" value="24"></div>
-        <div id="prac-field" style="display:none;grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="np-prac" style="width:auto"> Aguja de práctica (no descuenta stock)</label></div>
+        <div id="prac-field" style="display:none;grid-column:1/-1"><label class="fl" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="np-prac" style="width:auto"> Aguja de práctica (etiqueta; descuenta stock igual)</label></div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -542,13 +555,28 @@ function seedKit(){S.kit=[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},
 function seedKits(){S.kits=[{id:'K_base',nombre:'Kit base',items:[{pid:'P09',qty:1},{pid:'P18',qty:1},{pid:'P19',qty:1},{pid:'P20',qty:1},{pid:'P21',qty:1},{pid:'P22',qty:2}]}];}
 
 // ─── Core calculations ───────────────────────────────────────────────────────
+// Agujas: tipo · número · calibre (+ sufijo). La DB arma el nombre (trg_aguja_nombre); agNombre es solo la vista previa.
+const AG_TIPOS=[['RL','Round Liner (RL)'],['RS','Round Shader (RS)'],['M','Magnum (M)'],['CM','Curved Magnum (CM)']];
+const AG_CALIBRES=['08','10','12'];
+function agNombre(t,n,c,suf){n=parseInt(n);if(!t||!(n>=1&&n<=99)||!c)return'';return t+String(n).padStart(2,'0')+' '+c+(suf&&suf.trim()?' '+suf.trim().replace(/\s+/g,' '):'');}
+// p.ag viene de DB; fallback por nombre para el snapshot offline viejo ("RL 7", "Magnum 13")
+function agInfo(p){
+  if(p.ag)return p.ag;
+  const m=(p.nom||'').match(/^(RL|RS|CM|RM|MG|MAGNUM|M)\s*(\d{1,2})(?: (08|10|12))?/i);if(!m)return{tipo:'',num:0,cal:'',suf:''};
+  const t=m[1].toUpperCase();return{tipo:t==='MAGNUM'||t==='MG'?'M':t==='RM'?'CM':t,num:parseInt(m[2]),cal:m[3]||'12',suf:''};
+}
+function agCmp(a,b){const x=agInfo(a),y=agInfo(b);return x.num-y.num||x.cal.localeCompare(y.cal)||(x.suf||'').localeCompare(y.suf||'');}
+function agDuplicada(t,n,c,suf,exceptId){
+  const s=(suf||'').trim().replace(/\s+/g,' ').toLowerCase();
+  return S.productos.find(p=>p.cat==='Aguja'&&p.id!==exceptId&&p.ag&&p.ag.tipo===t&&p.ag.num===parseInt(n)&&p.ag.cal===c&&(p.ag.suf||'').toLowerCase()===s);
+}
 function stockOf(pid){const p=S.productos.find(x=>x.id===String(pid));return p?p.stock:0;}
 function cuARS(p){return p.mon==='USD'?p.cu*S.tc:p.cu;}
 function cEnv(p){return cuARS(p)*p.upu;}
 function amortMensual(p){return p.vum>0?cuARS(p)/p.vum:0;}
 function amortSesion(p){return S.spm>0?amortMensual(p)/S.spm:0;}
 function cxu(p){return cuARS(p);}
-function status(p){if(p.cat==='Activo')return'ok';const s=stockOf(p.id);if(s<=0)return'critical';if(s<p.sm)return'low';return'ok';}
+function status(p){if(p.cat==='Activo'||p.activo===false)return'ok';const s=stockOf(p.id);if(s<=0)return'critical';if(s<p.sm)return'low';return'ok';}
 function amortTotalSes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortSesion(p),0);}
 function amortTotalMes(){return S.productos.filter(p=>p.cat==='Activo').reduce((a,p)=>a+amortMensual(p),0);}
 function calcExtrasCost(){return nExtras.reduce((a,e)=>{const p=S.productos.find(x=>x.id===e.pid);return a+(p&&p.cu>0?cxu(p)*e.qty:0);},0);}
@@ -1459,9 +1487,10 @@ async function deleteTattoo(tid){
 // ─── Inventario ──────────────────────────────────────────────────────────────
 function toggleFCat(c){const i=fCat.indexOf(c);if(i>=0)fCat.splice(i,1);else fCat.push(c);renderInv();}
 function renderInv(){
-  let prods=S.productos;
+  let prods=S.productos.filter(p=>fSt==='archivado'?p.activo===false:p.activo!==false);
   if(fCat.length)prods=prods.filter(p=>fCat.includes(p.cat));
-  if(fSt)prods=prods.filter(p=>status(p)===fSt);
+  if(fSt&&fSt!=='archivado')prods=prods.filter(p=>status(p)===fSt);
+  if(fCat.length===1&&fCat[0]==='Aguja')prods=prods.slice().sort((a,b)=>AG_TIPOS.findIndex(t=>t[0]===agInfo(a).tipo)-AG_TIPOS.findIndex(t=>t[0]===agInfo(b).tipo)||agCmp(a,b));
   const editCard=editingId?buildEditCard(S.productos.find(x=>x.id===editingId)):'';
   const totalAlerts=S.productos.filter(p=>status(p)!=='ok').length;
   const allAct=!fCat.length&&!fSt;
@@ -1508,7 +1537,7 @@ function renderInv(){
         </div>
         <div style="width:1px;height:24px;background:var(--border)"></div>
         <div style="display:flex;gap:4px">
-          ${spill('OK','ok','green')}${spill('Bajo','low','amber')}${spill('Cr\xEDtico','critical','red')}
+          ${spill('OK','ok','green')}${spill('Bajo','low','amber')}${spill('Cr\xEDtico','critical','red')}${S.productos.some(p=>p.activo===false)?spill('Archivados','archivado','text-3'):''}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
@@ -1543,8 +1572,9 @@ function buildEditCard(p){
   return '<div style="background:var(--bg-card);border:1.5px solid var(--accent);border-radius:14px;padding:24px 28px;margin-bottom:16px">'
     +'<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:18px">✏ Editando: '+p.nom+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:18px">'
-      +'<div style="grid-column:span 2"><div style="'+lbl+'">Nombre</div><input id="ep-nom" value="'+p.nom+'" style="'+inp+'"></div>'
-      +'<div><div style="'+lbl+'">Subcategor\xEDa</div><input id="ep-sub" value="'+p.sub+'" style="'+inp+'"></div>'
+      +(p.cat==='Aguja'?epAgujaFields(p,inp,lbl)
+        :'<div style="grid-column:span 2"><div style="'+lbl+'">Nombre</div><input id="ep-nom" value="'+p.nom+'" style="'+inp+'"></div>'
+        +'<div><div style="'+lbl+'">Subcategor\xEDa</div><input id="ep-sub" value="'+p.sub+'" style="'+inp+'"></div>')
       +'<div><div style="'+lbl+'">Moneda</div><select id="ep-mon" style="'+inp+'"><option value="ARS"'+(p.mon==='ARS'?' selected':'')+'>ARS</option><option value="USD"'+(p.mon==='USD'?' selected':'')+'>USD</option></select></div>'
       +'<div><div style="'+lbl+'">Costo unitario</div><input id="ep-cu" type="number" min="0" step="0.01" value="'+p.cu+'" style="'+inp+'"></div>'
       +'<div><div style="'+lbl+'">'+upuLabel+'</div><input id="ep-upu" type="number" min="1" value="'+p.upu+'" title="'+upuHint+'" style="'+inp.replace('var(--border)','#4a8fd4')+'"></div>'
@@ -1552,6 +1582,7 @@ function buildEditCard(p){
       +(p.cat==='Activo'?'<div><div style="'+lbl+'">Vida \xFAtil (meses)</div><input id="ep-vum" type="number" min="1" value="'+(p.vum||24)+'" style="'+inp+'"></div>':'')
       +(p.cat!=='Activo'?'<div><div style="'+lbl+'">Tipo de consumo</div><select id="ep-tipo" style="'+inp+'"><option value="UNIDAD"'+(p.tipo_consumo==='UNIDAD'?' selected':'')+'>Unidad</option><option value="SESION"'+(p.tipo_consumo==='SESION'?' selected':'')+'>Sesi\xF3n</option><option value="VARIABLE"'+(p.tipo_consumo==='VARIABLE'?' selected':'')+'>Variable</option><option value="LONGITUD"'+(p.tipo_consumo==='LONGITUD'?' selected':'')+'>Longitud</option></select></div>':'')
       +(p.cat==='Aguja'?'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-prac" style="width:auto"'+(p.practica?' checked':'')+'>Aguja de pr\xE1ctica (etiqueta; descuenta stock igual)</label></div>':'')
+      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="ep-arch" style="width:auto"'+(p.activo===false?' checked':'')+'>Archivado (no aparece en selectores ni alertas; conserva su historial)</label></div>'
     +'</div>'
     +'<div style="display:flex;gap:10px;align-items:center">'
       +'<button style="padding:9px 22px;font-size:13px;font-weight:700;background:var(--accent);color:#1a1200;border:none;border-radius:8px;cursor:pointer;font-family:inherit" onclick="saveEdit(\''+p.id+'\')">Guardar</button>'
@@ -1560,10 +1591,35 @@ function buildEditCard(p){
     +'</div>'
   +'</div>';
 }
+function epAgujaFields(p,inp,lbl){
+  const a=agInfo(p);
+  const opt=(v,t,cur)=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+t+'</option>';
+  return '<div><div style="'+lbl+'">Tipo</div><select id="ep-ag-tipo" onchange="epAgPreview(\''+p.id+'\')" style="'+inp+'">'+AG_TIPOS.map(([t])=>opt(t,t,a.tipo)).join('')+'</select></div>'
+    +'<div><div style="'+lbl+'">N\xFAmero</div><input id="ep-ag-num" type="number" min="1" max="99" step="1" value="'+(a.num||'')+'" oninput="epAgPreview(\''+p.id+'\')" style="'+inp+'"></div>'
+    +'<div><div style="'+lbl+'">Calibre</div><select id="ep-ag-cal" onchange="epAgPreview(\''+p.id+'\')" style="'+inp+'">'+AG_CALIBRES.map(c=>opt(c,c,a.cal)).join('')+'</select></div>'
+    +'<div><div style="'+lbl+'">Sufijo (opcional)</div><input id="ep-ag-suf" value="'+(a.suf||'').replace(/"/g,'&quot;')+'" oninput="epAgPreview(\''+p.id+'\')" style="'+inp+'"></div>'
+    +'<div style="grid-column:1/-1;display:flex;align-items:center;gap:10px"><span style="'+lbl+';margin:0">Nombre</span><span id="ep-ag-prev" style="font-size:16px;font-weight:800;color:var(--accent)">'+p.nom+'</span><span id="ep-ag-dup" style="font-size:12px;color:var(--amber)"></span></div>';
+}
+function epAgForm(){const v=id=>document.getElementById(id)?.value||'';return{tipo:v('ep-ag-tipo'),num:parseInt(v('ep-ag-num')),cal:v('ep-ag-cal'),suf:v('ep-ag-suf').trim().replace(/\s+/g,' ')};}
+function epAgPreview(pid){
+  const f=epAgForm();const nom=agNombre(f.tipo,f.num,f.cal,f.suf);
+  document.getElementById('ep-ag-prev').textContent=nom||'—';
+  const d=nom?agDuplicada(f.tipo,f.num,f.cal,f.suf,String(pid)):null;
+  document.getElementById('ep-ag-dup').textContent=d?'Ya existe otra aguja con esa combinaci\xF3n'+(d.activo===false?' (archivada)':''):'';
+}
 async function saveEdit(pid){
   const p=S.productos.find(x=>x.id===String(pid));if(!p)return;
-  const nom=document.getElementById('ep-nom').value.trim();if(!nom){msg('ep-msg','Nombre requerido','err');return;}
-  p.nom=nom;p.sub=document.getElementById('ep-sub').value.trim();
+  let ag=null;
+  if(p.cat==='Aguja'){
+    ag=epAgForm();const nom=agNombre(ag.tipo,ag.num,ag.cal,ag.suf);
+    if(!nom){msg('ep-msg','Complet\xE1 tipo, n\xFAmero (1–99) y calibre','err');return;}
+    if(agDuplicada(ag.tipo,ag.num,ag.cal,ag.suf,p.id)){msg('ep-msg','Ya existe otra aguja con esa combinaci\xF3n','err');return;}
+    p.nom=nom;p.sub=ag.tipo;
+  }else{
+    const nom=document.getElementById('ep-nom').value.trim();if(!nom){msg('ep-msg','Nombre requerido','err');return;}
+    p.nom=nom;p.sub=document.getElementById('ep-sub').value.trim();
+  }
+  const arch=document.getElementById('ep-arch');if(arch)p.activo=!arch.checked;
   p.mon=document.getElementById('ep-mon').value;
   p.cu=parseFloat(document.getElementById('ep-cu').value)||0;
   p.upu=parseInt(document.getElementById('ep-upu').value)||1;
@@ -1571,7 +1627,7 @@ async function saveEdit(pid){
   if(p.cat==='Activo'){const v=document.getElementById('ep-vum');if(v)p.vum=parseInt(v.value)||0;}
   if(p.cat==='Aguja'){const v=document.getElementById('ep-prac');if(v)p.practica=v.checked;}
   if(p.cat!=='Activo'){const v=document.getElementById('ep-tipo');if(v)p.tipo_consumo=v.value;}
-  const ok=await dbUpdateProducto(pid,{nom:p.nom,sub:p.sub,mon:p.mon,cu:p.cu,upu:p.upu,sm:p.sm,vum:p.vum,tipo_consumo:p.tipo_consumo,practica:p.practica});
+  const ok=await dbUpdateProducto(pid,{nom:p.nom,sub:p.sub,mon:p.mon,cu:p.cu,upu:p.upu,sm:p.sm,vum:p.vum,tipo_consumo:p.tipo_consumo,practica:p.practica,activo:p.activo,ag});
   if(!ok)return;
   editingId=null;renderInv();
 }
@@ -1639,16 +1695,19 @@ function sfInit(s,mode){
 function sfTatLabel(t){return '#'+t.num+' \xB7 '+t.cliente+' \u2014 '+t.diseno;}
 function sfKeys(){return SF.tats.length?SF.tats.map(t=>t.tid):[''];}
 
-// Agujas: agrupadas por tipo y ordenadas por medida
-const AG_TIPOS=[['RL','Liner (RL)'],['RS','Shader (RS)'],['RM','Magnum curvo (RM)'],['M','Magnum (M)'],['?','Otras']];
-function agTipo(n){const m=(n||'').toUpperCase().match(/R[LSM]|M/);return m?m[0]:'?';}
-function agSize(n){const m=(n||'').match(/\d+/);return m?parseInt(m[0]):999;}
-function agujaOpts(sel,withStock){
-  const ags=S.productos.filter(p=>p.cat==='Aguja');
-  return AG_TIPOS.map(([tp,lbl])=>{
-    const g=ags.filter(a=>agTipo(a.nom)===tp).sort((a,b)=>agSize(a.nom)-agSize(b.nom)||a.nom.localeCompare(b.nom));
-    return g.length?'<optgroup label="'+lbl+'">'+g.map(a=>'<option value="'+a.id+'"'+(a.id===sel?' selected':'')+'>'+a.nom+(a.practica?' \u2605':'')+(withStock?' (stock: '+stockOf(a.id)+')':'')+'</option>').join('')+'</optgroup>':'';
+// Agujas: agrupadas por tipo y ordenadas por n\u00famero/calibre (campos estructurados p.ag)
+function agSel(sel,withStock,tipo){
+  const ags=S.productos.filter(p=>p.cat==='Aguja'&&(p.id===sel||(p.activo!==false&&(!tipo||agInfo(p).tipo===tipo))));
+  return AG_TIPOS.concat([['?','Otras']]).map(([tp,lbl])=>{
+    const g=ags.filter(a=>(agInfo(a).tipo||'?')===tp).sort(agCmp);
+    return g.length?'<optgroup label="'+lbl+'">'+g.map(a=>'<option value="'+a.id+'"'+(a.id===sel?' selected':'')+'>'+a.nom+(a.practica?' \u2605':'')+(withStock?' \xB7 '+stockOf(a.id)+' en stock':'')+'</option>').join('')+'</optgroup>':'';
   }).join('');
+}
+function agujaOpts(sel,withStock){return agSel(sel,withStock,SF&&SF.agF);}
+function agFiltroPills(){
+  const cur=(SF&&SF.agF)||'';
+  const pill=(v,lbl)=>{const a=cur===v;return '<button type="button" style="padding:2px 9px;font-size:11px;font-weight:'+(a?700:600)+';border-radius:99px;border:1.5px solid '+(a?'var(--accent)':'var(--border)')+';background:'+(a?'var(--accent)':'transparent')+';color:'+(a?'#1a1200':'var(--text-2)')+';cursor:pointer" onclick="SF.agF=\''+v+'\';sfRender()">'+lbl+'</button>';};
+  return '<span style="display:inline-flex;gap:4px;margin-left:auto">'+pill('','Todas')+AG_TIPOS.map(([t])=>pill(t,t)).join('')+'</span>';
 }
 const TECNICAS=['L\xEDnea','L\xEDnea fina','L\xEDnea de agua','Puntillismo','Sombreado (whip)','Sombreado suave','Relleno s\xF3lido','Color','Blanco / realces','Textura','Sin especificar'];
 function scoreClass(v){return v>=7?'on-green':v>=4?'on-amber':'on-red';}
@@ -1724,7 +1783,7 @@ function sfCard(key){
   }
   return '<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--bg-card)">'
     +head
-    +secTitle('Agujas usadas','descuentan stock','<button type="button" class="btn btn-sm" onclick="sfAddAguja(\''+key+'\')">+ Aguja</button>')+agRows
+    +secTitle('Agujas usadas','descuentan stock',agFiltroPills()+'<button type="button" class="btn btn-sm" onclick="sfAddAguja(\''+key+'\')">+ Aguja</button>')+agRows
     +secTitle('T\xE9cnicas y voltajes','no tocan stock','<button type="button" class="btn btn-sm" onclick="sfAddTec(\''+key+'\')">+ T\xE9cnica</button>')+tecRows
     +secTitle('Evaluaci\xF3n (1\u201310)','','')+scores
     +fotos
@@ -2070,6 +2129,9 @@ function toggleNewFields(){
   const tipo=document.getElementById('np-tipo')?.value||'UNIDAD';
   const f=document.getElementById('vum-field');if(f)f.style.display=cat==='Activo'?'':'none';
   const pf=document.getElementById('prac-field');if(pf)pf.style.display=cat==='Aguja'?'':'none';
+  ['nom-field','sub-field'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=cat==='Aguja'?'none':'';});
+  const af=document.getElementById('ag-field');if(af)af.style.display=cat==='Aguja'?'':'none';
+  if(cat==='Aguja')agPreview();
   const tf=document.getElementById('tipo-consumo-field');if(tf)tf.style.display=cat==='Activo'?'none':'';
   const ul=document.getElementById('np-upu-label');if(ul)ul.textContent=tipo==='SESION'?'Rinde aprox. X ses.':'Usos por unidad';
 }
@@ -2098,7 +2160,22 @@ function onMovChange(){
     prev.textContent=txt;
   } else if(prev)prev.textContent='';
 }
-function fillMovSel(){const sel=document.getElementById('mv-prod');const cur=sel.value;sel.innerHTML=S.productos.map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>[${p.cat}] ${p.nom}</option>`).join('');}
+// Alta de aguja: vista previa del nombre + aviso de duplicado con atajo a Movimientos
+function agForm(){const v=id=>document.getElementById(id)?.value||'';return{tipo:v('np-ag-tipo'),num:parseInt(v('np-ag-num')),cal:v('np-ag-cal'),suf:v('np-ag-suf').trim().replace(/\s+/g,' ')};}
+function agPreview(){
+  const f=agForm();const nom=agNombre(f.tipo,f.num,f.cal,f.suf);
+  const pv=document.getElementById('np-ag-prev');if(pv)pv.textContent=nom||'—';
+  const dp=document.getElementById('np-ag-dup');if(!dp)return;
+  const d=nom?agDuplicada(f.tipo,f.num,f.cal,f.suf):null;
+  dp.innerHTML=d?'<span style="color:var(--amber)">Ya existe'+(d.activo===false?' (archivada)':'')+' \xB7 '+stockOf(d.id)+' en stock</span> <button type="button" class="btn btn-sm" onclick="irAEntrada(\''+d.id+'\')">Cargar entrada a la existente</button>':'';
+}
+function irAEntrada(pid){
+  go('mov');
+  const t=document.getElementById('mv-tipo');if(t)t.value='entrada';
+  const s=document.getElementById('mv-prod');if(s)s.value=String(pid);
+  onMovChange();
+}
+function fillMovSel(){const sel=document.getElementById('mv-prod');const cur=sel.value;sel.innerHTML=S.productos.filter(p=>p.activo!==false||p.id===cur).map(p=>`<option value="${p.id}"${p.id===cur?' selected':''}>[${p.cat}] ${p.nom}</option>`).join('');}
 function renderMovTable(){
   const rows=S.movimientos.slice(0,60);
   document.getElementById('mv-body').innerHTML=rows.length?rows.map(m=>{const p=S.productos.find(x=>x.id===m.pid);return`<tr><td>${fdate(m.fecha)}</td><td>${p?p.nom:m.pid}</td><td>${m.tipo==='entrada'?'<span class="tag-in">+ entrada</span>':'<span class="tag-out">− salida</span>'}</td><td>${m.qty}</td><td class="hint">${m.costoAlMomento?'$'+Math.round(m.costoAlMomento).toLocaleString('es-AR'):'—'}</td><td class="hint">${m.ref||'—'}</td><td>${stockOf(m.pid)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="empty">Sin movimientos</td></tr>';
@@ -2129,11 +2206,17 @@ async function addMov(){
   onMovChange();renderMovTable();
 }
 async function addProd(){
-  const nom=document.getElementById('np-nom').value.trim();if(!nom){msg('np-msg','Nombre requerido','err');return;}
   const cat=document.getElementById('np-cat').value;
+  let nom=document.getElementById('np-nom').value.trim(),ag=null;
+  if(cat==='Aguja'){
+    ag=agForm();nom=agNombre(ag.tipo,ag.num,ag.cal,ag.suf);
+    if(!nom){msg('np-msg','Complet\xE1 tipo, n\xFAmero (1–99) y calibre','err');return;}
+    if(agDuplicada(ag.tipo,ag.num,ag.cal,ag.suf)){agPreview();msg('np-msg','Esa aguja ya existe','err');return;}
+  }
+  if(!nom){msg('np-msg','Nombre requerido','err');return;}
   const prac=cat==='Aguja'&&!!document.getElementById('np-prac')?.checked;
-  const prod={nom,cat,
-    sub:document.getElementById('np-sub').value.trim(),
+  const prod={nom,cat,ag,
+    sub:cat==='Aguja'?ag.tipo:document.getElementById('np-sub').value.trim(),
     um:document.getElementById('np-um').value,
     mon:document.getElementById('np-mon').value,
     cu:parseFloat(document.getElementById('np-cu').value)||0,
@@ -2147,7 +2230,7 @@ async function addProd(){
   const nuevo=await dbAddProducto(prod);if(!nuevo)return;
   msg('np-msg','Guardado','ok');clearNewForm();
 }
-function clearNewForm(){['np-nom','np-sub'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cu').value='0';document.getElementById('np-upu').value='1';document.getElementById('np-si').value='1';document.getElementById('np-sm').value='1';document.getElementById('np-vum').value='24';}
+function clearNewForm(){['np-nom','np-sub','np-ag-num','np-ag-suf'].forEach(id=>document.getElementById(id).value='');agPreview();document.getElementById('np-cu').value='0';document.getElementById('np-upu').value='1';document.getElementById('np-si').value='1';document.getElementById('np-sm').value='1';document.getElementById('np-vum').value='24';}
 function updateCfgAmort(){const el=document.getElementById('cfg-amort-display');if(el)el.textContent=ars(amortTotalSes());}
 async function saveTc(){const v=parseFloat(document.getElementById('tc-val').value);if(v>0){S.tc=v;await dbSetConfig('tipo_cambio',v);persist();document.getElementById('tc-display').textContent='USD = $'+v.toLocaleString('es-AR');msg('tc-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
 async function saveSpm(){const v=parseInt(document.getElementById('spm-val').value);if(v>0){S.spm=v;await dbSetConfig('sesiones_por_mes',v);persist();msg('spm-msg','Actualizado','ok');if(curTab==='dash')renderDash();updateCfgAmort();}}
