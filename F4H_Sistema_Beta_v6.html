@@ -286,6 +286,9 @@ thead th[data-sorted]{color:var(--accent)!important}
   .app [data-monly]{display:inline-flex!important;align-items:center}
   .app [data-msplit="detalle"]>:first-child{display:none!important}
   .app [data-msplit="lista"]>:nth-child(2){display:none!important}
+  /* Etapa 3 — retoques: celdas largas envuelven; franja bajo la barra de estado */
+  .app td{max-width:70vw;white-space:normal;overflow-wrap:anywhere}
+  body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:250;pointer-events:none}
   /* Etapa 3 — Inventario en tarjetas */
   #t-inv table{width:100%!important;min-width:0!important}
   #t-inv thead{display:none}

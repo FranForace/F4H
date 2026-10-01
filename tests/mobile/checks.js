@@ -309,6 +309,22 @@ async (groups) => {
     return f;
   };
 
+  G.retoques = async () => {
+    const f = [];
+    // celdas con texto largo envuelven (Review Focus 5). Fila de prueba solo en DOM (no toca la base).
+    for (const t of ['mov','egresos']) {
+      go(t); await sleep(150);
+      const tb = document.querySelector('#t-' + t + ' table tbody');
+      if (tb && tb.rows[0]) { const r = tb.rows[0].cloneNode(true); r.cells[r.cells.length - 1].textContent = 'Referencia de prueba muy larga '.repeat(8); tb.prepend(r); await sleep(50); }
+      const anchas = [...document.querySelectorAll('#t-' + t + ' td')].filter(vis).filter(td => td.getBoundingClientRect().width > vw * 0.8);
+      if (anchas.length) f.push(t + ': ' + anchas.length + ' celdas más anchas que el 80% de la pantalla (ej. ' + label(anchas[0]) + ')');
+    }
+    // franja bajo la barra de estado (contenido no se ve detrás del reloj al scrollear)
+    if (!reglaMobile('body::before', 'safe-area-inset-top')) f.push('falta la franja de la barra de estado');
+    go('dash');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }
