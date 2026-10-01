@@ -1,9 +1,9 @@
 // Service worker de F4H (spec mobile-pwa 1.4).
 // estrategia: network-first — con señal siempre baja la versión nueva; sin señal usa la cacheada.
 // Solo cachea el shell y SOLO del mismo origen: nunca toca Supabase, jsdelivr ni Google Fonts.
-const CACHE = 'f4h-shell-v1';
+const CACHE = 'f4h-shell-v2';
 const SHELL = ['/', '/F4H_Sistema_Beta_v6.html', '/js/db.js', '/logo-v2-trim.png',
-  '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
+  '/vendor/supabase-2.117.2.min.js', '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

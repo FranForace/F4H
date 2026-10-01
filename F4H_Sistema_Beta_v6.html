@@ -227,6 +227,8 @@ textarea{resize:vertical;min-height:80px}
 /* Tablas ordenables (TSORT): tsApply marca los <th> con data-lbl / data-sorted */
 thead th[data-lbl]:not([data-lbl=""]){cursor:pointer;user-select:none}
 thead th[data-sorted]{color:var(--accent)!important}
+/* Hover de las celdas del calendario (solo con mouse; antes era onmouseover inline) */
+@media (hover: hover){[data-cal="a"]:hover{background:#1f1c15!important}[data-cal="c"]:hover{background:#16140f!important}}
 /* ── Mobile (spec docs/superpowers/specs/2026-09-30-mobile-pwa-design.md) ─────
    Todo lo mobile vive en este bloque. Las render functions usan inline styles,
    por eso la capa pisa con selectores de atributo + !important acotados a .app.
@@ -234,8 +236,9 @@ thead th[data-sorted]{color:var(--accent)!important}
 .mnav{display:none}
 @media (max-width: 760px), (pointer: coarse) and (max-height: 500px){
   .sidebar{display:none}
-  .app{margin-left:0;padding:calc(10px + env(safe-area-inset-top)) 12px calc(84px + env(safe-area-inset-bottom))}
-  .mnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#0a0908;border-top:1px solid #1e1e1e;padding:4px 4px env(safe-area-inset-bottom)}
+  .app{margin-left:0;padding:calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))}
+  .mnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#0a0908;border-top:1px solid #1e1e1e;padding:4px max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left))}
+  #db-error-bar,#offline-bar{padding-top:calc(8px + env(safe-area-inset-top))!important}
   .mnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;background:none;border:none;color:var(--text-2);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .mnav-item .mnav-ic{font-size:18px;line-height:1}
   .mnav-item.on{color:var(--accent)}
@@ -267,8 +270,8 @@ thead th[data-sorted]{color:var(--accent)!important}
   /* Filas de pills/filtros que en escritorio no bajan de renglón */
   .app [style*="display:flex;gap:4px"],.app [style*="margin:12px 0 6px"]{flex-wrap:wrap}
   /* Calendario (arreglo mínimo; el rediseño es la etapa 2): celdas bajas, sin chips, contador de turnos */
-  .app [style*="min-height:108px"]{min-height:52px!important;padding:5px!important}
-  .app [style*="min-height:108px"] [style*="text-overflow:ellipsis"],.app [style*="min-height:108px"] [style*="font-size:10px"]{display:none}
+  .app [data-cal]{min-height:52px!important;padding:5px!important}
+  .app [data-cal] [style*="text-overflow:ellipsis"],.app [data-cal] [style*="font-size:10px"]{display:none}
   .app [data-turnos]::after{content:attr(data-turnos);position:absolute;bottom:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#1a1200;font-size:11px;font-weight:700;line-height:16px;text-align:center}
 }
 </style>
@@ -515,7 +518,8 @@ thead th[data-sorted]{color:var(--accent)!important}
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- supabase-js versión fija servida desde el mismo origen: el service worker la cachea y la app instalada abre sin señal (spec mobile 5). Para actualizar: bajar la nueva UMD a vendor/, cambiar este src y SHELL en sw.js, y subir la versión de la caché. -->
+<script src="/vendor/supabase-2.117.2.min.js"></script>
 <script src="js/db.js"></script>
 <script>
 const today=new Date().toISOString().slice(0,10);
@@ -705,7 +709,7 @@ function isMobile(){return MQ_MOBILE.matches;}
 function mSheet(title,items){
   const el=document.getElementById('msheet');if(!el)return;
   el.innerHTML='<div onclick="if(event.target===this)mSheetClose()" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.55);display:flex;align-items:flex-end">'
-    +'<div role="dialog" aria-label="'+title+'" style="width:100%;background:var(--bg-card);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:8px 10px calc(12px + env(safe-area-inset-bottom))">'
+    +'<div role="dialog" aria-label="'+title+'" style="width:100%;max-height:100%;overflow-y:auto;background:var(--bg-card);border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:8px max(10px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left))">'
       +'<div style="width:36px;height:4px;border-radius:99px;background:var(--border-hover);margin:4px auto 10px"></div>'
       +'<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:0 8px 6px">'+title+'</div>'
       +items.map(function(it){return '<button data-sheet-item onclick="mSheetClose();'+it.act+'" style="display:flex;align-items:center;gap:14px;width:100%;min-height:52px;padding:0 10px;background:none;border:none;border-radius:10px;color:var(--text);font-size:16px;font-family:inherit;text-align:left;cursor:pointer"><span style="width:26px;text-align:center;font-size:18px;color:var(--accent)">'+it.ic+'</span>'+it.label+'</button>';}).join('')
@@ -729,7 +733,9 @@ function mOpenMas(){mSheet('M\xE1s',[
   {ic:'&#x2699;',label:'Config',act:"go('cfg')"},
   {ic:'&#x21AA;',label:'Cerrar sesi\xF3n',act:'doSignOut()'}
 ]);}
-MQ_MOBILE.addEventListener('change',function(){mSheetClose();renderAll();});
+// Al cruzar el breakpoint solo se cierra la hoja: el layout es CSS puro y re-renderizar borraría formularios sin guardar.
+function onMqMobileChange(){mSheetClose();}
+MQ_MOBILE.addEventListener('change',onMqMobileChange);
 function go(t){
   mSheetClose();
   if(curTab==='ses'&&t!=='ses'&&pendingTurnoId)pendingTurnoId=null;
@@ -893,13 +899,13 @@ function buildAgendaCalendario(){
     const sesionesSinTurno=fecha<today?S.sesiones.filter(s=>s.fecha===fecha&&!S.turnos.some(t=>t.sid===s.id)):[];
     const titleTxt=abierto?('Abierto por: '+(info.regla_motivo||'—')):((info&&info.regla_id)?('Cerrado por: '+(info.regla_motivo||'—')):'Cerrado (sin reglas)');
     const bg=abierto?'var(--bg-card)':'var(--bg)';
-    const bgHover=abierto?'#1f1c15':'#16140f';
+    // hover por CSS ([data-cal]): escribir this.style desde onmouseover rompía la capa mobile (en iOS el tap dispara mouseover)
     const border=abierto?'1.5px solid var(--accent)':'1px solid var(--border)';
     const numColor=abierto?'var(--text)':'var(--text-3)';
     const numHtml=esHoy
       ?'<span style="font-size:12px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
       :'<span style="font-size:13px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
-    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" onmouseover="this.style.background=\''+bgHover+'\'" onmouseout="this.style.background=\''+bg+'\'" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' data-cal="'+(abierto?'a':'c')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
       +(avisoRojo?'<span style="position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+numHtml
       +(abierto&&info.hora_desde?'<span style="font-size:10px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')

@@ -141,12 +141,53 @@ async (groups) => {
     if (!reg || !reg.active) f.push('service worker no registrado/activo');
     if (!navigator.serviceWorker.controller) f.push('la página no está controlada por el SW (recargar una vez)');
     // Review Focus 5: la caché solo tiene cosas del mismo origen (nunca Supabase)
-    if (await caches.has('f4h-shell-v1')) {
-      const keys = await (await caches.open('f4h-shell-v1')).keys();
+    if (await caches.has('f4h-shell-v2')) {
+      const keys = await (await caches.open('f4h-shell-v2')).keys();
       const ajenas = keys.filter(k => new URL(k.url).origin !== location.origin);
       if (ajenas.length) f.push('la caché tiene ' + ajenas.length + ' respuestas de otros orígenes (ej. ' + ajenas[0].url + ')');
       if (!keys.some(k => new URL(k.url).pathname === '/js/db.js')) f.push('la caché no tiene /js/db.js');
-    } else f.push('no existe la caché f4h-shell-v1');
+      if (!keys.some(k => new URL(k.url).pathname.startsWith('/vendor/supabase-'))) f.push('la caché no tiene supabase-js (sin señal la app no abre)');
+    } else f.push('no existe la caché f4h-shell-v2');
+    return f;
+  };
+
+  // Hallazgos de la revisión final (Important #1–#6)
+  const reglaMobile = (sel, txt) => [...document.styleSheets].some(s => { try { return [...s.cssRules].some(r => r.media && [...r.cssRules].some(x => x.selectorText && x.selectorText.includes(sel) && x.cssText.includes(txt))); } catch (e) { return false; } });
+  G.fixes = async () => {
+    const f = [];
+    // #1 tocar un día del calendario (iOS dispara mouseover antes del click) no debe agrandar la celda
+    go('agenda'); await sleep(300);
+    const cell = document.querySelector('#t-agenda [onclick^="AG.dia"]');
+    if (!cell) f.push('#1 no encontré celdas del calendario');
+    else {
+      const h0 = cell.getBoundingClientRect().height;
+      cell.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      const h1 = cell.getBoundingClientRect().height;
+      if (h1 > h0 + 2) f.push('#1 mouseover agranda la celda del calendario (' + Math.round(h0) + '→' + Math.round(h1) + 'px)');
+      cell.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    }
+    // #2 el cambio de media query no re-renderiza (no borra formularios sin guardar)
+    if (typeof onMqMobileChange !== 'function') f.push('#2 falta onMqMobileChange');
+    else {
+      go('ses'); setSesView('nueva'); await sleep(200);
+      const hrs = document.getElementById('sf-hrs'); if (hrs) hrs.value = '7.5';
+      mOpenMas(); onMqMobileChange();
+      if (document.getElementById('sf-hrs') && document.getElementById('sf-hrs').value !== '7.5') f.push('#2 el cambio de media query borró lo escrito en Nueva sesión');
+      if (css(document.getElementById('msheet'),'display') !== 'none') f.push('#2 el cambio de media query no cerró la hoja');
+    }
+    // #3 la hoja nunca es más alta que la pantalla y se puede deslizar
+    mOpenMas(); await sleep(50);
+    const dlg = document.querySelector('#msheet [role=dialog]');
+    if (!dlg || css(dlg,'maxHeight') === 'none' || css(dlg,'overflowY') !== 'auto') f.push('#3 la hoja no tiene max-height/overflow-y:auto');
+    mSheetClose();
+    // #4 márgenes laterales respetan el notch acostado
+    if (!reglaMobile('.app', 'safe-area-inset-left') || !reglaMobile('.mnav', 'safe-area-inset-left')) f.push('#4 .app/.mnav sin safe-area-inset-left/right');
+    // #5 avisos de error/sin conexión debajo de la barra de estado
+    if (!reglaMobile('#db-error-bar', 'safe-area-inset-top')) f.push('#5 avisos sin safe-area-inset-top');
+    // #6 supabase-js servido desde el mismo origen (cacheable por el SW)
+    const sb = [...document.scripts].find(s => /supabase/.test(s.src));
+    if (!sb || new URL(sb.src).origin !== location.origin) f.push('#6 supabase-js no se sirve desde el mismo origen (' + (sb && sb.src) + ')');
+    go('dash');
     return f;
   };
 
