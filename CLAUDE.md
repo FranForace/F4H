@@ -165,6 +165,12 @@ S = {
   reserializa el atributo (`font-size: 10px`, con espacio) y los selectores `[style*=...]` de la
   capa mobile dejan de matchear (por eso el orden de columnas marca `data-sorted` en vez de
   tocar `th.style`).
+  **Lista → detalle (etapas 2-3):** un contenedor de dos paneles lleva
+  `data-msplit="lista|detalle"`; en mobile se ve un solo panel. El botón "‹ Volver" lleva
+  `data-monly` (oculto en escritorio por una regla global). Usado en Agenda (`AGvolverMobile()`)
+  y Tatuajes. Inventario en mobile son tarjetas: las celdas llevan `data-l="Etiqueta"` y la
+  etiqueta sale por CSS (`td[data-l]::before`). Grupos de tests nuevos: `sesion agenda tatuajes
+  inventario retoques`.
 - **PWA:** `manifest.json`, `sw.js` (network-first, solo shell y solo mismo origen, caché
   `f4h-shell-v1` — subir la versión si se cambia la lista `SHELL`), íconos en `icons/`
   (regenerar desde `icons/fuente.html`, ver plan mobile etapa 1, Task 6).
