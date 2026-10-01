@@ -38,6 +38,11 @@ async (groups) => {
     const tv = document.querySelector('#t-tattoos [data-monly]');
     if (tv && css(tv,'display') !== 'none') f.push('Tatuajes: "Volver" visible en escritorio');
     tattooView = 'lista'; selectedTattooId = null;
+    fCat = []; fSt = ''; editingId = null; go('inv'); await sleep(120);
+    const it = document.querySelector('#t-inv table');
+    if (css(it.tHead,'display') === 'none' || css(it.tBodies[0].rows[0],'display') !== 'table-row') f.push('Inventario: dejó de ser tabla en escritorio');
+    const th0 = document.querySelector('#t-inv thead th');
+    if (!th0.dataset.sorted && css(th0,'color') !== 'rgb(136, 136, 136)') f.push('Inventario: encabezados no son #888 (' + css(th0,'color') + ')');
     return f;
   };
 
@@ -272,6 +277,34 @@ async (groups) => {
     const v = document.querySelector('#t-tattoos [data-monly]');
     if (!shown(v)) f.push('no se ve "‹ Volver"');
     else { v.click(); await sleep(200); if (selectedTattooId || !shown(split().children[0])) f.push('Volver no regresa a la lista'); }
+    go('dash');
+    return f;
+  };
+
+  G.inventario = async () => {
+    const f = [];
+    const check = async (nombre) => {
+      await sleep(150);
+      const t = document.querySelector('#t-inv table');
+      if (css(t.tHead,'display') !== 'none') f.push(nombre + ': encabezado de tabla visible (no son tarjetas)');
+      const rows = [...t.tBodies[0].rows].filter(vis);
+      if (!rows.length) return;
+      if (css(rows[0],'display') !== 'grid') f.push(nombre + ': las filas no son tarjetas (display ' + css(rows[0],'display') + ')');
+      const sc = t.parentElement;
+      if (sc.scrollWidth > sc.clientWidth + 1) f.push(nombre + ': las tarjetas desbordan a lo ancho (' + sc.scrollWidth + ' > ' + sc.clientWidth + ')');
+      const lab = rows[0].querySelector('td[data-l]');
+      if (!lab || getComputedStyle(lab, '::before').content.indexOf(lab.dataset.l) < 0) f.push(nombre + ': celdas sin etiqueta visible');
+      if (lab && parseFloat(css(lab,'borderBottomWidth')) > 0) f.push(nombre + ': las celdas de la tarjeta conservan el borde de tabla');
+      const lapiz = rows[0].querySelector('button');
+      if (!lapiz || lapiz.getBoundingClientRect().height < 44 || lapiz.getBoundingClientRect().right > vw) f.push(nombre + ': lápiz de editar no tocable');
+    };
+    fCat = []; fSt = ''; editingId = null; go('inv'); await check('todos');
+    // filtros en una sola fila con scroll horizontal
+    const pills = [...document.querySelectorAll('#t-inv button')].filter(b => /^(Todos|Activos|Descartables|Consumibles|Agujas|OK|Bajo|Crítico)$/.test(b.innerText.trim()));
+    if (new Set(pills.map(b => Math.round(b.getBoundingClientRect().top))).size > 1) f.push('los filtros ocupan más de una fila');
+    toggleFCat('Aguja'); await check('agujas');
+    const ag = S.productos.find(p => p.cat === 'Aguja' && p.activo !== false); editingId = ag ? ag.id : null; renderInv(); await check('edición');
+    editingId = null; fCat = []; renderInv();
     go('dash');
     return f;
   };

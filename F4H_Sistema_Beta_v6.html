@@ -227,6 +227,9 @@ textarea{resize:vertical;min-height:80px}
 /* Tablas ordenables (TSORT): tsApply marca los <th> con data-lbl / data-sorted */
 thead th[data-lbl]:not([data-lbl=""]){cursor:pointer;user-select:none}
 thead th[data-sorted]{color:var(--accent)!important}
+/* Encabezados de Inventario en #888 (como antes de la etapa 1), el ordenado en dorado */
+#t-inv thead th{color:var(--text-2)!important}
+#t-inv thead th[data-sorted]{color:var(--accent)!important}
 /* Lista → detalle (mobile): "Volver" solo existe en mobile */
 [data-monly]{display:none!important}
 /* Hover de las celdas del calendario (solo con mouse; antes era onmouseover inline) */
@@ -283,6 +286,19 @@ thead th[data-sorted]{color:var(--accent)!important}
   .app [data-monly]{display:inline-flex!important;align-items:center}
   .app [data-msplit="detalle"]>:first-child{display:none!important}
   .app [data-msplit="lista"]>:nth-child(2){display:none!important}
+  /* Etapa 3 — Inventario en tarjetas */
+  #t-inv table{width:100%!important;min-width:0!important}
+  #t-inv thead{display:none}
+  #t-inv tbody tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 12px;padding:14px 16px}
+  #t-inv tbody td{padding:0!important;position:static!important;background:none!important;min-width:0;border:none!important}
+  #t-inv tbody td:first-child{grid-column:1 / 3}
+  #t-inv tbody td:last-child{grid-column:3;grid-row:1;text-align:right}
+  #t-inv tbody td[data-l]::before{content:attr(data-l);display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+  /* Filtros en una sola fila que se desliza */
+  #t-inv [style*="display:flex;gap:8px;align-items:center;flex-wrap:wrap"]{flex-wrap:nowrap!important;overflow-x:auto;width:100%;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #t-inv [style*="display:flex;gap:8px;align-items:center;flex-wrap:wrap"]::-webkit-scrollbar{display:none}
+  #t-inv [style*="display:flex;gap:8px;align-items:center;flex-wrap:wrap"] [style*="display:flex;gap:4px"]{flex-wrap:nowrap!important}
+  #t-inv [style*="display:flex;gap:8px;align-items:center;flex-wrap:wrap"] button{flex-shrink:0;white-space:nowrap}
   .app [data-turnos]::after{content:attr(data-turnos);position:absolute;bottom:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#1a1200;font-size:11px;font-weight:700;line-height:16px;text-align:center}
 }
 </style>
@@ -1701,11 +1717,11 @@ function renderInv(){
       :'<button style="padding:6px 13px;font-size:12px;font-weight:600;background:transparent;color:var(--text-3);border:1.5px solid var(--border);border-radius:7px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--accent)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-3)\'" onclick="editingId=\''+p.id+'\';renderInv()">✏ Editar</button>';
     return '<tr style="border-bottom:1px solid var(--border);'+rowBg+'">'
       +'<td style="padding:14px 18px;vertical-align:middle"><div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:3px">'+p.nom+(p.practica?' <span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;background:rgba(74,143,212,.15);color:#4a8fd4">pr\xE1ctica</span>':'')+'</div><div style="font-size:11px;color:var(--text-3)">'+p.cat+' \xB7 '+p.sub+'</div></td>'
-      +'<td style="padding:14px 18px;vertical-align:middle">'+stockCell+'</td>'
-      +'<td style="padding:14px 18px;vertical-align:middle;color:var(--text-2);font-size:14px">'+p.sm+'</td>'
-      +'<td style="padding:14px 18px;vertical-align:middle">'+badge(st)+'</td>'
-      +'<td style="padding:14px 18px;vertical-align:middle">'+cxuVal+'</td>'
-      +'<td style="padding:14px 18px;vertical-align:middle;color:var(--text-3);font-size:14px">'+p.upu+'</td>'
+      +'<td data-l="Stock" style="padding:14px 18px;vertical-align:middle">'+stockCell+'</td>'
+      +'<td data-l="M\xEDn." style="padding:14px 18px;vertical-align:middle;color:var(--text-2);font-size:14px">'+p.sm+'</td>'
+      +'<td data-l="Estado" style="padding:14px 18px;vertical-align:middle">'+badge(st)+'</td>'
+      +'<td data-l="Costo" style="padding:14px 18px;vertical-align:middle">'+cxuVal+'</td>'
+      +'<td data-l="Usos / un." style="padding:14px 18px;vertical-align:middle;color:var(--text-3);font-size:14px">'+p.upu+'</td>'
       +'<td style="padding:14px 18px;vertical-align:middle;text-align:right">'+editBtn+'</td>'
     +'</tr>';
   }).join('');
