@@ -25,6 +25,13 @@ async (groups) => {
       if (!th2.dataset.sorted || css(th2,'color') !== 'rgb(200, 169, 110)') f.push('encabezado ordenado no queda en dorado');
       th2.click(); await sleep(50); document.querySelector('#t-inv thead th').click(); await sleep(50);
     }
+    // lista → detalle: en escritorio los dos paneles lado a lado y sin "Volver"
+    go('agenda'); AG.dia = today; AG.panel = 'dia'; await renderAgenda(); await sleep(150);
+    const sp = document.querySelector('#t-agenda [data-msplit]');
+    if (sp && (css(sp.children[0],'display') === 'none' || css(sp.children[1],'display') === 'none')) f.push('Agenda: un panel oculto en escritorio');
+    const vb = document.querySelector('#t-agenda [data-monly]');
+    if (vb && css(vb,'display') !== 'none') f.push('Agenda: "Volver" visible en escritorio');
+    AG.dia = null; AG.panel = null;
     return f;
   };
 
@@ -212,6 +219,32 @@ async (groups) => {
     sfAddTec(''); await sleep(80);
     const tec = [...root.querySelectorAll('select')].find(s => (s.getAttribute('onchange') || '').startsWith('SF.tecnicas') && (s.getAttribute('onchange') || '').includes('.tec='));
     if (tec && tec.getBoundingClientRect().width < tec.parentElement.getBoundingClientRect().width - 2) f.push('select de técnica no ocupa el ancho de la fila');
+    go('dash');
+    return f;
+  };
+
+  G.agenda = async () => {
+    const f = [];
+    const split = () => document.querySelector('#t-agenda [data-msplit]');
+    const shown = el => el && css(el,'display') !== 'none' && el.getBoundingClientRect().height > 0;
+    go('agenda'); AG.dia = null; AG.panel = null; await renderAgenda(); await sleep(150);
+    if (!split()) return ['falta data-msplit en la Agenda'];
+    if (!shown(split().children[0])) f.push('calendario oculto sin día elegido');
+    if (shown(split().children[1])) f.push('panel vacío ("Seleccioná un día") visible en mobile');
+    scrollTo(0, 400);
+    document.querySelector('#t-agenda [data-cal]').click(); await sleep(250);
+    if (shown(split().children[0])) f.push('al abrir un día el calendario sigue visible');
+    if (!shown(split().children[1])) f.push('al abrir un día no se ve el panel');
+    if (scrollY > 5) f.push('al abrir un día no vuelve arriba (scrollY=' + scrollY + ')');
+    const volver = document.querySelector('#t-agenda [data-monly]');
+    if (!shown(volver)) f.push('no se ve "‹ Volver"');
+    // Review Focus 1: desde un panel anidado, Volver va al día
+    AG.panel = 'reglas'; await renderAgenda(); await sleep(150);
+    document.querySelector('#t-agenda [data-monly]').click(); await sleep(250);
+    if (!(AG.dia && AG.panel === 'dia')) f.push('Volver desde Reglas no vuelve al día (dia=' + AG.dia + ', panel=' + AG.panel + ')');
+    document.querySelector('#t-agenda [data-monly]').click(); await sleep(250);
+    if (AG.dia || AG.panel) f.push('Volver desde el día no vuelve al calendario');
+    if (!shown(split().children[0])) f.push('después de Volver no se ve el calendario');
     go('dash');
     return f;
   };

@@ -227,6 +227,8 @@ textarea{resize:vertical;min-height:80px}
 /* Tablas ordenables (TSORT): tsApply marca los <th> con data-lbl / data-sorted */
 thead th[data-lbl]:not([data-lbl=""]){cursor:pointer;user-select:none}
 thead th[data-sorted]{color:var(--accent)!important}
+/* Lista → detalle (mobile): "Volver" solo existe en mobile */
+[data-monly]{display:none!important}
 /* Hover de las celdas del calendario (solo con mouse; antes era onmouseover inline) */
 @media (hover: hover){[data-cal="a"]:hover{background:#1f1c15!important}[data-cal="c"]:hover{background:#16140f!important}}
 /* ── Mobile (spec docs/superpowers/specs/2026-09-30-mobile-pwa-design.md) ─────
@@ -277,6 +279,10 @@ thead th[data-sorted]{color:var(--accent)!important}
   #t-ses [style*="display:flex;gap:6px;margin-bottom:6px;align-items:center"]{flex-wrap:wrap}
   #t-ses [style*="display:flex;gap:6px;margin-bottom:6px;align-items:center"]>select:first-child{flex:1 1 100%!important}
   #t-ses [style*="display:flex;gap:6px;margin-bottom:6px;align-items:center"]>select:first-child+select{flex:1 1 100%!important}
+  /* Etapa 2 — lista → detalle: un panel a la vez */
+  .app [data-monly]{display:inline-flex!important;align-items:center}
+  .app [data-msplit="detalle"]>:first-child{display:none!important}
+  .app [data-msplit="lista"]>:nth-child(2){display:none!important}
   .app [data-turnos]::after{content:attr(data-turnos);position:absolute;bottom:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#1a1200;font-size:11px;font-weight:700;line-height:16px;text-align:center}
 }
 </style>
@@ -863,9 +869,18 @@ function AGinfoDia(fecha){
 async function renderAgenda(){
   const el=document.getElementById('t-agenda');
   if(!AG.dias[AG.mes])await AGloadMes(AG.mes);
+  const det=!!(AG.dia||AG.panel==='reglas'||AG.panel==='turno');
   el.innerHTML=buildAgendaHeader()+buildAgendaCupos()
-    +'<div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">'
-    +buildAgendaCalendario()+buildAgendaPanel()+'</div>';
+    +'<div data-msplit="'+(det?'detalle':'lista')+'" style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">'
+    +buildAgendaCalendario()
+    +'<div><button data-monly class="btn btn-sm" onclick="AGvolverMobile()" style="margin-bottom:12px">&#x2039; Volver</button>'+buildAgendaPanel()+'</div>'
+    +'</div>';
+}
+// Mobile: "‹ Volver" del panel. Desde turno/reglas de un día vuelve al día; si no, al calendario.
+function AGvolverMobile(){
+  if((AG.panel==='turno'||AG.panel==='reglas')&&AG.dia){AG.panel='dia';AGturnoForm=null;}
+  else{AG.dia=null;AG.panel=null;AGturnoForm=null;}
+  renderAgenda();scrollTo(0,0);
 }
 
 function buildAgendaHeader(){
@@ -910,7 +925,7 @@ function buildAgendaCalendario(){
     const numHtml=esHoy
       ?'<span style="font-size:12px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
       :'<span style="font-size:13px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
-    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' data-cal="'+(abierto?'a':'c')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda()" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' data-cal="'+(abierto?'a':'c')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda();if(isMobile())scrollTo(0,0)" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
       +(avisoRojo?'<span style="position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+numHtml
       +(abierto&&info.hora_desde?'<span style="font-size:10px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')
