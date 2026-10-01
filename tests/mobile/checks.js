@@ -32,6 +32,12 @@ async (groups) => {
     const vb = document.querySelector('#t-agenda [data-monly]');
     if (vb && css(vb,'display') !== 'none') f.push('Agenda: "Volver" visible en escritorio');
     AG.dia = null; AG.panel = null;
+    tattooView = 'lista'; selectedTattooId = (S.tatuajes[0] || {}).id || null; go('tattoos'); await sleep(150);
+    const st = document.querySelector('#t-tattoos [data-msplit]');
+    if (st && selectedTattooId && (css(st.children[0],'display') === 'none' || css(st.children[1],'display') === 'none')) f.push('Tatuajes: un panel oculto en escritorio');
+    const tv = document.querySelector('#t-tattoos [data-monly]');
+    if (tv && css(tv,'display') !== 'none') f.push('Tatuajes: "Volver" visible en escritorio');
+    tattooView = 'lista'; selectedTattooId = null;
     return f;
   };
 
@@ -245,6 +251,27 @@ async (groups) => {
     document.querySelector('#t-agenda [data-monly]').click(); await sleep(250);
     if (AG.dia || AG.panel) f.push('Volver desde el día no vuelve al calendario');
     if (!shown(split().children[0])) f.push('después de Volver no se ve el calendario');
+    go('dash');
+    return f;
+  };
+
+  G.tatuajes = async () => {
+    const f = [];
+    const split = () => document.querySelector('#t-tattoos [data-msplit]');
+    const shown = el => el && css(el,'display') !== 'none' && el.getBoundingClientRect().height > 0;
+    tattooView = 'lista'; selectedTattooId = null; go('tattoos'); await sleep(150);
+    if (!split()) return ['falta data-msplit en Tatuajes'];
+    if (!shown(split().children[0])) f.push('lista oculta');
+    if (shown(split().children[1])) f.push('placeholder "Seleccioná un proyecto" visible en mobile');
+    const item = document.querySelector('#t-tattoos [onclick^="selectedTattooId="]');
+    if (!item) return f.concat(['no hay tatuajes para probar']);
+    scrollTo(0, 300); item.click(); await sleep(250);
+    if (shown(split().children[0])) f.push('al abrir un tatuaje la lista sigue visible');
+    if (!shown(split().children[1])) f.push('no se ve el detalle');
+    if (scrollY > 5) f.push('al abrir un tatuaje no vuelve arriba (scrollY=' + scrollY + ')');
+    const v = document.querySelector('#t-tattoos [data-monly]');
+    if (!shown(v)) f.push('no se ve "‹ Volver"');
+    else { v.click(); await sleep(200); if (selectedTattooId || !shown(split().children[0])) f.push('Volver no regresa a la lista'); }
     go('dash');
     return f;
   };
