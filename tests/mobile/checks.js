@@ -191,6 +191,31 @@ async (groups) => {
     return f;
   };
 
+  G.sesion = async () => {
+    const f = [];
+    go('ses'); setSesView('nueva'); await sleep(250);
+    const root = document.getElementById('t-ses');
+    // .fgrid (Cliente | Zona) en una columna
+    const g = root.querySelector('.fgrid');
+    if (g && g.children.length > 1 && Math.round(g.children[0].getBoundingClientRect().top) === Math.round(g.children[1].getBoundingClientRect().top)) f.push('.fgrid sigue en 2 columnas');
+    // el select de Zona tiene ancho usable
+    const z = root.querySelector('select[id^="sf-"][id$="z"], select[id="sf-pz"]');
+    if (!z || z.getBoundingClientRect().width < 150) f.push('select de Zona < 150px (' + (z ? Math.round(z.getBoundingClientRect().width) : 'no está') + ')');
+    // fila de aguja: el select ocupa todo el ancho y cantidad/✕ bajan
+    sfAddAguja(''); await sleep(80);
+    const row = [...root.querySelectorAll('select')].find(s => (s.getAttribute('onchange') || '').startsWith('SF.agujas'));
+    if (!row) f.push('no encontré la fila de aguja');
+    else {
+      const card = row.parentElement.getBoundingClientRect().width;
+      if (row.getBoundingClientRect().width < card - 2) f.push('select de aguja no ocupa el ancho de la fila');
+    }
+    sfAddTec(''); await sleep(80);
+    const tec = [...root.querySelectorAll('select')].find(s => (s.getAttribute('onchange') || '').startsWith('SF.tecnicas') && (s.getAttribute('onchange') || '').includes('.tec='));
+    if (tec && tec.getBoundingClientRect().width < tec.parentElement.getBoundingClientRect().width - 2) f.push('select de técnica no ocupa el ancho de la fila');
+    go('dash');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }
