@@ -325,6 +325,36 @@ async (groups) => {
     return f;
   };
 
+  // Hallazgos de la revisión final de etapas 2-3
+  G.fixes23 = async () => {
+    const f = [];
+    // relleno alto fuera de los paneles: el scroll no puede quedar en 0 por recorte del navegador
+    const pad = document.createElement('div'); pad.style.height = '4000px'; pad.id = 'test-pad';
+    document.querySelector('.app').appendChild(pad);
+    // #1 abrir un tatuaje con la lista scrolleada lleva el detalle arriba
+    tattooView = 'lista'; selectedTattooId = null; go('tattoos'); await sleep(150);
+    scrollTo(0, 600); document.querySelector('#t-tattoos [onclick^="selectedTattooId="]').click(); await sleep(250);
+    if (scrollY > 5) f.push('#1 tatuaje: el detalle no vuelve arriba (scrollY=' + scrollY + ')');
+    scrollTo(0, 600); document.querySelector('#t-tattoos [data-monly]').click(); await sleep(250);
+    if (scrollY > 5) f.push('#1 tatuaje: Volver no vuelve arriba (scrollY=' + scrollY + ')');
+    // #1 abrir un día con el calendario scrolleado
+    go('agenda'); AG.dia = null; AG.panel = null; await renderAgenda(); await sleep(150);
+    scrollTo(0, 600); document.querySelector('#t-agenda [data-cal]').click(); await sleep(300);
+    if (scrollY > 5) f.push('#1 agenda: el día no vuelve arriba (scrollY=' + scrollY + ')');
+    AG.dia = null; AG.panel = null;
+    pad.remove();
+    // #2 celdas sin salto de línea (bitácora) no se montan sobre la columna siguiente
+    go('ses'); setSesView('bit'); await sleep(250);
+    const td = [...document.querySelectorAll('#t-ses td[style*="nowrap"]')].find(x => !/max-width/.test(x.getAttribute('style')));
+    if (!td) f.push('#2 no encontré celdas nowrap en la bitácora');
+    else {
+      td.textContent = 'Línea RL07 12 práctica 8.5V, Sombra M13 12 7V, Relleno CM15 12 9V';
+      if (td.scrollWidth > td.clientWidth + 1) f.push('#2 celda nowrap desborda su columna (' + td.scrollWidth + ' > ' + td.clientWidth + ')');
+    }
+    go('dash');
+    return f;
+  };
+
   const fails = [];
   for (const g of groups) {
     if (!G[g]) { fails.push('grupo desconocido: ' + g); continue; }

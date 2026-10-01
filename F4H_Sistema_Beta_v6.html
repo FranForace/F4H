@@ -287,7 +287,7 @@ thead th[data-sorted]{color:var(--accent)!important}
   .app [data-msplit="detalle"]>:first-child{display:none!important}
   .app [data-msplit="lista"]>:nth-child(2){display:none!important}
   /* Etapa 3 — retoques: celdas largas envuelven; franja bajo la barra de estado */
-  .app td{max-width:70vw;white-space:normal;overflow-wrap:anywhere}
+  .app td:not([style*="nowrap"]){max-width:70vw;white-space:normal;overflow-wrap:anywhere}
   body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:250;pointer-events:none}
   /* Etapa 3 — Inventario en tarjetas */
   #t-inv table{width:100%!important;min-width:0!important}
@@ -944,7 +944,7 @@ function buildAgendaCalendario(){
     const numHtml=esHoy
       ?'<span style="font-size:12px;font-weight:700;color:#111;background:var(--accent);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center">'+d.getDate()+'</span>'
       :'<span style="font-size:13px;font-weight:700;color:'+numColor+'">'+d.getDate()+'</span>';
-    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' data-cal="'+(abierto?'a':'c')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda();if(isMobile())scrollTo(0,0)" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
+    cells+='<div title="'+titleTxt.replace(/"/g,'&quot;')+'"'+(turnosDia.length?' data-turnos="'+turnosDia.length+'"':'')+' data-cal="'+(abierto?'a':'c')+'" onclick="AG.dia=\''+fecha+'\';AG.panel=\'dia\';AGturnoForm=null;renderAgenda();if(isMobile())window.scrollTo(0,0)" style="min-height:108px;padding:9px 10px;border-radius:8px;background:'+bg+';border:'+border+';cursor:pointer;opacity:'+(inMes?'1':'.45')+';position:relative;transition:background .15s ease">'
       +(avisoRojo?'<span style="position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red)"></span>':'')
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+numHtml
       +(abierto&&info.hora_desde?'<span style="font-size:10px;color:var(--text-3)">'+info.hora_desde.slice(0,5)+'–'+(info.hora_hasta?info.hora_hasta.slice(0,5):'')+'</span>':'')
@@ -1394,7 +1394,7 @@ function renderTattoos(){
       </div>
       <button class="btn btn-sm btn-p" onclick="tattooView='nuevo';renderTattoos()">+ Nuevo tatuaje</button>
     </div>
-    ${isSplit?('<div data-msplit="'+(selectedTattooId?'detalle':'lista')+'" style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">'+buildListaTattoos()+(selectedTattooId?'<div><button data-monly class="btn btn-sm" onclick="tattooView=\'lista\';selectedTattooId=null;renderTattoos();scrollTo(0,0)" style="margin-bottom:12px">&#x2039; Volver a la lista</button>'+buildDetalleTattoo(selectedTattooId)+'</div>':'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 28px;text-align:center;color:var(--text-3);font-size:14px">Seleccion\xE1 un proyecto de la lista.</div>')+'</div>'):tattooView==='nuevo'?buildNuevoTattoo():buildStatsTattoos()}`;
+    ${isSplit?('<div data-msplit="'+(selectedTattooId?'detalle':'lista')+'" style="display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start">'+buildListaTattoos()+(selectedTattooId?'<div><button data-monly class="btn btn-sm" onclick="tattooView=\'lista\';selectedTattooId=null;renderTattoos();window.scrollTo(0,0)" style="margin-bottom:12px">&#x2039; Volver a la lista</button>'+buildDetalleTattoo(selectedTattooId)+'</div>':'<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 28px;text-align:center;color:var(--text-3);font-size:14px">Seleccion\xE1 un proyecto de la lista.</div>')+'</div>'):tattooView==='nuevo'?buildNuevoTattoo():buildStatsTattoos()}`;
   sfHydrateThumbs(el);
 }
 
@@ -1404,7 +1404,7 @@ function buildListaTattoos(){
     const sess=tattooSesiones(t.id);const costo=tattooCosto(t.id);
     const margen=t.precio?(t.precio-costo):null;
     const isAct=selectedTattooId===t.id;
-    return '<div onclick="selectedTattooId=\''+t.id+'\';selectedFotoId=null;tattooView=\'detalle\';renderTattoos();if(isMobile())scrollTo(0,0)" style="background:var(--bg-card);border:1px solid '+(isAct?'var(--accent)':'var(--border)')+';border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s'+(isAct?';background:rgba(200,169,110,.06)':'')+'">'
+    return '<div onclick="selectedTattooId=\''+t.id+'\';selectedFotoId=null;tattooView=\'detalle\';renderTattoos();if(isMobile())window.scrollTo(0,0)" style="background:var(--bg-card);border:1px solid '+(isAct?'var(--accent)':'var(--border)')+';border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s'+(isAct?';background:rgba(200,169,110,.06)':'')+'">'
       +'<div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">#'+t.num+' \xB7 '+t.cliente+'</div>'
       +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">'+t.diseno+'</div>'
       +'<div style="margin-bottom:8px">'+estadoBadge(t.estado)+'</div>'
